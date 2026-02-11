@@ -37,7 +37,31 @@ function Show-Status {
     Write-Host ""
 }
 
-# IMPORTANT: Label the loop so Exit can break out of it (break MainMenu)
+function Launch-Updater {
+    $updater = Join-Path $root "Tasks\Update-LabToolsFromGitHub.ps1"
+    if (-not (Test-Path $updater)) {
+        Write-Host "Updater not found:"
+        Write-Host $updater
+        Pause-Return
+        return
+    }
+
+    Write-LabLog "Menu: Launch updater from GitHub"
+
+    # Run updater in a separate PowerShell window, so it can safely overwrite files.
+    Start-Process powershell.exe -ArgumentList @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "`"$updater`""
+    )
+
+    Write-Host ""
+    Write-Host "Updater launched in a new window."
+    Write-Host "After it finishes, re-open 'CITA Lab Tools' to use the updated version."
+    Pause-Return
+}
+
+# Label the loop so Exit can break out of it cleanly
 :MainMenu while ($true) {
     Clear-Host
     Write-Host "CITA Lab Tools - Windows Server Role Installer"
@@ -49,6 +73,7 @@ function Show-Status {
     Write-Host "4) Install Core DC roles (AD DS + DNS + DHCP)"
     Write-Host "5) Show install status"
     Write-Host "6) Open log file"
+    Write-Host "7) Update Lab Tools from GitHub (build VM only)"
     Write-Host "0) Exit"
     Write-Host ""
 
@@ -86,9 +111,14 @@ function Show-Status {
                 Start-Process notepad.exe $log
                 Pause-Return
             }
+            "7" {
+                Launch-Updater
+                # Exit the menu so the updater can overwrite files safely.
+                break MainMenu
+            }
             "0" {
                 Write-LabLog "Menu: Exit"
-                break MainMenu   # <-- THIS is the fix
+                break MainMenu
             }
             default {
                 Write-Host "Invalid option."
