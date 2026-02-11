@@ -63,9 +63,7 @@ function Get-DnsServers([int]$ifIndex) {
 }
 
 function Is-LikelyDomainController {
-    # Best-effort signals:
-    # - NTDS service exists, or
-    # - AD DS role installed AND ntdsutil exists, etc.
+    # Best-effort: if NTDS service exists, it's a DC (or in DC promotion state).
     try {
         $svc = Get-Service -Name "NTDS" -ErrorAction SilentlyContinue
         if ($svc) { return $true }
@@ -74,10 +72,10 @@ function Is-LikelyDomainController {
     return $false
 }
 
-$domain = Get-DomainInfo
+$domain  = Get-DomainInfo
 $primary = Get-PrimaryAdapter
-$roles = Get-RolesInstalled
-$isDc = Is-LikelyDomainController
+$roles   = Get-RolesInstalled
+$isDc    = Is-LikelyDomainController
 
 Clear-Host
 Write-Host "CITA Lab Tools - System Snapshot"
@@ -93,22 +91,26 @@ if ($domain.PartOfDomain) {
 Write-Host ("Likely DC:       {0}" -f ($(if ($isDc) { "YES" } else { "NO" })))
 Write-Host ""
 
-if ($primary -eq $null) {
+if ($null -eq $primary) {
     Write-Host "Network: No active adapter configuration found."
 } else {
     $adapterName = $primary.NetAdapter.Name
-    $ifIndex = $primary.NetAdapter.IfIndex
+    $ifIndex     = $primary.NetAdapter.IfIndex
 
-    $ipv4 = $primary.IPv4Address | ForEach-Object { $_.IPAddress } | Where-Object { $_ } | Select-Object -First 1
-    $prefix = $primary.IPv4Address | ForEach-Object { $_.PrefixLength } | Where-Object { $_ } | Select-Object -First 1
-    $gw = $primary.IPv4DefaultGateway | ForEach-Object { $_.NextHop } | Where-Object { $_ } | Select-Object -First 1
+    $ipv4   = $primary.IPv4Address        | ForEach-Object { $_.IPAddress }     | Where-Object { $_ } | Select-Object -First 1
+    $prefix = $primary.IPv4Address        | ForEach-Object { $_.PrefixLength }  | Where-Object { $_ } | Select-Object -First 1
+    $gw     = $primary.IPv4DefaultGateway | ForEach-Object { $_.NextHop }        | Where-Object { $_ } | Select-Object -First 1
 
-    $dhcp = Get-DhcpState -ifIndex $ifIndex
+    $dhcp       = Get-DhcpState -ifIndex $ifIndex
     $dnsServers = Get-DnsServers -ifIndex $ifIndex
 
+    if (-not $ipv4)   { $ipv4 = "None" }
+    if (-not $prefix) { $prefix = "" }
+    if (-not $gw)     { $gw = "None" }
+
     Write-Host ("Primary Adapter: {0} (IfIndex {1})" -f $adapterName, $ifIndex)
-    Write-Host ("IPv4 Address:    {0}/{1}" -f ($ipv4 ?? "None"), ($prefix ?? ""))
-    Write-Host ("Default Gateway: {0}" -f ($gw ?? "None"))
+    Write-Host ("IPv4 Address:    {0}/{1}" -f $ipv4, $prefix)
+    Write-Host ("Default Gateway: {0}" -f $gw)
     Write-Host ("DHCP:            {0}" -f $dhcp)
     Write-Host ("DNS Servers:     {0}" -f $dnsServers)
 }
