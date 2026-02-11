@@ -1,0 +1,5 @@
+{
+  "toolName": "CITA Lab Tools",
+  "roles": ["AD-Domain-Services", "DNS", "DHCP"],
+  "logPath": "C:\\LabLogs\\labtools.log"
+}

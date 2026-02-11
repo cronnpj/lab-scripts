@@ -1,0 +1,86 @@
+Write-Host "CITA Lab Tools"
+Write-Host "Version: $(Get-Content -Path (Join-Path $PSScriptRoot '..\VERSION.txt'))"
+Pause
+$ErrorActionPreference = "Stop"
+
+$root = Join-Path $PSScriptRoot ".."
+$versionPath = Join-Path $root "VERSION.txt"
+$version = if (Test-Path $versionPath) { (Get-Content $versionPath -ErrorAction SilentlyContinue) } else { "unknown" }
+
+Import-Module (Join-Path $root "Lib\Logging.psm1") -Force
+Import-Module (Join-Path $root "Lib\Validation.psm1") -Force
+Initialize-LabLog
+
+try { Assert-IsAdmin } catch {
+    Write-Host $_.Exception.Message
+    Write-Host "Right-click > Run as administrator."
+    pause
+    exit 1
+}
+
+function Pause-Return { Write-Host ""; pause }
+
+function Show-Status {
+    $states = Get-RoleInstallState -FeatureNames @("AD-Domain-Services","DNS","DHCP")
+    Write-Host ""
+    Write-Host "Installed Roles/Features:"
+    $states | Format-Table -AutoSize
+    Write-Host ""
+}
+
+while ($true) {
+    Clear-Host
+    Write-Host "CITA Lab Tools - Windows Server Role Installer"
+    Write-Host "Version: $version"
+    Write-Host "------------------------------------------------"
+    Write-Host "1) Install AD DS role (no promotion)"
+    Write-Host "2) Install DNS role"
+    Write-Host "3) Install DHCP role"
+    Write-Host "4) Install Core DC roles (AD DS + DNS + DHCP)"
+    Write-Host "5) Show install status"
+    Write-Host "6) Open log file"
+    Write-Host "0) Exit"
+    Write-Host ""
+
+    $choice = Read-Host "Select an option"
+
+    try {
+        switch ($choice) {
+            "1" {
+                Write-LabLog "Menu: Install AD DS (no promotion)"
+                & (Join-Path $root "Tasks\Install-Roles.ps1") -Mode "ADDS"
+                Pause-Return
+            }
+            "2" {
+                Write-LabLog "Menu: Install DNS"
+                & (Join-Path $root "Tasks\Install-Roles.ps1") -Mode "DNS"
+                Pause-Return
+            }
+            "3" {
+                Write-LabLog "Menu: Install DHCP"
+                & (Join-Path $root "Tasks\Install-Roles.ps1") -Mode "DHCP"
+                Pause-Return
+            }
+            "4" {
+                Write-LabLog "Menu: Install CORE_DC"
+                & (Join-Path $root "Tasks\Install-Roles.ps1") -Mode "CORE_DC"
+                Pause-Return
+            }
+            "5" { Show-Status; Pause-Return }
+            "6" {
+                $log = Get-LabLogPath
+                Write-Host "Opening: $log"
+                Start-Process notepad.exe $log
+                Pause-Return
+            }
+            "0" { break }
+            default { Write-Host "Invalid option."; Pause-Return }
+        }
+    } catch {
+        Write-LabLog "Error: $($_.Exception.Message)" "ERROR"
+        Write-Host ""
+        Write-Host "ERROR: $($_.Exception.Message)"
+        Write-Host "Check the log for details."
+        Pause-Return
+    }
+}
