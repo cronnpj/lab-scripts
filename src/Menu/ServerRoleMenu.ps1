@@ -28,6 +28,33 @@ function Show-Status {
     Write-Host ""
 }
 
+function Run-TaskFile {
+    param(
+        [Parameter(Mandatory=$true)][string]$RelativeTaskPath,
+        [string]$LogLabel = $null,
+        [hashtable]$Args = $null
+    )
+
+    $task = Join-Path $root $RelativeTaskPath
+    if (-not (Test-Path $task)) {
+        Write-Host ""
+        Write-Host "Task file not found:"
+        Write-Host "  $task"
+        Write-Host ""
+        Write-Host "If you just updated the menu, make sure you also deployed the matching Tasks script(s)."
+        Pause-Return
+        return
+    }
+
+    if ($LogLabel) { Write-LabLog "Menu: $LogLabel" }
+
+    if ($Args) {
+        & $task @Args
+    } else {
+        & $task
+    }
+}
+
 function Launch-Updater {
     $updater = Join-Path $root "Tasks\Update-LabToolsFromGitHub.ps1"
     if (-not (Test-Path $updater)) {
@@ -61,7 +88,9 @@ function Launch-Updater {
     Write-Host "5) Install DHCP role"
     Write-Host "6) Install Core DC roles (AD DS + DNS + DHCP)"
     Write-Host "7) Show install status"
-    Write-Host "8) Update Lab Tools from GitHub (build VM only)"
+    Write-Host "8) System snapshot (troubleshooting)"
+    Write-Host "9) Join existing domain (member server only)"
+    Write-Host "10) Update Lab Tools from GitHub (build VM only)"
     Write-Host "0) Exit"
     Write-Host ""
 
@@ -69,19 +98,22 @@ function Launch-Updater {
 
     try {
         switch ($choice) {
-            "1" { & (Join-Path $root "Tasks\Rename-Computer.ps1"); Pause-Return }
-            "2" { & (Join-Path $root "Tasks\Set-StaticIP.ps1"); Pause-Return }
+            "1"  { Run-TaskFile -RelativeTaskPath "Tasks\Rename-Computer.ps1" -LogLabel "Rename computer"; Pause-Return }
+            "2"  { Run-TaskFile -RelativeTaskPath "Tasks\Set-StaticIP.ps1"     -LogLabel "Configure static IP"; Pause-Return }
 
-            "3" { Write-LabLog "Menu: Install AD DS (no promotion)"; & (Join-Path $root "Tasks\Install-Roles.ps1") -Mode "ADDS"; Pause-Return }
-            "4" { Write-LabLog "Menu: Install DNS";                & (Join-Path $root "Tasks\Install-Roles.ps1") -Mode "DNS";  Pause-Return }
-            "5" { Write-LabLog "Menu: Install DHCP";               & (Join-Path $root "Tasks\Install-Roles.ps1") -Mode "DHCP"; Pause-Return }
-            "6" { Write-LabLog "Menu: Install CORE_DC";            & (Join-Path $root "Tasks\Install-Roles.ps1") -Mode "CORE_DC"; Pause-Return }
+            "3"  { Run-TaskFile -RelativeTaskPath "Tasks\Install-Roles.ps1"   -LogLabel "Install AD DS (no promotion)" -Args @{ Mode="ADDS" }; Pause-Return }
+            "4"  { Run-TaskFile -RelativeTaskPath "Tasks\Install-Roles.ps1"   -LogLabel "Install DNS"                  -Args @{ Mode="DNS"  }; Pause-Return }
+            "5"  { Run-TaskFile -RelativeTaskPath "Tasks\Install-Roles.ps1"   -LogLabel "Install DHCP"                 -Args @{ Mode="DHCP" }; Pause-Return }
+            "6"  { Run-TaskFile -RelativeTaskPath "Tasks\Install-Roles.ps1"   -LogLabel "Install CORE_DC"              -Args @{ Mode="CORE_DC" }; Pause-Return }
 
-            "7" { Show-Status; Pause-Return }
+            "7"  { Show-Status; Pause-Return }
 
-            "8" { Launch-Updater; break MainMenu }
+            "8"  { Run-TaskFile -RelativeTaskPath "Tasks\System-Snapshot.ps1" -LogLabel "System snapshot"; Pause-Return }
+            "9"  { Run-TaskFile -RelativeTaskPath "Tasks\Join-Domain.ps1"     -LogLabel "Join existing domain"; Pause-Return }
 
-            "0" { Write-LabLog "Menu: Exit"; break MainMenu }
+            "10" { Launch-Updater; break MainMenu }
+
+            "0"  { Write-LabLog "Menu: Exit"; break MainMenu }
 
             default { Write-Host "Invalid option."; Pause-Return }
         }
