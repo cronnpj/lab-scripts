@@ -1,34 +1,44 @@
-Write-Host "CITA Lab Tools"
-Write-Host "Version: $(Get-Content -Path (Join-Path $PSScriptRoot '..\VERSION.txt'))"
-Pause
+# src\Menu\ServerRoleMenu.ps1
 $ErrorActionPreference = "Stop"
 
 $root = Join-Path $PSScriptRoot ".."
+
 $versionPath = Join-Path $root "VERSION.txt"
-$version = if (Test-Path $versionPath) { (Get-Content $versionPath -ErrorAction SilentlyContinue) } else { "unknown" }
+$version = if (Test-Path $versionPath) {
+    (Get-Content $versionPath -ErrorAction SilentlyContinue).Trim()
+} else {
+    "unknown"
+}
 
 Import-Module (Join-Path $root "Lib\Logging.psm1") -Force
 Import-Module (Join-Path $root "Lib\Validation.psm1") -Force
+
 Initialize-LabLog
 
-try { Assert-IsAdmin } catch {
+try {
+    Assert-IsAdmin
+} catch {
     Write-Host $_.Exception.Message
-    Write-Host "Right-click > Run as administrator."
-    pause
+    Write-Host "Right-click the shortcut and choose: Run as administrator."
+    Pause
     exit 1
 }
 
-function Pause-Return { Write-Host ""; pause }
+function Pause-Return {
+    Write-Host ""
+    Pause
+}
 
 function Show-Status {
-    $states = Get-RoleInstallState -FeatureNames @("AD-Domain-Services","DNS","DHCP")
+    $states = Get-RoleInstallState -FeatureNames @("AD-Domain-Services", "DNS", "DHCP")
     Write-Host ""
     Write-Host "Installed Roles/Features:"
     $states | Format-Table -AutoSize
     Write-Host ""
 }
 
-while ($true) {
+# IMPORTANT: Label the loop so Exit can break out of it (break MainMenu)
+:MainMenu while ($true) {
     Clear-Host
     Write-Host "CITA Lab Tools - Windows Server Role Installer"
     Write-Host "Version: $version"
@@ -66,15 +76,24 @@ while ($true) {
                 & (Join-Path $root "Tasks\Install-Roles.ps1") -Mode "CORE_DC"
                 Pause-Return
             }
-            "5" { Show-Status; Pause-Return }
+            "5" {
+                Show-Status
+                Pause-Return
+            }
             "6" {
                 $log = Get-LabLogPath
                 Write-Host "Opening: $log"
                 Start-Process notepad.exe $log
                 Pause-Return
             }
-            "0" { break }
-            default { Write-Host "Invalid option."; Pause-Return }
+            "0" {
+                Write-LabLog "Menu: Exit"
+                break MainMenu   # <-- THIS is the fix
+            }
+            default {
+                Write-Host "Invalid option."
+                Pause-Return
+            }
         }
     } catch {
         Write-LabLog "Error: $($_.Exception.Message)" "ERROR"
