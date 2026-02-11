@@ -23,28 +23,26 @@ function Prompt-Int([string]$label, [int]$default) {
 }
 
 function Select-NetworkAdapter {
-    $adapters = Get-NetAdapter |
-        Where-Object { $_.Status -eq "Up" -and $_.HardwareInterface -eq $true } |
-        Sort-Object -Property Name
+    $adapters = @(Get-NetAdapter |
+        Where-Object { $_.Status -eq "Up" } |
+        Sort-Object -Property Name)
 
-    if (-not $adapters) {
+    if ($adapters.Count -lt 1) {
         throw "No active network adapters found."
     }
 
     Write-Host ""
     Write-Host "Active network adapters:"
-    for ($i=0; $i -lt $adapters.Count; $i++) {
+    for ($i = 0; $i -lt $adapters.Count; $i++) {
         $a = $adapters[$i]
-        Write-Host ("{0}) {1}  (InterfaceIndex: {2})" -f ($i+1), $a.Name, $a.IfIndex)
+        Write-Host ("{0}) {1}  (InterfaceIndex: {2}, Status: {3})" -f ($i + 1), $a.Name, $a.IfIndex, $a.Status)
     }
 
     while ($true) {
         $choice = Read-Host "Select adapter (1-$($adapters.Count))"
-        if ([int]::TryParse($choice, [ref]$null)) {
-            $n = [int]$choice
-            if ($n -ge 1 -and $n -le $adapters.Count) {
-                return $adapters[$n-1]
-            }
+        $n = 0
+        if ([int]::TryParse($choice, [ref]$n) -and $n -ge 1 -and $n -le $adapters.Count) {
+            return $adapters[$n - 1]
         }
         Write-Host "Invalid selection."
     }
