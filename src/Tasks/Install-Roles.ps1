@@ -13,20 +13,22 @@ Initialize-LabLog
 Assert-IsAdmin
 
 function Install-FeatureSafe {
-    param([string]$Name)
+    param([Parameter(Mandatory=$true)][string]$Name)
 
     $feature = Get-WindowsFeature -Name $Name
-    if ($feature.Installed) {
+    if ($feature -and $feature.Installed) {
         Write-LabLog "Feature already installed: $Name"
         return
     }
 
     Write-LabLog "Installing feature: $Name"
     $result = Install-WindowsFeature -Name $Name -IncludeManagementTools
+
     if (-not $result.Success) {
-        Write-LabLog "Failed installing feature: $Name" "ERROR"
+        Write-LabLog "Install-WindowsFeature failed for: $Name" "ERROR"
         throw "Install-WindowsFeature failed for $Name"
     }
+
     Write-LabLog "Installed feature: $Name"
 }
 
@@ -41,5 +43,7 @@ switch ($Mode) {
     }
 }
 
-Write-Host "Done. (No promotion/config performed—students must complete that manually.)"
-Write-Host "Log: $(Get-LabLogPath)"
+Write-Host ""
+Write-Host "Done."
+Write-Host "Note: No AD promotion or DHCP scope configuration is performed. Students must complete configuration manually."
+Write-Host ("Log: {0}" -f (Get-LabLogPath))
