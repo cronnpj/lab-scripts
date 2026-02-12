@@ -15,6 +15,7 @@ function Show-MainMenu {
     Write-Host ""
 }
 
+$exit = $false
 do {
     Show-MainMenu
     $choice = Read-Host "Select an option"
@@ -26,8 +27,8 @@ do {
         "4" { Write-Host "`nWindows Client Tools - Coming Soon..."; Pause }
         "5" { & (Join-Path $PSScriptRoot "TroubleshootingMenu.ps1") }
         "6" { & (Join-Path $PSScriptRoot "MaintenanceMenu.ps1") }
-        "0" { break }
+        "0" { $exit = $true }
         default { Write-Host "Invalid selection."; Start-Sleep 1 }
     }
 
-} while ($true)
+} while (-not $exit)
