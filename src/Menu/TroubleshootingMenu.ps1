@@ -10,4 +10,5 @@ $choice = Read-Host "Select an option"
 switch ($choice) {
     "1" { & (Join-Path $PSScriptRoot "..\Tasks\Install-Status.ps1") }
     "2" { & (Join-Path $PSScriptRoot "..\Tasks\System-Snapshot.ps1") }
+    "0" { Clear-Host; & (Join-Path $PSScriptRoot "MainMenu.ps1") }
 }
