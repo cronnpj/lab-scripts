@@ -8,4 +8,5 @@ $choice = Read-Host "Select an option"
 
 switch ($choice) {
     "1" { & (Join-Path $PSScriptRoot "..\Tasks\Update-LabTools.ps1") }
+    "0" { Clear-Host; & (Join-Path $PSScriptRoot "MainMenu.ps1") }
 }
