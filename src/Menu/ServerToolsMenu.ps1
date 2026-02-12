@@ -10,4 +10,5 @@ $choice = Read-Host "Select an option"
 switch ($choice) {
     "1" { & (Join-Path $PSScriptRoot "..\Tasks\Rename-Computer.ps1") }
     "2" { & (Join-Path $PSScriptRoot "..\Tasks\Set-StaticIP.ps1") }
+    "0" { Clear-Host; & (Join-Path $PSScriptRoot "MainMenu.ps1") }
 }
