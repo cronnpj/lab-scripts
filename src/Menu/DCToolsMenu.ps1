@@ -14,5 +14,5 @@ switch ($choice) {
     "2" { & (Join-Path $PSScriptRoot "..\Tasks\Install-Roles.ps1") -Mode DNS }
     "3" { & (Join-Path $PSScriptRoot "..\Tasks\Install-Roles.ps1") -Mode DHCP }
     "4" { & (Join-Path $PSScriptRoot "..\Tasks\Install-Roles.ps1") -Mode CORE }
-    "0" { Clear-Host; & (Join-Path $PSScriptRoot "..\MainMenu.ps1") }
+    "0" { Clear-Host; & (Join-Path $PSScriptRoot "MainMenu.ps1") }
 }
