@@ -1,3 +1,4 @@
+# C:\CITA\LabTools\Menu\mainmenu.ps1
 $ErrorActionPreference = "SilentlyContinue"
 
 $versionPath = Join-Path $PSScriptRoot '..\VERSION.txt'
@@ -5,21 +6,23 @@ $version = if (Test-Path $versionPath) {
     (Get-Content $versionPath | Select-Object -First 1).Trim()
 } else { "Unknown" }
 
-function Get-RepoPath {
+# Prefer separate repo if it exists, otherwise use runtime root (parent of Menu)
+function Resolve-RepoPath {
     $preferred = "C:\CITA\_LabToolsRepo"
-    if (Test-Path (Join-Path $preferred ".git")) {
-        return $preferred
-    }
-
     $runtimeRoot = Split-Path -Parent $PSScriptRoot
-    if (Test-Path (Join-Path $runtimeRoot ".git")) {
-        return $runtimeRoot
-    }
+
+    # 1) Preferred repo
+    $isPreferredRepo = git -C $preferred rev-parse --is-inside-work-tree 2>$null
+    if ($LASTEXITCODE -eq 0 -and $isPreferredRepo.Trim() -eq "true") { return $preferred }
+
+    # 2) Runtime root as repo
+    $isRuntimeRepo = git -C $runtimeRoot rev-parse --is-inside-work-tree 2>$null
+    if ($LASTEXITCODE -eq 0 -and $isRuntimeRepo.Trim() -eq "true") { return $runtimeRoot }
 
     return $null
 }
 
-$repoPath = Get-RepoPath
+$repoPath = Resolve-RepoPath
 
 function Get-UpdateStatus {
     try {
@@ -28,20 +31,22 @@ function Get-UpdateStatus {
 
         git -C $repoPath fetch --quiet 2>$null | Out-Null
 
-        $branch = (git -C $repoPath rev-parse --abbrev-ref HEAD).Trim()
-        $counts = (git -C $repoPath rev-list --left-right --count "HEAD...origin/$branch").Trim()
+        $branch = (git -C $repoPath rev-parse --abbrev-ref HEAD 2>$null).Trim()
+        if (-not $branch) { return "UNKNOWN" }
+
+        $counts = (git -C $repoPath rev-list --left-right --count "HEAD...origin/$branch" 2>$null).Trim()
+        if (-not $counts) { return "UNKNOWN" }
 
         $parts = $counts -split "`t"
         if ($parts.Count -lt 2) { return "UNKNOWN" }
 
-        $behind = [int]$parts[1]
+        $behind = 0
+        if (-not [int]::TryParse($parts[1], [ref]$behind)) { return "UNKNOWN" }
 
         if ($behind -gt 0) { return "UPDATE_AVAILABLE" }
         return "UP_TO_DATE"
     }
-    catch {
-        return "UNKNOWN"
-    }
+    catch { return "UNKNOWN" }
 }
 
 function Show-MainMenu {
@@ -54,7 +59,7 @@ function Show-MainMenu {
         "UPDATE_AVAILABLE" { Write-Host "Status: UPDATE AVAILABLE - Run Maintenance & Updates." -ForegroundColor Yellow }
         "UP_TO_DATE"       { Write-Host "Status: Up to date." -ForegroundColor Green }
         "NO_GIT"           { Write-Host "Status: Git not installed." -ForegroundColor DarkGray }
-        "NO_REPO"          { Write-Host "Status: Update check unavailable." -ForegroundColor DarkGray }
+        "NO_REPO"          { Write-Host "Status: Update check unavailable (repo not detected)." -ForegroundColor DarkGray }
         default            { Write-Host "Status: Update check unavailable." -ForegroundColor DarkGray }
     }
 
