@@ -7,6 +7,11 @@ Import-Module (Join-Path $PSScriptRoot "..\Lib\Validation.psm1") -Force
 Initialize-LabLog
 Assert-IsAdmin
 
+function Pause-Menu {
+    Write-Host ""
+    Read-Host "Press Enter to continue"
+}
+
 function Get-ComputerSystemInfo {
     try { return Get-CimInstance Win32_ComputerSystem } catch { return $null }
 }
@@ -34,29 +39,30 @@ function Is-ADDSRoleInstalled {
         $f = Get-WindowsFeature -Name "AD-Domain-Services" -ErrorAction Stop
         return [bool]$f.Installed
     } catch {
-        # conservative if feature query fails
-        return $true
+        # If we're not on Server (or feature query fails), treat as "not installed"
+        return $false
     }
 }
 
 Write-Host ""
-Write-Host "Join Existing Domain (Member Server Only)"
-Write-Host "----------------------------------------"
+Write-Host "Join Existing Domain"
+Write-Host "--------------------"
 
 # Guardrails
 if (Is-DomainControllerByRole) {
-    Write-Host "This machine is a Domain Controller."
-    Write-Host "Domain join is for MEMBER SERVERS only. Aborting."
+    Write-Host "This machine appears to be a Domain Controller."
+    Write-Host "Domain join is not applicable here. Aborting."
     Write-LabLog "JoinDomain: Aborted - machine is a DC" "WARN"
-    Pause
+    Pause-Menu
     return
 }
 
+# If AD DS is installed, this is likely a server intended to be promoted, not a client/member
 if (Is-ADDSRoleInstalled) {
     Write-Host "AD DS role is installed on this machine."
-    Write-Host "Domain join is for MEMBER SERVERS only. Aborting."
+    Write-Host "This tool is intended for Windows clients and member servers (not DC candidates). Aborting."
     Write-LabLog "JoinDomain: Aborted - AD DS role installed" "WARN"
-    Pause
+    Pause-Menu
     return
 }
 
@@ -65,7 +71,7 @@ if (Is-DomainJoined) {
     Write-Host "This machine is already domain joined: $cur"
     Write-Host "No action taken."
     Write-LabLog "JoinDomain: No action - already domain joined ($cur)"
-    Pause
+    Pause-Menu
     return
 }
 
@@ -78,7 +84,7 @@ $domain = Read-Host "Enter domain name (example: cronnpj.local)"
 if ([string]::IsNullOrWhiteSpace($domain)) {
     Write-Host "Cancelled."
     Write-LabLog "JoinDomain: Cancelled - no domain provided"
-    Pause
+    Pause-Menu
     return
 }
 $domain = $domain.Trim()
@@ -101,7 +107,7 @@ $confirm = Read-Host "Proceed with domain join? (Y/N)"
 if ($confirm.Trim().ToUpper() -ne "Y") {
     Write-Host "Cancelled."
     Write-LabLog "JoinDomain: Cancelled by user"
-    Pause
+    Pause-Menu
     return
 }
 
@@ -124,5 +130,5 @@ if ($reboot.Trim().ToUpper() -eq "Y") {
 } else {
     Write-Host "Please reboot before continuing."
     Write-LabLog "JoinDomain: Reboot deferred by user" "WARN"
-    Pause
+    Pause-Menu
 }
