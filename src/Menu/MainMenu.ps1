@@ -1,12 +1,65 @@
 # MainMenu.ps1
 
 $versionPath = Join-Path $PSScriptRoot '..\VERSION.txt'
-$version = if (Test-Path $versionPath) { Get-Content $versionPath -ErrorAction SilentlyContinue } else { "Unknown" }
+$version = if (Test-Path $versionPath) {
+    Get-Content $versionPath -ErrorAction SilentlyContinue
+} else {
+    "Unknown"
+}
+
+function Get-UpdateStatus {
+    try {
+        if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return "NO_GIT" }
+
+        $isRepo = git rev-parse --is-inside-work-tree 2>$null
+        if ($LASTEXITCODE -ne 0 -or $isRepo -ne "true") { return "NOT_REPO" }
+
+        # Fetch remote silently (fast)
+        git fetch --quiet 2>$null | Out-Null
+
+        $branch = (git rev-parse --abbrev-ref HEAD 2>$null).Trim()
+        if (-not $branch) { return "UNKNOWN" }
+
+        $counts = (git rev-list --left-right --count "HEAD...origin/$branch" 2>$null).Trim()
+        if (-not $counts) { return "UNKNOWN" }
+
+        $parts = $counts -split "`t"
+        if ($parts.Count -lt 2) { return "UNKNOWN" }
+
+        $behind = [int]$parts[1]
+
+        if ($behind -gt 0) { return "UPDATE_AVAILABLE" }
+        return "UP_TO_DATE"
+    }
+    catch {
+        return "UNKNOWN"
+    }
+}
 
 function Show-MainMenu {
     Clear-Host
     Write-Host "CITA Lab Tools - Infrastructure Assistant"
     Write-Host "Version: $version"
+
+    $status = Get-UpdateStatus
+    switch ($status) {
+        "UPDATE_AVAILABLE" {
+            Write-Host "Status: UPDATE AVAILABLE - Please run Maintenance & Updates." -ForegroundColor Yellow
+        }
+        "UP_TO_DATE" {
+            Write-Host "Status: Up to date." -ForegroundColor Green
+        }
+        "NO_GIT" {
+            Write-Host "Status: Git not installed." -ForegroundColor DarkGray
+        }
+        "NOT_REPO" {
+            Write-Host "Status: Not a Git repository." -ForegroundColor DarkGray
+        }
+        default {
+            Write-Host "Status: Update check unavailable." -ForegroundColor DarkGray
+        }
+    }
+
     Write-Host "----------------------------------------"
     Write-Host ""
     Write-Host "1) Server Tools"
@@ -40,8 +93,6 @@ do {
         }
     }
 
-    # When a submenu returns, the loop will redraw and Clear-Host will run.
-    # This extra Clear-Host is optional, but makes the transition feel snappier.
     if (-not $exit) { Clear-Host }
 
 } while (-not $exit)
