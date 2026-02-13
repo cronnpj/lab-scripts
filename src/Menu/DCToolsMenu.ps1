@@ -17,6 +17,26 @@ function Pause-Menu {
     Read-Host "Press Enter to continue"
 }
 
+function Invoke-RoleInstall {
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateSet("ADDS","DNS","DHCP","CORE_DC")]
+        [string]$Mode
+    )
+
+    try {
+        & $rolesScript -Mode $Mode -ErrorAction Stop
+    }
+    catch {
+        Write-Host ""
+        Write-Host "Error: Role installation failed."
+        Write-Host ("Details: {0}" -f $_.Exception.Message)
+    }
+    finally {
+        Pause-Menu
+    }
+}
+
 $rolesScript = Join-Path $PSScriptRoot "..\Tasks\Install-Roles.ps1"
 
 $back = $false
@@ -25,25 +45,11 @@ do {
     $choice = Read-Host "Select an option"
 
     switch ($choice) {
-        "1" {
-            & $rolesScript -Mode ADDS
-            Pause-Menu
-        }
-        "2" {
-            & $rolesScript -Mode DNS
-            Pause-Menu
-        }
-        "3" {
-            & $rolesScript -Mode DHCP
-            Pause-Menu
-        }
-        "4" {
-            & $rolesScript -Mode CORE
-            Pause-Menu
-        }
-        "0" {
-            $back = $true
-        }
+        "1" { Invoke-RoleInstall -Mode ADDS }
+        "2" { Invoke-RoleInstall -Mode DNS }
+        "3" { Invoke-RoleInstall -Mode DHCP }
+        "4" { Invoke-RoleInstall -Mode CORE_DC }   # <-- FIXED
+        "0" { $back = $true }
         default {
             Write-Host ""
             Write-Host "Invalid selection."
@@ -53,6 +59,5 @@ do {
 
 } while (-not $back)
 
-# Clean return to MainMenu (caller)
 Clear-Host
 return
