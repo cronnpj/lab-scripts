@@ -24,7 +24,7 @@ do {
         "1" { & (Join-Path $PSScriptRoot "ServerToolsMenu.ps1") }
         "2" { & (Join-Path $PSScriptRoot "DCToolsMenu.ps1") }
         "3" { & (Join-Path $PSScriptRoot "MemberServerMenu.ps1") }
-        "4" { Write-Host "`nWindows Client Tools - Coming Soon..."; Pause }
+        "4" { & (Join-Path $PSScriptRoot "ClientToolsMenu.ps1") }
         "5" { & (Join-Path $PSScriptRoot "TroubleshootingMenu.ps1") }
         "6" { & (Join-Path $PSScriptRoot "MaintenanceMenu.ps1") }
         "0" { $exit = $true }
