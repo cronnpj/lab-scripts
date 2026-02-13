@@ -1,8 +1,12 @@
-Clear-Host
+# MainMenu.ps1
+
+$versionPath = Join-Path $PSScriptRoot '..\VERSION.txt'
+$version = if (Test-Path $versionPath) { Get-Content $versionPath -ErrorAction SilentlyContinue } else { "Unknown" }
 
 function Show-MainMenu {
+    Clear-Host
     Write-Host "CITA Lab Tools - Infrastructure Assistant"
-    Write-Host "Version: $(Get-Content (Join-Path $PSScriptRoot '..\VERSION.txt'))"
+    Write-Host "Version: $version"
     Write-Host "----------------------------------------"
     Write-Host ""
     Write-Host "1) Server Tools"
@@ -16,6 +20,7 @@ function Show-MainMenu {
 }
 
 $exit = $false
+
 do {
     Show-MainMenu
     $choice = Read-Host "Select an option"
@@ -27,8 +32,18 @@ do {
         "4" { & (Join-Path $PSScriptRoot "ClientToolsMenu.ps1") }
         "5" { & (Join-Path $PSScriptRoot "TroubleshootingMenu.ps1") }
         "6" { & (Join-Path $PSScriptRoot "MaintenanceMenu.ps1") }
-        "0" { $exit = $true }
-        default { Write-Host "Invalid selection."; Start-Sleep 1 }
+        "0" { $exit = $true; continue }
+        default {
+            Write-Host ""
+            Write-Host "Invalid selection. Please try again."
+            Start-Sleep 1
+        }
     }
 
+    # When a submenu returns, the loop will redraw and Clear-Host will run.
+    # This extra Clear-Host is optional, but makes the transition feel snappier.
+    if (-not $exit) { Clear-Host }
+
 } while (-not $exit)
+
+Clear-Host
