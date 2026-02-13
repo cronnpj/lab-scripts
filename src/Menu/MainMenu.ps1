@@ -1,41 +1,40 @@
-# C:\CITA\LabTools\Menu\mainmenu.ps1
-# Runtime menu that checks updates against the SOURCE repo (C:\CITA\_LabToolsRepo)
-
 $ErrorActionPreference = "SilentlyContinue"
 
-# Runtime version file
 $versionPath = Join-Path $PSScriptRoot '..\VERSION.txt'
 $version = if (Test-Path $versionPath) {
-    (Get-Content $versionPath -ErrorAction SilentlyContinue | Select-Object -First 1).Trim()
-} else {
-    "Unknown"
+    (Get-Content $versionPath | Select-Object -First 1).Trim()
+} else { "Unknown" }
+
+function Get-RepoPath {
+    $preferred = "C:\CITA\_LabToolsRepo"
+    if (Test-Path (Join-Path $preferred ".git")) {
+        return $preferred
+    }
+
+    $runtimeRoot = Split-Path -Parent $PSScriptRoot
+    if (Test-Path (Join-Path $runtimeRoot ".git")) {
+        return $runtimeRoot
+    }
+
+    return $null
 }
 
-# Source repo path (git lives here)
-$sourceRepo = "C:\CITA\_LabToolsRepo"
+$repoPath = Get-RepoPath
 
 function Get-UpdateStatus {
     try {
         if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return "NO_GIT" }
-        if (-not (Test-Path $sourceRepo)) { return "NO_REPO_FOLDER" }
+        if (-not $repoPath) { return "NO_REPO" }
 
-        $isRepo = git -C $sourceRepo rev-parse --is-inside-work-tree 2>$null
-        if ($LASTEXITCODE -ne 0 -or $isRepo.Trim() -ne "true") { return "NOT_REPO" }
+        git -C $repoPath fetch --quiet 2>$null | Out-Null
 
-        # Fetch remote quietly (fast, requires internet)
-        git -C $sourceRepo fetch --quiet 2>$null | Out-Null
-
-        $branch = (git -C $sourceRepo rev-parse --abbrev-ref HEAD 2>$null).Trim()
-        if (-not $branch) { return "UNKNOWN" }
-
-        $counts = (git -C $sourceRepo rev-list --left-right --count "HEAD...origin/$branch" 2>$null).Trim()
-        if (-not $counts) { return "UNKNOWN" }
+        $branch = (git -C $repoPath rev-parse --abbrev-ref HEAD).Trim()
+        $counts = (git -C $repoPath rev-list --left-right --count "HEAD...origin/$branch").Trim()
 
         $parts = $counts -split "`t"
         if ($parts.Count -lt 2) { return "UNKNOWN" }
 
-        $behind = 0
-        if (-not [int]::TryParse($parts[1], [ref]$behind)) { return "UNKNOWN" }
+        $behind = [int]$parts[1]
 
         if ($behind -gt 0) { return "UPDATE_AVAILABLE" }
         return "UP_TO_DATE"
@@ -55,8 +54,7 @@ function Show-MainMenu {
         "UPDATE_AVAILABLE" { Write-Host "Status: UPDATE AVAILABLE - Run Maintenance & Updates." -ForegroundColor Yellow }
         "UP_TO_DATE"       { Write-Host "Status: Up to date." -ForegroundColor Green }
         "NO_GIT"           { Write-Host "Status: Git not installed." -ForegroundColor DarkGray }
-        "NO_REPO_FOLDER"   { Write-Host "Status: Source repo not found: $sourceRepo" -ForegroundColor DarkGray }
-        "NOT_REPO"         { Write-Host "Status: Source repo is not a Git repo." -ForegroundColor DarkGray }
+        "NO_REPO"          { Write-Host "Status: Update check unavailable." -ForegroundColor DarkGray }
         default            { Write-Host "Status: Update check unavailable." -ForegroundColor DarkGray }
     }
 
@@ -85,11 +83,7 @@ do {
         "5" { & (Join-Path $PSScriptRoot "TroubleshootingMenu.ps1") }
         "6" { & (Join-Path $PSScriptRoot "MaintenanceMenu.ps1") }
         "0" { $exit = $true; continue }
-        default {
-            Write-Host ""
-            Write-Host "Invalid selection. Please try again."
-            Start-Sleep 1
-        }
+        default { Start-Sleep 1 }
     }
 
     if (-not $exit) { Clear-Host }
