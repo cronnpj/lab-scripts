@@ -1,31 +1,34 @@
 # C:\CITA\LabTools\Menu\mainmenu.ps1
-# (Repo-root aware update check using git -C so it works regardless of shortcut "Start in")
+# Runtime menu that checks updates against the SOURCE repo (C:\CITA\_LabToolsRepo)
 
+$ErrorActionPreference = "SilentlyContinue"
+
+# Runtime version file
 $versionPath = Join-Path $PSScriptRoot '..\VERSION.txt'
 $version = if (Test-Path $versionPath) {
-    (Get-Content $versionPath -ErrorAction SilentlyContinue | Select-Object -First 1)
+    (Get-Content $versionPath -ErrorAction SilentlyContinue | Select-Object -First 1).Trim()
 } else {
     "Unknown"
 }
 
-# Repo root = parent of Menu folder (C:\CITA\LabTools)
-$repoRoot = Split-Path -Parent $PSScriptRoot
+# Source repo path (git lives here)
+$sourceRepo = "C:\CITA\_LabToolsRepo"
 
 function Get-UpdateStatus {
     try {
         if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return "NO_GIT" }
-        if (-not (Test-Path (Join-Path $repoRoot ".git"))) { return "NOT_REPO" }
+        if (-not (Test-Path $sourceRepo)) { return "NO_REPO_FOLDER" }
 
-        $isRepo = git -C $repoRoot rev-parse --is-inside-work-tree 2>$null
+        $isRepo = git -C $sourceRepo rev-parse --is-inside-work-tree 2>$null
         if ($LASTEXITCODE -ne 0 -or $isRepo.Trim() -ne "true") { return "NOT_REPO" }
 
-        # Fetch remote silently (fast)
-        git -C $repoRoot fetch --quiet 2>$null | Out-Null
+        # Fetch remote quietly (fast, requires internet)
+        git -C $sourceRepo fetch --quiet 2>$null | Out-Null
 
-        $branch = (git -C $repoRoot rev-parse --abbrev-ref HEAD 2>$null).Trim()
+        $branch = (git -C $sourceRepo rev-parse --abbrev-ref HEAD 2>$null).Trim()
         if (-not $branch) { return "UNKNOWN" }
 
-        $counts = (git -C $repoRoot rev-list --left-right --count "HEAD...origin/$branch" 2>$null).Trim()
+        $counts = (git -C $sourceRepo rev-list --left-right --count "HEAD...origin/$branch" 2>$null).Trim()
         if (-not $counts) { return "UNKNOWN" }
 
         $parts = $counts -split "`t"
@@ -52,7 +55,8 @@ function Show-MainMenu {
         "UPDATE_AVAILABLE" { Write-Host "Status: UPDATE AVAILABLE - Run Maintenance & Updates." -ForegroundColor Yellow }
         "UP_TO_DATE"       { Write-Host "Status: Up to date." -ForegroundColor Green }
         "NO_GIT"           { Write-Host "Status: Git not installed." -ForegroundColor DarkGray }
-        "NOT_REPO"         { Write-Host "Status: Not a Git repository." -ForegroundColor DarkGray }
+        "NO_REPO_FOLDER"   { Write-Host "Status: Source repo not found: $sourceRepo" -ForegroundColor DarkGray }
+        "NOT_REPO"         { Write-Host "Status: Source repo is not a Git repo." -ForegroundColor DarkGray }
         default            { Write-Host "Status: Update check unavailable." -ForegroundColor DarkGray }
     }
 
