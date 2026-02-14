@@ -45,7 +45,11 @@ function Show-ServerToolsMenu {
     Write-Host ("+" + ("-" * ($width - 2)) + "+") -ForegroundColor DarkGray
 
     Write-Host ""
-    Write-Host "Navigation: Main > Server Tools"
+
+    # Colored Breadcrumb
+    Write-Host "Navigation: " -NoNewline -ForegroundColor DarkGray
+    Write-Host "Main > Server Tools" -ForegroundColor Cyan
+
     Write-Host ""
 
     Write-Host "  [1] Rename computer"
