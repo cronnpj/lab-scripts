@@ -22,6 +22,44 @@ function Write-BoxLine {
     Write-Host ("| " + $Text + $pad + " |") -ForegroundColor $Color
 }
 
+function Write-HostUserLine {
+    param(
+        [Parameter(Mandatory=$true)][string]$HostName,
+        [Parameter(Mandatory=$true)][string]$UserName,
+        [int]$Width = 64
+    )
+
+    # inside width for text area (excluding "| " and " |")
+    $inner = $Width - 4
+
+    $labelHost = "Host: "
+    $labelUser = "    User: "
+
+    $textLen = $labelHost.Length + $HostName.Length + $labelUser.Length + $UserName.Length
+    if ($textLen -gt $inner) {
+        # Truncate user first if needed, then host if still needed
+        $maxUser = [Math]::Max(0, $inner - ($labelHost.Length + $HostName.Length + $labelUser.Length))
+        if ($UserName.Length -gt $maxUser) { $UserName = $UserName.Substring(0, $maxUser) }
+
+        $textLen = $labelHost.Length + $HostName.Length + $labelUser.Length + $UserName.Length
+        if ($textLen -gt $inner) {
+            $maxHost = [Math]::Max(0, $inner - ($labelHost.Length + $labelUser.Length + $UserName.Length))
+            if ($HostName.Length -gt $maxHost) { $HostName = $HostName.Substring(0, $maxHost) }
+        }
+    }
+
+    $textLen = $labelHost.Length + $HostName.Length + $labelUser.Length + $UserName.Length
+    $pad = " " * ($inner - $textLen)
+
+    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host $labelHost -NoNewline -ForegroundColor Gray
+    Write-Host $HostName -NoNewline -ForegroundColor Cyan
+    Write-Host $labelUser -NoNewline -ForegroundColor Gray
+    Write-Host $UserName -NoNewline -ForegroundColor Cyan
+    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Gray
+}
+
 function Show-AppHeader {
     param(
         [Parameter(Mandatory=$true)][string]$Breadcrumb,
@@ -37,7 +75,10 @@ function Show-AppHeader {
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor DarkGray
     Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $Width "Cyan"
     Write-BoxLine ("Version: {0}" -f $version) $Width "Gray"
-    Write-BoxLine ("Host: {0}    User: {1}" -f $hostName, $userName) $Width "Gray"
+
+    # Host/User line with cyan values
+    Write-HostUserLine -HostName $hostName -UserName $userName -Width $Width
+
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor DarkGray
 
     Write-Host ""
