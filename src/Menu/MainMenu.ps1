@@ -1,18 +1,22 @@
-# C:\CITA\LabTools\Menu\mainmenu.ps1
+# C:\CITA\LabTools\src\Menu\MainMenu.ps1
+# ASCII-safe "app feel" main menu (no box-drawing chars, no em-dash)
 $ErrorActionPreference = "SilentlyContinue"
 
 $versionPath = Join-Path $PSScriptRoot '..\VERSION.txt'
 $version = if (Test-Path $versionPath) {
-    (Get-Content $versionPath | Select-Object -First 1).Trim()
+    (Get-Content $versionPath -ErrorAction SilentlyContinue | Select-Object -First 1).Trim()
 } else { "Unknown" }
 
+# Prefer separate repo if it exists, otherwise use runtime root (parent of Menu)
 function Resolve-RepoPath {
     $preferred = "C:\CITA\_LabToolsRepo"
     $runtimeRoot = Split-Path -Parent $PSScriptRoot
 
+    # 1) Preferred repo
     $isPreferredRepo = git -C $preferred rev-parse --is-inside-work-tree 2>$null
     if ($LASTEXITCODE -eq 0 -and $isPreferredRepo.Trim() -eq "true") { return $preferred }
 
+    # 2) Runtime root as repo
     $isRuntimeRepo = git -C $runtimeRoot rev-parse --is-inside-work-tree 2>$null
     if ($LASTEXITCODE -eq 0 -and $isRuntimeRepo.Trim() -eq "true") { return $runtimeRoot }
 
@@ -49,35 +53,39 @@ function Get-UpdateStatus {
 function Get-StatusLine {
     $status = Get-UpdateStatus
     switch ($status) {
-        "UPDATE_AVAILABLE" { return @{ Text="UPDATE AVAILABLE — Run Maintenance & Updates"; Color="Yellow" } }
-        "UP_TO_DATE"       { return @{ Text="Up to date"; Color="Green" } }
-        "NO_GIT"           { return @{ Text="Git not installed"; Color="DarkGray" } }
-        "NO_REPO"          { return @{ Text="Update check unavailable (repo not detected)"; Color="DarkGray" } }
-        default            { return @{ Text="Update check unavailable"; Color="DarkGray" } }
+        "UPDATE_AVAILABLE" { return @{ Text = "UPDATE AVAILABLE - Run Maintenance and Updates"; Color = "Yellow" } }
+        "UP_TO_DATE"       { return @{ Text = "Up to date"; Color = "Green" } }
+        "NO_GIT"           { return @{ Text = "Git not installed"; Color = "DarkGray" } }
+        "NO_REPO"          { return @{ Text = "Update check unavailable (repo not detected)"; Color = "DarkGray" } }
+        default            { return @{ Text = "Update check unavailable"; Color = "DarkGray" } }
     }
 }
 
 function Write-BoxLine {
-    param([string]$Text, [int]$Width = 60)
+    param(
+        [Parameter(Mandatory=$true)][string]$Text,
+        [int]$Width = 64
+    )
+
     $inner = $Width - 4
     if ($Text.Length -gt $inner) { $Text = $Text.Substring(0, $inner) }
     $pad = " " * ($inner - $Text.Length)
-    Write-Host ("│ " + $Text + $pad + " │")
+    Write-Host ("| " + $Text + $pad + " |")
 }
 
 function Show-MainMenu {
     Clear-Host
 
-    $width = 60
+    $width = 64
     $statusObj = Get-StatusLine
     $hostName = $env:COMPUTERNAME
     $userName = $env:USERNAME
 
-    Write-Host ("┌" + ("─" * ($width-2)) + "┐")
-    Write-BoxLine "CITA Lab Tools — Infrastructure Assistant" $width
+    Write-Host ("+" + ("-" * ($width - 2)) + "+")
+    Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $width
     Write-BoxLine ("Version: {0}" -f $version) $width
     Write-BoxLine ("Host: {0}    User: {1}" -f $hostName, $userName) $width
-    Write-Host ("└" + ("─" * ($width-2)) + "┘")
+    Write-Host ("+" + ("-" * ($width - 2)) + "+")
 
     Write-Host ""
     Write-Host "Navigation: Main Menu"
@@ -91,15 +99,20 @@ function Show-MainMenu {
     Write-Host "  [6] Maintenance & Updates"
     Write-Host "  [0] Exit"
     Write-Host ""
+
     Write-Host "Status: " -NoNewline
     Write-Host $statusObj.Text -ForegroundColor $statusObj.Color
+
     Write-Host "Keys: 1-6 Select  |  0 Exit"
     Write-Host ""
 }
 
 $exit = $false
+
 do {
     Show-MainMenu
+
+    # Keep it simple for now (Enter required). We can switch to single-key later.
     $choice = Read-Host "Select an option"
 
     switch ($choice) {
@@ -110,10 +123,10 @@ do {
         "5" { & (Join-Path $PSScriptRoot "TroubleshootingMenu.ps1") }
         "6" { & (Join-Path $PSScriptRoot "MaintenanceMenu.ps1") }
         "0" { $exit = $true }
-        default { Start-Sleep 0.5 }
+        default { Start-Sleep -Milliseconds 300 }
     }
 
-    # No need to Clear-Host here; Show-MainMenu clears and redraws cleanly every loop.
+    # No extra Clear-Host needed; Show-MainMenu redraws fresh each loop.
 
 } while (-not $exit)
 
