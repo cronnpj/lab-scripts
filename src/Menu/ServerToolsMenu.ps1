@@ -1,7 +1,6 @@
 # C:\CITA\LabTools\src\Menu\ServerToolsMenu.ps1
 $ErrorActionPreference = "SilentlyContinue"
 
-# Grab version the same way as MainMenu (Menu folder is one level below the runtime root)
 $versionPath = Join-Path $PSScriptRoot '..\VERSION.txt'
 $version = if (Test-Path $versionPath) {
     (Get-Content $versionPath -ErrorAction SilentlyContinue | Select-Object -First 1).Trim()
@@ -10,13 +9,15 @@ $version = if (Test-Path $versionPath) {
 function Write-BoxLine {
     param(
         [Parameter(Mandatory=$true)][string]$Text,
-        [int]$Width = 64
+        [int]$Width = 64,
+        [string]$Color = "Gray"
     )
 
     $inner = $Width - 4
     if ($Text.Length -gt $inner) { $Text = $Text.Substring(0, $inner) }
     $pad = " " * ($inner - $Text.Length)
-    Write-Host ("| " + $Text + $pad + " |")
+
+    Write-Host ("| " + $Text + $pad + " |") -ForegroundColor $Color
 }
 
 function Pause-Menu {
@@ -36,11 +37,12 @@ function Show-ServerToolsMenu {
     $hostName = $env:COMPUTERNAME
     $userName = $env:USERNAME
 
-    Write-Host ("+" + ("-" * ($width - 2)) + "+")
-    Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $width
-    Write-BoxLine ("Version: {0}" -f $version) $width
-    Write-BoxLine ("Host: {0}    User: {1}" -f $hostName, $userName) $width
-    Write-Host ("+" + ("-" * ($width - 2)) + "+")
+    # Header
+    Write-Host ("+" + ("-" * ($width - 2)) + "+") -ForegroundColor DarkGray
+    Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $width "Cyan"
+    Write-BoxLine ("Version: {0}" -f $version) $width "Gray"
+    Write-BoxLine ("Host: {0}    User: {1}" -f $hostName, $userName) $width "Gray"
+    Write-Host ("+" + ("-" * ($width - 2)) + "+") -ForegroundColor DarkGray
 
     Write-Host ""
     Write-Host "Navigation: Main > Server Tools"
@@ -54,13 +56,12 @@ function Show-ServerToolsMenu {
 
     Write-Host "Status: " -NoNewline
     Write-Host $StatusText -ForegroundColor $StatusColor
+
     Write-Host "Keys: 1-2 Select  |  0 Back"
     Write-Host ""
 }
 
 $back = $false
-
-# Optional: track last action result for the status line
 $lastStatusText = "Ready"
 $lastStatusColor = "DarkGray"
 
@@ -70,16 +71,13 @@ do {
 
     switch ($choice) {
         "1" {
-            # Run task
             & (Join-Path $PSScriptRoot "..\Tasks\Rename-Computer.ps1")
-
             $lastStatusText = "Rename computer completed"
             $lastStatusColor = "Green"
             Pause-Menu
         }
         "2" {
             & (Join-Path $PSScriptRoot "..\Tasks\Set-StaticIP.ps1")
-
             $lastStatusText = "Static IP task completed"
             $lastStatusColor = "Green"
             Pause-Menu
