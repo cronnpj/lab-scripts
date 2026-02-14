@@ -1,57 +1,68 @@
 # C:\CITA\LabTools\src\Menu\ClientToolsMenu.ps1
-# Updated: app-feel header + colored breadcrumb + status line
 $ErrorActionPreference = "SilentlyContinue"
 
-$versionPath = Join-Path $PSScriptRoot '..\VERSION.txt'
-$version = if (Test-Path $versionPath) {
-    (Get-Content $versionPath -ErrorAction SilentlyContinue | Select-Object -First 1).Trim()
-} else { "Unknown" }
-
-function Write-BoxLine {
-    param(
-        [Parameter(Mandatory=$true)][string]$Text,
-        [int]$Width = 64,
-        [string]$Color = "Gray"
-    )
-
-    $inner = $Width - 4
-    if ($Text.Length -gt $inner) { $Text = $Text.Substring(0, $inner) }
-    $pad = " " * ($inner - $Text.Length)
-    Write-Host ("| " + $Text + $pad + " |") -ForegroundColor $Color
-}
+# Shared UI
+Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force
 
 function Pause-Menu {
     Write-Host ""
     Read-Host "Press Enter to continue" | Out-Null
 }
 
-function Run-Safely {
-    param([Parameter(Mandatory=$true)][scriptblock]$Action)
+function Invoke-TaskSafe {
+    param(
+        [Parameter(Mandatory=$true)][string]$Path,
+        [Parameter(Mandatory=$true)][string]$SuccessText
+    )
+
+    if (-not (Test-Path $Path)) {
+        $script:lastStatusText  = "Task not found"
+        $script:lastStatusColor = "Red"
+        Write-Host ""
+        Write-Host "Error: Task script not found:" -ForegroundColor Red
+        Write-Host $Path
+        Pause-Menu
+        return
+    }
 
     try {
-        & $Action
-        $script:LastStatusText  = "Completed"
-        $script:LastStatusColor = "Green"
+        & $Path
+        $script:lastStatusText  = $SuccessText
+        $script:lastStatusColor = "Green"
     }
     catch {
+        $script:lastStatusText  = "Task failed"
+        $script:lastStatusColor = "Red"
         Write-Host ""
-        Write-Host "Error:" -ForegroundColor Red
+        Write-Host "Error: Task failed." -ForegroundColor Red
         Write-Host $_.Exception.Message
-        $script:LastStatusText  = "Error - see message above"
-        $script:LastStatusColor = "Red"
     }
     finally {
         Pause-Menu
     }
 }
 
-function Invoke-Task {
-    param([Parameter(Mandatory=$true)][string]$Path)
+function Invoke-ActionSafe {
+    param(
+        [Parameter(Mandatory=$true)][scriptblock]$Action,
+        [Parameter(Mandatory=$true)][string]$SuccessText
+    )
 
-    if (-not (Test-Path $Path)) {
-        throw "Task script not found: $Path"
+    try {
+        & $Action
+        $script:lastStatusText  = $SuccessText
+        $script:lastStatusColor = "Green"
     }
-    & $Path
+    catch {
+        $script:lastStatusText  = "Action failed"
+        $script:lastStatusColor = "Red"
+        Write-Host ""
+        Write-Host "Error: Action failed." -ForegroundColor Red
+        Write-Host $_.Exception.Message
+    }
+    finally {
+        Pause-Menu
+    }
 }
 
 function Show-ClientMenu {
@@ -60,26 +71,7 @@ function Show-ClientMenu {
         [string]$StatusColor = "DarkGray"
     )
 
-    Clear-Host
-
-    $width = 64
-    $hostName = $env:COMPUTERNAME
-    $userName = $env:USERNAME
-
-    # Header
-    Write-Host ("+" + ("-" * ($width - 2)) + "+") -ForegroundColor DarkGray
-    Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $width "Cyan"
-    Write-BoxLine ("Version: {0}" -f $version) $width "Gray"
-    Write-BoxLine ("Host: {0}    User: {1}" -f $hostName, $userName) $width "Gray"
-    Write-Host ("+" + ("-" * ($width - 2)) + "+") -ForegroundColor DarkGray
-
-    Write-Host ""
-
-    # Colored Breadcrumb
-    Write-Host "Navigation: " -NoNewline -ForegroundColor DarkGray
-    Write-Host "Main > Windows Client Tools" -ForegroundColor Cyan
-
-    Write-Host ""
+    Show-AppHeader -Breadcrumb "Main > Windows Client Tools"
 
     Write-Host "Identity / Enrollment"
     Write-Host "  [1]  Join existing domain"
@@ -120,7 +112,7 @@ function Show-ClientMenu {
     Write-Host ""
 }
 
-# Task paths (unchanged)
+# Task paths (unchanged from your original intent)
 $joinDomainScript   = Join-Path $PSScriptRoot "..\Tasks\Join-Domain.ps1"
 $renameScript       = Join-Path $PSScriptRoot "..\Tasks\Rename-Computer.ps1"
 
@@ -129,70 +121,65 @@ $gpoReportScript    = Join-Path $PSScriptRoot "..\Tasks\Client\GPO-Report.ps1"
 $testConnScript     = Join-Path $PSScriptRoot "..\Tasks\Client\Test-Connectivity.ps1"
 
 $back = $false
-
-# Status line tracking
-$script:LastStatusText  = "Ready"
-$script:LastStatusColor = "DarkGray"
+$script:lastStatusText  = "Ready"
+$script:lastStatusColor = "DarkGray"
 
 do {
-    Show-ClientMenu -StatusText $script:LastStatusText -StatusColor $script:LastStatusColor
+    Show-ClientMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor
     $choice = Read-Host "Select an option"
 
     switch ($choice) {
 
         # Identity / Enrollment
-        "1"  { $script:LastStatusText="Joining domain..."; $script:LastStatusColor="Gray"; Run-Safely { Invoke-Task $joinDomainScript } }
-        "2"  { $script:LastStatusText="Checking join status..."; $script:LastStatusColor="Gray"; Run-Safely { Invoke-Task $joinStatusScript } }
-        "3"  { $script:LastStatusText="Opening Work/School Accounts..."; $script:LastStatusColor="Gray"; Run-Safely { Start-Process "ms-settings:workplace" } }
+        "1"  { Invoke-TaskSafe   -Path $joinDomainScript -SuccessText "Join domain completed" }
+        "2"  { Invoke-TaskSafe   -Path $joinStatusScript -SuccessText "Join status displayed" }
+        "3"  { Invoke-ActionSafe -Action { Start-Process "ms-settings:workplace" } -SuccessText "Opened Work/School Accounts" }
         "4"  {
-            $script:LastStatusText="Opening enrollment settings..."; $script:LastStatusColor="Gray"
-            Run-Safely {
+            Invoke-ActionSafe -Action {
                 Clear-Host
                 Write-Host "Opening Work/School settings. Use Sync if available."
                 Start-Process "ms-settings:workplace"
-            }
+            } -SuccessText "Opened enrollment settings"
         }
 
         # Policy / Management
-        "5"  { $script:LastStatusText="Running gpupdate /force..."; $script:LastStatusColor="Gray"; Run-Safely { Clear-Host; gpupdate /force } }
-        "6"  { $script:LastStatusText="Running gpresult /r..."; $script:LastStatusColor="Gray"; Run-Safely { Clear-Host; gpresult /r } }
-        "7"  { $script:LastStatusText="Exporting GPO report..."; $script:LastStatusColor="Gray"; Run-Safely { Invoke-Task $gpoReportScript } }
+        "5"  { Invoke-ActionSafe -Action { Clear-Host; gpupdate /force } -SuccessText "Group Policy update completed" }
+        "6"  { Invoke-ActionSafe -Action { Clear-Host; gpresult /r } -SuccessText "GPO results displayed" }
+        "7"  { Invoke-TaskSafe   -Path $gpoReportScript -SuccessText "GPO report exported" }
 
         # Networking
-        "8"  { $script:LastStatusText="Showing IP config..."; $script:LastStatusColor="Gray"; Run-Safely { Clear-Host; ipconfig /all } }
-        "9"  { $script:LastStatusText="Flushing DNS cache..."; $script:LastStatusColor="Gray"; Run-Safely { Clear-Host; ipconfig /flushdns; Write-Host "DNS cache flushed." } }
+        "8"  { Invoke-ActionSafe -Action { Clear-Host; ipconfig /all } -SuccessText "IP configuration displayed" }
+        "9"  { Invoke-ActionSafe -Action { Clear-Host; ipconfig /flushdns; Write-Host "DNS cache flushed." } -SuccessText "DNS cache flushed" }
         "10" {
-            $script:LastStatusText="Renewing DHCP lease..."; $script:LastStatusColor="Gray"
-            Run-Safely {
+            Invoke-ActionSafe -Action {
                 Clear-Host
                 Write-Host "Renewing DHCP lease (may not apply to static IP systems)..."
                 ipconfig /release
                 ipconfig /renew
                 ipconfig /all
-            }
+            } -SuccessText "DHCP renew completed"
         }
-        "11" { $script:LastStatusText="Running connectivity tests..."; $script:LastStatusColor="Gray"; Run-Safely { Invoke-Task $testConnScript } }
+        "11" { Invoke-TaskSafe   -Path $testConnScript -SuccessText "Connectivity tests completed" }
 
         # Client Actions
-        "12" { $script:LastStatusText="Renaming computer..."; $script:LastStatusColor="Gray"; Run-Safely { Invoke-Task $renameScript } }
+        "12" { Invoke-TaskSafe   -Path $renameScript -SuccessText "Rename computer completed" }
 
         # Client Maintenance
         "14" {
-            $script:LastStatusText="Restarting Windows Update services..."; $script:LastStatusColor="Gray"
-            Run-Safely {
+            Invoke-ActionSafe -Action {
                 Clear-Host
                 Write-Host "Restarting Windows Update services..."
                 Restart-Service wuauserv -Force
                 Restart-Service bits -Force
                 Get-Service wuauserv, bits | Format-Table Status, Name, DisplayName -AutoSize | Out-Host
-            }
+            } -SuccessText "Windows Update services restarted"
         }
-        "15" { $script:LastStatusText="Running SFC..."; $script:LastStatusColor="Gray"; Run-Safely { Clear-Host; sfc /scannow } }
+        "15" { Invoke-ActionSafe -Action { Clear-Host; sfc /scannow } -SuccessText "SFC completed (or started)" }
 
         "0"  { $back = $true }
         default {
-            $script:LastStatusText  = "Invalid selection"
-            $script:LastStatusColor = "Yellow"
+            $script:lastStatusText  = "Invalid selection"
+            $script:lastStatusColor = "Yellow"
             Start-Sleep 1
         }
     }
