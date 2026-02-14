@@ -25,6 +25,39 @@ function Pause-Menu {
     Read-Host "Press Enter to continue" | Out-Null
 }
 
+function Invoke-TaskSafe {
+    param(
+        [Parameter(Mandatory=$true)][string]$Path,
+        [Parameter(Mandatory=$true)][string]$SuccessText
+    )
+
+    if (-not (Test-Path $Path)) {
+        $script:lastStatusText  = "Task not found"
+        $script:lastStatusColor = "Red"
+        Write-Host ""
+        Write-Host "Error: Task script not found:" -ForegroundColor Red
+        Write-Host $Path
+        Pause-Menu
+        return
+    }
+
+    try {
+        & $Path
+        $script:lastStatusText  = $SuccessText
+        $script:lastStatusColor = "Green"
+    }
+    catch {
+        $script:lastStatusText  = "Task failed"
+        $script:lastStatusColor = "Red"
+        Write-Host ""
+        Write-Host "Error: Task failed." -ForegroundColor Red
+        Write-Host $_.Exception.Message
+    }
+    finally {
+        Pause-Menu
+    }
+}
+
 function Show-ServerToolsMenu {
     param(
         [string]$StatusText = "Ready",
@@ -69,26 +102,17 @@ $back = $false
 $lastStatusText = "Ready"
 $lastStatusColor = "DarkGray"
 
+$renameScript  = Join-Path $PSScriptRoot "..\Tasks\Rename-Computer.ps1"
+$staticIPScript = Join-Path $PSScriptRoot "..\Tasks\Set-StaticIP.ps1"
+
 do {
     Show-ServerToolsMenu -StatusText $lastStatusText -StatusColor $lastStatusColor
     $choice = Read-Host "Select an option"
 
     switch ($choice) {
-        "1" {
-            & (Join-Path $PSScriptRoot "..\Tasks\Rename-Computer.ps1")
-            $lastStatusText = "Rename computer completed"
-            $lastStatusColor = "Green"
-            Pause-Menu
-        }
-        "2" {
-            & (Join-Path $PSScriptRoot "..\Tasks\Set-StaticIP.ps1")
-            $lastStatusText = "Static IP task completed"
-            $lastStatusColor = "Green"
-            Pause-Menu
-        }
-        "0" {
-            $back = $true
-        }
+        "1" { Invoke-TaskSafe -Path $renameScript  -SuccessText "Rename computer completed" }
+        "2" { Invoke-TaskSafe -Path $staticIPScript -SuccessText "Static IP task completed" }
+        "0" { $back = $true }
         default {
             $lastStatusText = "Invalid selection"
             $lastStatusColor = "Yellow"

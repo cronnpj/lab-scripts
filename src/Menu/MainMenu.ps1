@@ -1,5 +1,5 @@
 # C:\CITA\LabTools\src\Menu\MainMenu.ps1
-# ASCII-safe "app feel" main menu (no box-drawing chars, no em-dash)
+# ASCII-safe "app feel" main menu with colored title + colored breadcrumb
 $ErrorActionPreference = "SilentlyContinue"
 
 $versionPath = Join-Path $PSScriptRoot '..\VERSION.txt'
@@ -64,13 +64,14 @@ function Get-StatusLine {
 function Write-BoxLine {
     param(
         [Parameter(Mandatory=$true)][string]$Text,
-        [int]$Width = 64
+        [int]$Width = 64,
+        [string]$Color = "Gray"
     )
 
     $inner = $Width - 4
     if ($Text.Length -gt $inner) { $Text = $Text.Substring(0, $inner) }
     $pad = " " * ($inner - $Text.Length)
-    Write-Host ("| " + $Text + $pad + " |")
+    Write-Host ("| " + $Text + $pad + " |") -ForegroundColor $Color
 }
 
 function Show-MainMenu {
@@ -81,14 +82,19 @@ function Show-MainMenu {
     $hostName = $env:COMPUTERNAME
     $userName = $env:USERNAME
 
-    Write-Host ("+" + ("-" * ($width - 2)) + "+")
-    Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $width
-    Write-BoxLine ("Version: {0}" -f $version) $width
-    Write-BoxLine ("Host: {0}    User: {1}" -f $hostName, $userName) $width
-    Write-Host ("+" + ("-" * ($width - 2)) + "+")
+    # Header
+    Write-Host ("+" + ("-" * ($width - 2)) + "+") -ForegroundColor DarkGray
+    Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $width "Cyan"
+    Write-BoxLine ("Version: {0}" -f $version) $width "Gray"
+    Write-BoxLine ("Host: {0}    User: {1}" -f $hostName, $userName) $width "Gray"
+    Write-Host ("+" + ("-" * ($width - 2)) + "+") -ForegroundColor DarkGray
 
     Write-Host ""
-    Write-Host "Navigation: Main Menu"
+
+    # Colored Breadcrumb
+    Write-Host "Navigation: " -NoNewline -ForegroundColor DarkGray
+    Write-Host "Main Menu" -ForegroundColor Cyan
+
     Write-Host ""
 
     Write-Host "  [1] Server Tools"
@@ -111,8 +117,6 @@ $exit = $false
 
 do {
     Show-MainMenu
-
-    # Keep it simple for now (Enter required). We can switch to single-key later.
     $choice = Read-Host "Select an option"
 
     switch ($choice) {
@@ -125,8 +129,6 @@ do {
         "0" { $exit = $true }
         default { Start-Sleep -Milliseconds 300 }
     }
-
-    # No extra Clear-Host needed; Show-MainMenu redraws fresh each loop.
 
 } while (-not $exit)
 
