@@ -1,11 +1,8 @@
 # C:\CITA\LabTools\src\Menu\MainMenu.ps1
-# ASCII-safe "app feel" main menu with colored title + colored breadcrumb
 $ErrorActionPreference = "SilentlyContinue"
 
-$versionPath = Join-Path $PSScriptRoot '..\VERSION.txt'
-$version = if (Test-Path $versionPath) {
-    (Get-Content $versionPath -ErrorAction SilentlyContinue | Select-Object -First 1).Trim()
-} else { "Unknown" }
+# Import shared UI helpers
+Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force
 
 # Prefer separate repo if it exists, otherwise use runtime root (parent of Menu)
 function Resolve-RepoPath {
@@ -61,41 +58,11 @@ function Get-StatusLine {
     }
 }
 
-function Write-BoxLine {
-    param(
-        [Parameter(Mandatory=$true)][string]$Text,
-        [int]$Width = 64,
-        [string]$Color = "Gray"
-    )
-
-    $inner = $Width - 4
-    if ($Text.Length -gt $inner) { $Text = $Text.Substring(0, $inner) }
-    $pad = " " * ($inner - $Text.Length)
-    Write-Host ("| " + $Text + $pad + " |") -ForegroundColor $Color
-}
-
 function Show-MainMenu {
-    Clear-Host
-
-    $width = 64
     $statusObj = Get-StatusLine
-    $hostName = $env:COMPUTERNAME
-    $userName = $env:USERNAME
 
-    # Header
-    Write-Host ("+" + ("-" * ($width - 2)) + "+") -ForegroundColor DarkGray
-    Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $width "Cyan"
-    Write-BoxLine ("Version: {0}" -f $version) $width "Gray"
-    Write-BoxLine ("Host: {0}    User: {1}" -f $hostName, $userName) $width "Gray"
-    Write-Host ("+" + ("-" * ($width - 2)) + "+") -ForegroundColor DarkGray
-
-    Write-Host ""
-
-    # Colored Breadcrumb
-    Write-Host "Navigation: " -NoNewline -ForegroundColor DarkGray
-    Write-Host "Main Menu" -ForegroundColor Cyan
-
-    Write-Host ""
+    # Shared header
+    Show-AppHeader -Breadcrumb "Main Menu"
 
     Write-Host "  [1] Server Tools"
     Write-Host "  [2] Domain Controller Tools"
@@ -114,7 +81,6 @@ function Show-MainMenu {
 }
 
 $exit = $false
-
 do {
     Show-MainMenu
     $choice = Read-Host "Select an option"
