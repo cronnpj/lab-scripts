@@ -4,7 +4,6 @@ bootstrap.ps1 (simple + reliable)
 Assumptions (lab standard):
 - You are running this on the Win11 "CTL" VM.
 - Talos nodes are fresh / wiped (no old STATE).
-- If you get x509 unknown authority, STOP and wipe the Talos node disks.
 
 Defaults:
   CP  = 192.168.1.3
@@ -99,10 +98,22 @@ function Wait-ForKubectl([string]$KubeconfigPath,[int]$TimeoutSeconds) {
   }
 }
 
+# -------------------------
+# Talos error classification
+# -------------------------
+function Is-X509Mismatch([string]$Text) {
+  return ($Text -match "x509:" -or $Text -match "unknown authority" -or $Text -match "failed to verify certificate")
+}
+
+function Is-CertRequired([string]$Text) {
+  # Talos returns variants like: "tls: certificate required"
+  return ($Text -match "certificate required")
+}
+
 function Fail-WithWipeInstructions([string]$Details) {
-  Write-Host "" 
+  Write-Host ""
   Write-Host "TLS/x509 mismatch detected." -ForegroundColor Red
-  Write-Host "This means the Talos node(s) still have old STATE/CA on disk." -ForegroundColor Red
+  Write-Host "This usually means a Talos node still has old STATE/CA on disk." -ForegroundColor Red
   Write-Host ""
   Write-Host "Lab Fix (guaranteed):" -ForegroundColor Yellow
   Write-Host "1) In Proxmox: delete the Talos node VM(s) AND their disks (do not keep disks)." -ForegroundColor Yellow
@@ -126,40 +137,65 @@ function Set-TalosContext {
   & talosctl config node $ControlPlaneIP     | Out-Null
 }
 
+# -------------------------
+# Talos operations (robust retry logic)
+# -------------------------
 function Talos-Apply([string]$NodeIP,[string]$FilePath) {
   Write-Host "Applying config to ${NodeIP} ..." -ForegroundColor Gray
+
+  # First attempt: insecure (maintenance mode / fresh nodes)
   $out = & talosctl apply-config --insecure --nodes $NodeIP --endpoints $ControlPlaneIP --file $FilePath 2>&1
-  if ($LASTEXITCODE -ne 0) {
-    $txt = ($out | Out-String)
-    if ($txt -match "x509:" -or $txt -match "unknown authority" -or $txt -match "failed to verify certificate") {
-      Fail-WithWipeInstructions $txt
-    }
-    throw "apply-config failed for ${NodeIP}:`n$txt"
+  if ($LASTEXITCODE -eq 0) { return }
+
+  $txt = ($out | Out-String)
+
+  # If node transitioned and now wants TLS certs, retry securely (no --insecure)
+  if (Is-CertRequired $txt) {
+    Write-Host "Node ${NodeIP} now requires TLS; retrying apply-config securely..." -ForegroundColor Yellow
+    $out2 = & talosctl apply-config --nodes $NodeIP --endpoints $ControlPlaneIP --file $FilePath 2>&1
+    if ($LASTEXITCODE -eq 0) { return }
+    $txt2 = ($out2 | Out-String)
+    if (Is-X509Mismatch $txt2) { Fail-WithWipeInstructions $txt2 }
+    throw "apply-config failed for ${NodeIP} (secure retry):`n$txt2"
   }
+
+  if (Is-X509Mismatch $txt) { Fail-WithWipeInstructions $txt }
+  throw "apply-config failed for ${NodeIP}:`n$txt"
 }
 
 function Talos-Bootstrap {
   Write-Host "Bootstrapping etcd/Kubernetes on control plane..." -ForegroundColor Gray
+
+  # IMPORTANT: talosctl bootstrap does NOT support --insecure (Talos v1.12.x)
   $out = & talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP 2>&1
-  if ($LASTEXITCODE -ne 0) {
-    $txt = ($out | Out-String)
-    if ($txt -match "x509:" -or $txt -match "unknown authority" -or $txt -match "failed to verify certificate") {
-      Fail-WithWipeInstructions $txt
-    }
-    throw "bootstrap failed:`n$txt"
-  }
+  if ($LASTEXITCODE -eq 0) { return }
+
+  $txt = ($out | Out-String)
+  if (Is-X509Mismatch $txt) { Fail-WithWipeInstructions $txt }
+  throw "bootstrap failed:`n$txt"
 }
 
 function Talos-Kubeconfig {
   Write-Host "Fetching kubeconfig..." -ForegroundColor Gray
+
+  # First attempt: insecure (works immediately after insecure apply on fresh nodes)
   $out = & talosctl kubeconfig $Kubeconfig --insecure --nodes $ControlPlaneIP --endpoints $ControlPlaneIP --force 2>&1
-  if ($LASTEXITCODE -ne 0) {
-    $txt = ($out | Out-String)
-    if ($txt -match "x509:" -or $txt -match "unknown authority" -or $txt -match "failed to verify certificate") {
-      Fail-WithWipeInstructions $txt
-    }
-    throw "kubeconfig failed:`n$txt"
+  if ($LASTEXITCODE -eq 0) { return }
+
+  $txt = ($out | Out-String)
+
+  # If it now requires a cert, retry securely
+  if (Is-CertRequired $txt) {
+    Write-Host "Talos API now requires TLS; retrying kubeconfig securely..." -ForegroundColor Yellow
+    $out2 = & talosctl kubeconfig $Kubeconfig --nodes $ControlPlaneIP --endpoints $ControlPlaneIP --force 2>&1
+    if ($LASTEXITCODE -eq 0) { return }
+    $txt2 = ($out2 | Out-String)
+    if (Is-X509Mismatch $txt2) { Fail-WithWipeInstructions $txt2 }
+    throw "kubeconfig failed (secure retry):`n$txt2"
   }
+
+  if (Is-X509Mismatch $txt) { Fail-WithWipeInstructions $txt }
+  throw "kubeconfig failed:`n$txt"
 }
 
 function Kube {
@@ -255,13 +291,13 @@ if (-not (Test-Path $TalosConfig))                                 { throw "talo
 
 Set-TalosContext
 
-# Apply configs insecure (fresh nodes)
-Show-Header "Applying configs (insecure)" "Yellow"
+# Apply configs (insecure first; secure retry if needed)
+Show-Header "Applying configs" "Yellow"
 Talos-Apply $ControlPlaneIP (Join-Path $OverridesDir "controlplane.yaml")
 foreach ($w in $WorkerIPs) { Talos-Apply $w (Join-Path $OverridesDir "worker.yaml") }
 
-# Bootstrap
-Show-Header "Bootstrapping control plane (insecure)" "Yellow"
+# Bootstrap (NO --insecure)
+Show-Header "Bootstrapping control plane" "Yellow"
 Talos-Bootstrap
 
 # Wait for K8s API
