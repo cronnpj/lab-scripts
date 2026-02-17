@@ -246,8 +246,6 @@ Write-Host "`n[3/6] Bootstrapping Kubernetes control plane..." -ForegroundColor 
 talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP
 
 Write-Host "`n[4/6] Fetching kubeconfig into repo root..." -ForegroundColor Yellow
-
-# Ensure kubeconfig is always written to a known file path (and overwrite if exists)
 if (Test-Path $script:KubeconfigPath) { Remove-Item $script:KubeconfigPath -Force }
 talosctl kubeconfig $script:KubeconfigPath --nodes $ControlPlaneIP --endpoints $ControlPlaneIP --force
 
