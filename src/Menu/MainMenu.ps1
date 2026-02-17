@@ -4,10 +4,16 @@ $ErrorActionPreference = "SilentlyContinue"
 # Import shared UI helpers
 Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force
 
+function Test-GitInstalled {
+    return [bool](Get-Command git -ErrorAction SilentlyContinue)
+}
+
 # Prefer separate repo if it exists, otherwise use runtime root (parent of Menu)
 function Resolve-RepoPath {
-    $preferred = "C:\CITA\_LabToolsRepo"
+    $preferred   = "C:\CITA\_LabToolsRepo"
     $runtimeRoot = Split-Path -Parent $PSScriptRoot
+
+    if (-not (Test-GitInstalled)) { return $null }
 
     # 1) Preferred repo
     $isPreferredRepo = git -C $preferred rev-parse --is-inside-work-tree 2>$null
@@ -20,11 +26,16 @@ function Resolve-RepoPath {
     return $null
 }
 
-$repoPath = Resolve-RepoPath
+# Re-evaluate repoPath each time in case updates create/enable it during runtime
+function Get-RepoPath {
+    return (Resolve-RepoPath)
+}
 
 function Get-UpdateStatus {
     try {
-        if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return "NO_GIT" }
+        if (-not (Test-GitInstalled)) { return "NO_GIT" }
+
+        $repoPath = Get-RepoPath
         if (-not $repoPath) { return "NO_REPO" }
 
         git -C $repoPath fetch --quiet 2>$null | Out-Null
@@ -61,7 +72,6 @@ function Get-StatusLine {
 function Show-MainMenu {
     $statusObj = Get-StatusLine
 
-    # Shared header
     Show-AppHeader -Breadcrumb "Main Menu"
 
     Write-Host "  [1] Server Tools"
@@ -97,6 +107,8 @@ do {
         "0" { $exit = $true }
         default { Start-Sleep -Milliseconds 300 }
     }
+
+    if (-not $exit) { Clear-Host }  # show fresh main menu after returning
 
 } while (-not $exit)
 
