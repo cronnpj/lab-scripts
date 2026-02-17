@@ -235,12 +235,45 @@ New-Item -ItemType Directory -Force -Path $OverridesDir | Out-Null
 Write-Host "`n[1/6] Generating Talos configs..." -ForegroundColor Yellow
 talosctl gen config $ClusterName "https://$ControlPlaneIP`:6443" --output-dir $OverridesDir
 
-Write-Host "`n[2/6] Applying Talos configs..." -ForegroundColor Yellow
-talosctl apply-config --insecure --nodes $ControlPlaneIP --file (Join-Path $OverridesDir "controlplane.yaml")
+# Always use the generated talosconfig for subsequent calls
+$TalosConfigPath = Join-Path $OverridesDir "talosconfig"
+if (-not (Test-Path $TalosConfigPath)) { throw "Missing talosconfig at: $TalosConfigPath" }
+$env:TALOSCONFIG = $TalosConfigPath
+Write-Host "Using TALOSCONFIG: $TalosConfigPath" -ForegroundColor DarkGray
 
-foreach ($w in $WorkerIPs) {
-  talosctl apply-config --insecure --nodes $w --file (Join-Path $OverridesDir "worker.yaml")
+function Invoke-TalosApplyConfig {
+  param(
+    [Parameter(Mandatory=$true)][string]$NodeIP,
+    [Parameter(Mandatory=$true)][ValidateSet("controlplane","worker")][string]$Role
+  )
+
+  $file = if ($Role -eq "controlplane") {
+    Join-Path $OverridesDir "controlplane.yaml"
+  } else {
+    Join-Path $OverridesDir "worker.yaml"
+  }
+
+  if (-not (Test-Path $file)) { throw "Missing config file: $file" }
+
+  Write-Host "Applying $Role config to $NodeIP..." -ForegroundColor Gray
+
+  # Try insecure first (fresh nodes), then retry secure if Talos already has certs
+  $out = talosctl apply-config --insecure --nodes $NodeIP --endpoints $ControlPlaneIP --file $file 2>&1 | Out-String
+  if ($LASTEXITCODE -eq 0) { return }
+
+  if ($out -match "certificate required") {
+    Write-Host "Node requires TLS; retrying apply-config using TALOSCONFIG..." -ForegroundColor Yellow
+    talosctl apply-config --nodes $NodeIP --endpoints $ControlPlaneIP --file $file
+    if ($LASTEXITCODE -ne 0) { throw "apply-config failed for $NodeIP" }
+    return
+  }
+
+  throw "apply-config failed for ${NodeIP}: $out"
 }
+
+Write-Host "`n[2/6] Applying Talos configs..." -ForegroundColor Yellow
+Invoke-TalosApplyConfig -NodeIP $ControlPlaneIP -Role "controlplane"
+foreach ($w in $WorkerIPs) { Invoke-TalosApplyConfig -NodeIP $w -Role "worker" }
 
 Write-Host "`n[3/6] Bootstrapping Kubernetes control plane..." -ForegroundColor Yellow
 talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP
@@ -248,10 +281,7 @@ talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP
 Write-Host "`n[4/6] Fetching kubeconfig into repo root..." -ForegroundColor Yellow
 if (Test-Path $script:KubeconfigPath) { Remove-Item $script:KubeconfigPath -Force }
 talosctl kubeconfig $script:KubeconfigPath --nodes $ControlPlaneIP --endpoints $ControlPlaneIP --force
-
-if (-not (Test-Path $script:KubeconfigPath)) {
-  throw "talosctl kubeconfig did not create: $($script:KubeconfigPath)"
-}
+if (-not (Test-Path $script:KubeconfigPath)) { throw "talosctl kubeconfig did not create: $($script:KubeconfigPath)" }
 
 Write-Host "Kubeconfig created: $($script:KubeconfigPath)" -ForegroundColor Green
 
