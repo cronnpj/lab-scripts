@@ -70,13 +70,14 @@ function Show-MainMenu {
     Write-Host "  [4] Windows Client Tools"
     Write-Host "  [5] Troubleshooting & Validation"
     Write-Host "  [6] Maintenance & Updates"
+    Write-Host "  [7] Devops & Automation"
     Write-Host "  [0] Exit"
     Write-Host ""
 
     Write-Host "Status: " -NoNewline
     Write-Host $statusObj.Text -ForegroundColor $statusObj.Color
 
-    Write-Host "Keys: 1-6 Select  |  0 Exit"
+    Write-Host "Keys: 1-7 Select  |  0 Exit"
     Write-Host ""
 }
 
@@ -92,6 +93,7 @@ do {
         "4" { & (Join-Path $PSScriptRoot "ClientToolsMenu.ps1") }
         "5" { & (Join-Path $PSScriptRoot "TroubleshootingMenu.ps1") }
         "6" { & (Join-Path $PSScriptRoot "MaintenanceMenu.ps1") }
+        "7" { & (Join-Path $PSScriptRoot "DevOpsToolsMenu.ps1") }
         "0" { $exit = $true }
         default { Start-Sleep -Milliseconds 300 }
     }
