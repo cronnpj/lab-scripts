@@ -49,6 +49,12 @@ function Invoke-ActionSafe {
     }
 }
 
+function Require-Admin {
+    if (-not (Test-IsAdmin)) {
+        throw "This action requires Administrator. Right-click PowerShell and choose 'Run as administrator'."
+    }
+}
+
 function Install-WingetPackage {
     param([Parameter(Mandatory=$true)][string]$Id)
 
@@ -91,7 +97,9 @@ function Ensure-GitInstalled {
 
 function Get-RepoRemoteUrl {
     param([string]$RepoPath)
-    return (git -C $RepoPath remote get-url origin 2>$null).Trim()
+    $r = (git -C $RepoPath remote get-url origin 2>$null)
+    if ($null -eq $r) { return "" }
+    return $r.Trim()
 }
 
 function Test-RepoDirty {
@@ -103,6 +111,8 @@ function Test-RepoDirty {
 function Reset-RepoToOrigin {
     param([string]$RepoPath, [string]$Branch)
 
+    Write-Host "WARNING: Lab-safe reset will discard local changes in:" -ForegroundColor DarkYellow
+    Write-Host "  $RepoPath" -ForegroundColor DarkYellow
     Write-Host "Resetting repo to origin/$Branch..." -ForegroundColor Yellow
 
     git -C $RepoPath fetch --all --prune
@@ -119,11 +129,14 @@ function Ensure-RepoHealthy {
         [switch]$AutoResetIfDirty
     )
 
+    if (-not (Test-Path $RepoPath)) { return } # nothing to "heal" yet
+
     if ((Test-Path $RepoPath) -and -not (Test-Path (Join-Path $RepoPath ".git"))) {
         $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
         $moved = "${RepoPath}_OLD_$stamp"
         Write-Host "Folder exists but is not a git repo. Renaming..." -ForegroundColor Yellow
         Move-Item -Path $RepoPath -Destination $moved -Force
+        return
     }
 
     if (Test-Path (Join-Path $RepoPath ".git")) {
@@ -175,11 +188,11 @@ function Invoke-RepoTarget {
     $target = Join-Path $RepoPath $TargetRelativePath
     if (-not (Test-Path $target)) { throw "Target not found: $target" }
 
-    Write-Host "Launching bootstrap..." -ForegroundColor Cyan
+    Write-Host "Launching: $TargetRelativePath" -ForegroundColor Cyan
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $target @Arguments
 
     if ($LASTEXITCODE -ne 0) {
-        throw "Bootstrap exited with code $LASTEXITCODE"
+        throw "Target exited with code $LASTEXITCODE"
     }
 }
 
@@ -205,20 +218,61 @@ function Bootstrap-RepoAndRun {
 }
 
 # ======================================================
+# Helpers for Talos / K8s
+# ======================================================
+
+function Test-Cmd {
+    param([string]$Name)
+    return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+function Show-Versions {
+    if (Test-Cmd talosctl) { Write-Host ("talosctl: " + (& talosctl version 2>$null | Out-String).Trim()) -ForegroundColor Gray }
+    else { Write-Host "talosctl: (not installed)" -ForegroundColor DarkYellow }
+
+    if (Test-Cmd kubectl) { Write-Host ("kubectl:  " + (& kubectl version --client --short 2>$null | Out-String).Trim()) -ForegroundColor Gray }
+    else { Write-Host "kubectl:  (not installed)" -ForegroundColor DarkYellow }
+
+    if (Test-Cmd helm)    { Write-Host ("helm:    " + (& helm version --short 2>$null | Out-String).Trim()) -ForegroundColor Gray }
+    else { Write-Host "helm:    (not installed)" -ForegroundColor DarkYellow }
+
+    if (Test-Cmd git)     { Write-Host ("git:     " + (& git --version 2>$null | Out-String).Trim()) -ForegroundColor Gray }
+    else { Write-Host "git:     (not installed)" -ForegroundColor DarkYellow }
+}
+
+# ======================================================
 # Menu
 # ======================================================
+
+# Repo defaults for option 6+
+$script:RepoUrl  = "https://github.com/cronnpj/k8s-baremetal-lab.git"
+$script:RepoPath = "C:\CITA\_StudentRepos\k8s-baremetal-lab"
+$script:Branch   = "main"
+$script:Target   = "bootstrap.ps1"
 
 function Show-DevOpsMenu {
     param([string]$StatusText = "Ready", [string]$StatusColor = "DarkGray")
 
     Show-AppHeader -Breadcrumb "Main > DevOps / CLI Tools"
 
+    Write-Host "  Install / Update tools"
     Write-Host "  [1] Upgrade all Winget packages"
     Write-Host "  [2] Install talosctl"
     Write-Host "  [3] Install kubectl"
     Write-Host "  [4] Install helm"
-    Write-Host "  [5] Install DevOps bundle"
-    Write-Host "  [6] Update + Run k8s-baremetal-lab"
+    Write-Host "  [5] Install DevOps bundle (talosctl + kubectl + helm)"
+    Write-Host ""
+    Write-Host "  Lab repo (k8s-baremetal-lab)"
+    Write-Host "  [6] Update + Run bootstrap (normal)"
+    Write-Host "  [7] Run bootstrap -ForceRebuild (always rebuild)"
+    Write-Host "  [8] Run bootstrap -SkipRepoUpdate (offline mode)"
+    Write-Host "  [9] Repo status (clean/dirty + origin)"
+    Write-Host " [10] Repo lab-safe reset (discard changes)"
+    Write-Host ""
+    Write-Host "  Quick checks / utilities"
+    Write-Host " [11] Show installed versions (git/kubectl/talosctl/helm)"
+    Write-Host " [12] kubectl get nodes/pods (uses repo kubeconfig if present)"
+    Write-Host " [13] Open repo folder in File Explorer"
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
@@ -240,30 +294,35 @@ do {
 
         "1" {
             Invoke-ActionSafe -SuccessText "Winget upgrade completed" -Action {
+                Require-Admin
                 winget upgrade --all --accept-package-agreements --accept-source-agreements
             }
         }
 
         "2" {
             Invoke-ActionSafe -SuccessText "talosctl install completed (or already installed)" -Action {
+                Require-Admin
                 Install-WingetPackage -Id "Sidero.talosctl"
             }
         }
 
         "3" {
             Invoke-ActionSafe -SuccessText "kubectl install completed (or already installed)" -Action {
+                Require-Admin
                 Install-WingetPackage -Id "Kubernetes.kubectl"
             }
         }
 
         "4" {
             Invoke-ActionSafe -SuccessText "helm install completed (or already installed)" -Action {
+                Require-Admin
                 Install-WingetPackage -Id "Helm.Helm"
             }
         }
 
         "5" {
             Invoke-ActionSafe -SuccessText "DevOps bundle installed" -Action {
+                Require-Admin
                 Install-WingetPackage -Id "Sidero.talosctl"
                 Install-WingetPackage -Id "Kubernetes.kubectl"
                 Install-WingetPackage -Id "Helm.Helm"
@@ -272,23 +331,108 @@ do {
 
         "6" {
             Invoke-ActionSafe -SuccessText "k8s-baremetal-lab updated and bootstrap executed" -Action {
-
-                $RepoUrl  = "https://github.com/cronnpj/k8s-baremetal-lab"
-                $RepoPath = "C:\CITA\_StudentRepos\k8s-baremetal-lab"
-                $Branch   = "main"
-                $Target   = "bootstrap.ps1"
-
                 Bootstrap-RepoAndRun `
-                    -RepoUrl $RepoUrl `
-                    -RepoPath $RepoPath `
-                    -Branch $Branch `
-                    -TargetRelativePath $Target `
+                    -RepoUrl $script:RepoUrl `
+                    -RepoPath $script:RepoPath `
+                    -Branch $script:Branch `
+                    -TargetRelativePath $script:Target `
                     -AutoResetIfDirty
             }
         }
 
+        "7" {
+            Invoke-ActionSafe -SuccessText "bootstrap ran with -ForceRebuild" -Action {
+                Bootstrap-RepoAndRun `
+                    -RepoUrl $script:RepoUrl `
+                    -RepoPath $script:RepoPath `
+                    -Branch $script:Branch `
+                    -TargetRelativePath $script:Target `
+                    -Arguments @("-ForceRebuild") `
+                    -AutoResetIfDirty
+            }
+        }
+
+        "8" {
+            Invoke-ActionSafe -SuccessText "bootstrap ran with -SkipRepoUpdate (offline)" -Action {
+                # Ensure repo exists but do not pull inside bootstrap
+                Bootstrap-RepoAndRun `
+                    -RepoUrl $script:RepoUrl `
+                    -RepoPath $script:RepoPath `
+                    -Branch $script:Branch `
+                    -TargetRelativePath $script:Target `
+                    -Arguments @("-SkipRepoUpdate") `
+                    -AutoResetIfDirty
+            }
+        }
+
+        "9" {
+            Invoke-ActionSafe -SuccessText "Repo status displayed" -Action {
+                Ensure-GitInstalled
+                if (-not (Test-Path $script:RepoPath)) {
+                    Write-Host "Repo not present yet: $($script:RepoPath)" -ForegroundColor DarkYellow
+                    return
+                }
+                if (-not (Test-Path (Join-Path $script:RepoPath ".git"))) {
+                    Write-Host "Folder exists but is not a git repo: $($script:RepoPath)" -ForegroundColor DarkYellow
+                    return
+                }
+
+                $remote = Get-RepoRemoteUrl -RepoPath $script:RepoPath
+                $dirty  = Test-RepoDirty -RepoPath $script:RepoPath
+                Write-Host "RepoPath: $($script:RepoPath)"
+                Write-Host "Origin:   $remote"
+                Write-Host "Branch:   $(& git -C $script:RepoPath rev-parse --abbrev-ref HEAD 2>$null)"
+                Write-Host ("Dirty:    " + $dirty) -ForegroundColor ($(if ($dirty) { "DarkYellow" } else { "Green" }))
+
+                if ($dirty) {
+                    Write-Host ""
+                    Write-Host "Changed files:" -ForegroundColor DarkYellow
+                    git -C $script:RepoPath status --porcelain
+                }
+            }
+        }
+
+        "10" {
+            Invoke-ActionSafe -SuccessText "Repo reset to origin completed" -Action {
+                Ensure-GitInstalled
+                if (-not (Test-Path (Join-Path $script:RepoPath ".git"))) { throw "Repo not found: $($script:RepoPath)" }
+                Reset-RepoToOrigin -RepoPath $script:RepoPath -Branch $script:Branch
+            }
+        }
+
+        "11" {
+            Invoke-ActionSafe -SuccessText "Versions displayed" -Action {
+                Show-Versions
+            }
+        }
+
+        "12" {
+            Invoke-ActionSafe -SuccessText "kubectl checks completed" -Action {
+                $kubeconfig = Join-Path $script:RepoPath "kubeconfig"
+                if (-not (Test-Path $kubeconfig)) {
+                    throw "kubeconfig not found at: $kubeconfig (run bootstrap first)"
+                }
+                Write-Host "Using kubeconfig: $kubeconfig" -ForegroundColor Gray
+                kubectl --kubeconfig $kubeconfig get nodes -o wide
+                Write-Host ""
+                kubectl --kubeconfig $kubeconfig get pods -A
+            }
+        }
+
+        "13" {
+            Invoke-ActionSafe -SuccessText "Opened repo folder" -Action {
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [6] first." }
+                Start-Process explorer.exe $script:RepoPath
+            }
+        }
+
         "0" { $back = $true }
-        default { Start-Sleep 300 }
+
+        default {
+            $script:lastStatusText  = "Invalid selection"
+            $script:lastStatusColor = "Red"
+            Pause-Menu
+        }
     }
 
 } while (-not $back)
