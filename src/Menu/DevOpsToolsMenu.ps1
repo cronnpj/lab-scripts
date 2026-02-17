@@ -246,7 +246,7 @@ function Show-Versions {
 
 # Repo defaults for option 6+
 $script:RepoUrl  = "https://github.com/cronnpj/k8s-baremetal-lab.git"
-$script:RepoPath = "C:\CITA\_StudentRepos\k8s-baremetal-lab"
+$script:RepoPath = "C:\CITA_StudentRepos\k8s-baremetal-lab"   # <-- standardized path
 $script:Branch   = "main"
 $script:Target   = "bootstrap.ps1"
 
@@ -264,8 +264,8 @@ function Show-DevOpsMenu {
     Write-Host ""
     Write-Host "  Lab repo (k8s-baremetal-lab)"
     Write-Host "  [6] Update + Run bootstrap (normal)"
-    Write-Host "  [7] Run bootstrap -ForceRebuild (always rebuild)"
-    Write-Host "  [8] Run bootstrap -SkipRepoUpdate (offline mode)"
+    Write-Host "  [7] Run bootstrap (no repo update)  (uses existing local repo)"
+    Write-Host "  [8] Nuke local generated files (kubeconfig + student-overrides)"
     Write-Host "  [9] Repo status (clean/dirty + origin)"
     Write-Host " [10] Repo lab-safe reset (discard changes)"
     Write-Host ""
@@ -341,27 +341,27 @@ do {
         }
 
         "7" {
-            Invoke-ActionSafe -SuccessText "bootstrap ran with -ForceRebuild" -Action {
-                Bootstrap-RepoAndRun `
-                    -RepoUrl $script:RepoUrl `
-                    -RepoPath $script:RepoPath `
-                    -Branch $script:Branch `
-                    -TargetRelativePath $script:Target `
-                    -Arguments @("-ForceRebuild") `
-                    -AutoResetIfDirty
+            Invoke-ActionSafe -SuccessText "bootstrap executed (no repo update)" -Action {
+                Ensure-GitInstalled
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [6] first." }
+                Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target
             }
         }
 
         "8" {
-            Invoke-ActionSafe -SuccessText "bootstrap ran with -SkipRepoUpdate (offline)" -Action {
-                # Ensure repo exists but do not pull inside bootstrap
-                Bootstrap-RepoAndRun `
-                    -RepoUrl $script:RepoUrl `
-                    -RepoPath $script:RepoPath `
-                    -Branch $script:Branch `
-                    -TargetRelativePath $script:Target `
-                    -Arguments @("-SkipRepoUpdate") `
-                    -AutoResetIfDirty
+            Invoke-ActionSafe -SuccessText "Local generated files removed" -Action {
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [6] first." }
+
+                $kube = Join-Path $script:RepoPath "kubeconfig"
+                $ovr  = Join-Path $script:RepoPath "01-talos\student-overrides"
+
+                Remove-Item -Force -ErrorAction SilentlyContinue $kube
+                if (Test-Path $ovr) {
+                    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $ovr
+                }
+
+                Write-Host "Removed: $kube" -ForegroundColor Gray
+                Write-Host "Removed: $ovr"  -ForegroundColor Gray
             }
         }
 
