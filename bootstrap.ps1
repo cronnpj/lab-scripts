@@ -8,6 +8,7 @@ Behavior:
 - If cluster is healthy via kubectl: installs MetalLB + ingress-nginx + sample app.
 - If cluster is NOT healthy: automatically wipes (reset) ALL nodes and rebuilds Talos + Kubernetes, then installs.
 - Handles Talos "tls: certificate required" automatically by retrying apply-config securely.
+- Never hard-fails early just because kubectl is down; it will rebuild.
 
 Defaults:
   CP  = 192.168.1.3
@@ -176,27 +177,35 @@ function Apply-NodeConfig {
 
   Write-Host "Applying ${role} config to ${ip} ..." -ForegroundColor Gray
 
-  # --- Attempt 1: insecure (fresh/reset nodes)
-  $out = & talosctl apply-config --insecure --nodes $ip --endpoints $cp --file $file 2>&1
-  $exit = $LASTEXITCODE
+  # IMPORTANT: never allow the first (insecure) native error to terminate the function
+  $prevEap = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    # Attempt 1: insecure (fresh/reset nodes)
+    $out1  = & talosctl apply-config --insecure --nodes $ip --endpoints $cp --file $file 2>&1
+    $code1 = $LASTEXITCODE
+    $txt1  = ($out1 | Out-String)
 
-  if ($exit -eq 0) { return }
+    if ($code1 -eq 0) { return }
 
-  $outText = ($out | Out-String)
+    # If TLS required -> retry secure (uses $env:TALOSCONFIG)
+    if ($txt1 -match "tls:\s*certificate required" -or $txt1 -match "certificate required") {
+      Write-Host "TLS required on ${ip}; retrying apply-config securely..." -ForegroundColor Yellow
 
-  # --- If Talos requires TLS now, retry securely (uses $env:TALOSCONFIG)
-  if ($outText -match "tls:\s*certificate required" -or $outText -match "certificate required") {
-    Write-Host "TLS required on ${ip}; retrying apply-config securely..." -ForegroundColor Yellow
+      $out2  = & talosctl apply-config --nodes $ip --endpoints $cp --file $file 2>&1
+      $code2 = $LASTEXITCODE
+      $txt2  = ($out2 | Out-String)
 
-    $out2 = & talosctl apply-config --nodes $ip --endpoints $cp --file $file 2>&1
-    $exit2 = $LASTEXITCODE
-    if ($exit2 -eq 0) { return }
+      if ($code2 -eq 0) { return }
 
-    $out2Text = ($out2 | Out-String)
-    throw "apply-config failed for ${ip} (secure retry also failed):`n$out2Text"
+      throw "apply-config failed for ${ip} (secure retry also failed):`n$txt2"
+    }
+
+    throw "apply-config failed for ${ip}:`n$txt1"
   }
-
-  throw "apply-config failed for ${ip}:`n$outText"
+  finally {
+    $ErrorActionPreference = $prevEap
+  }
 }
 
 function Get-EtcdServiceLine {
@@ -257,6 +266,9 @@ function Generate-TalosConfigs {
 
 function Bootstrap-TalosAndK8s {
   Show-Header "[2/6] Applying Talos configs" "Yellow"
+
+  # Ensure TALOSCONFIG/context is set before any secure retries can occur
+  Set-TalosContext -cp $ControlPlaneIP
 
   # Apply CP first, brief pause helps with transition states
   Apply-NodeConfig -ip $ControlPlaneIP -role "controlplane" -cp $ControlPlaneIP
@@ -383,7 +395,7 @@ if (-not $ForceRebuild -and (Test-KubectlOK -KubeconfigPath $Kubeconfig)) {
 if (-not $clusterOk) {
   $allNodes = @($ControlPlaneIP) + $WorkerIPs
 
-  # Always do a full clean rebuild in lab safe mode
+  # Full clean rebuild in lab safe mode
   Ensure-OverridesDir
   Clear-GeneratedFiles
 
