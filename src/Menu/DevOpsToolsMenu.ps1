@@ -51,7 +51,17 @@ function Invoke-ActionSafe {
 
 function Install-WingetPackage {
     param([Parameter(Mandatory=$true)][string]$Id)
+
+    $winget = Get-WingetPath
+    if (-not $winget) { throw "winget not found. Install App Installer (Microsoft Store) or ensure winget is available." }
+
+    # Keeps catalog fresh; helps prevent "not found" issues on some machines.
+    try { winget source update | Out-Null } catch {}
+
     winget install -e --id $Id --accept-package-agreements --accept-source-agreements
+    if ($LASTEXITCODE -ne 0) {
+        throw "winget install failed for id: $Id"
+    }
 }
 
 # ======================================================
@@ -228,18 +238,34 @@ do {
 
     switch ($choice) {
 
-        "1" { Invoke-ActionSafe -SuccessText "Winget upgrade completed" -Action { winget upgrade --all --accept-package-agreements --accept-source-agreements } }
+        "1" {
+            Invoke-ActionSafe -SuccessText "Winget upgrade completed" -Action {
+                winget upgrade --all --accept-package-agreements --accept-source-agreements
+            }
+        }
 
-        "2" { Invoke-ActionSafe -SuccessText "talosctl install completed" -Action { Install-WingetPackage -Id "sidero.talosctl" } }
+        "2" {
+            Invoke-ActionSafe -SuccessText "talosctl install completed (or already installed)" -Action {
+                Install-WingetPackage -Id "Sidero.talosctl"
+            }
+        }
 
-        "3" { Invoke-ActionSafe -SuccessText "kubectl install completed" -Action { Install-WingetPackage -Id "kubernetes.kubectl" } }
+        "3" {
+            Invoke-ActionSafe -SuccessText "kubectl install completed (or already installed)" -Action {
+                Install-WingetPackage -Id "Kubernetes.kubectl"
+            }
+        }
 
-        "4" { Invoke-ActionSafe -SuccessText "helm install completed" -Action { Install-WingetPackage -Id "Helm.Helm" } }
+        "4" {
+            Invoke-ActionSafe -SuccessText "helm install completed (or already installed)" -Action {
+                Install-WingetPackage -Id "Helm.Helm"
+            }
+        }
 
         "5" {
             Invoke-ActionSafe -SuccessText "DevOps bundle installed" -Action {
-                Install-WingetPackage -Id "sidero.talosctl"
-                Install-WingetPackage -Id "kubernetes.kubectl"
+                Install-WingetPackage -Id "Sidero.talosctl"
+                Install-WingetPackage -Id "Kubernetes.kubectl"
                 Install-WingetPackage -Id "Helm.Helm"
             }
         }
