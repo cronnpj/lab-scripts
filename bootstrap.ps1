@@ -140,7 +140,7 @@ function Talos-Apply([string]$NodeIP,[string]$FilePath) {
 
 function Talos-Bootstrap {
   Write-Host "Bootstrapping etcd/Kubernetes on control plane..." -ForegroundColor Gray
-  $out = & talosctl bootstrap --insecure --nodes $ControlPlaneIP --endpoints $ControlPlaneIP 2>&1
+  $out = & talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP 2>&1
   if ($LASTEXITCODE -ne 0) {
     $txt = ($out | Out-String)
     if ($txt -match "x509:" -or $txt -match "unknown authority" -or $txt -match "failed to verify certificate") {
