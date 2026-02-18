@@ -65,35 +65,23 @@ function Write-TimezoneDateLine {
         [int]$Width = 64
     )
 
-    # Get timezone and date
-    $timeZone = [System.TimeZoneInfo]::Local.DisplayName
+    # Get timezone offset and date
+    $offset = [System.TimeZoneInfo]::Local.BaseUtcOffset
+    $timeZoneStr = "UTC{0:+00;-00}:{0:mm}" -f $offset
     $currentDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
     # Inside width for text area (excluding "| " and " |")
     $inner = $Width - 4
 
-    $labelTZ = "TimeZone: "
+    $labelTZ = "TZ: "
     $labelDate = "    Date: "
 
-    $textLen = $labelTZ.Length + $timeZone.Length + $labelDate.Length + $currentDate.Length
-    if ($textLen -gt $inner) {
-        # Truncate date first if needed, then timezone if still needed
-        $maxDate = [Math]::Max(0, $inner - ($labelTZ.Length + $timeZone.Length + $labelDate.Length))
-        if ($currentDate.Length -gt $maxDate) { $currentDate = $currentDate.Substring(0, $maxDate) }
-
-        $textLen = $labelTZ.Length + $timeZone.Length + $labelDate.Length + $currentDate.Length
-        if ($textLen -gt $inner) {
-            $maxTZ = [Math]::Max(0, $inner - ($labelTZ.Length + $labelDate.Length + $currentDate.Length))
-            if ($timeZone.Length -gt $maxTZ) { $timeZone = $timeZone.Substring(0, $maxTZ) }
-        }
-    }
-
-    $textLen = $labelTZ.Length + $timeZone.Length + $labelDate.Length + $currentDate.Length
-    $pad = " " * ($inner - $textLen)
+    $textLen = $labelTZ.Length + $timeZoneStr.Length + $labelDate.Length + $currentDate.Length
+    $pad = " " * [Math]::Max(0, $inner - $textLen)
 
     Write-Host "| " -NoNewline -ForegroundColor Gray
     Write-Host $labelTZ -NoNewline -ForegroundColor Gray
-    Write-Host $timeZone -NoNewline -ForegroundColor Cyan
+    Write-Host $timeZoneStr -NoNewline -ForegroundColor Cyan
     Write-Host $labelDate -NoNewline -ForegroundColor Gray
     Write-Host $currentDate -NoNewline -ForegroundColor Cyan
     Write-Host $pad -NoNewline -ForegroundColor Gray
