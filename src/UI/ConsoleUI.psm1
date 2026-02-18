@@ -67,7 +67,13 @@ function Write-TimezoneDateLine {
 
     # Get timezone offset and date
     $offset = [System.TimeZoneInfo]::Local.BaseUtcOffset
-    $timeZoneStr = "UTC{0:+00;-00}:{0:mm}" -f $offset
+    $hours = $offset.Hours
+    $minutes = $offset.Minutes
+    if ($offset.TotalSeconds -ge 0) {
+        $timeZoneStr = "UTC+{0:D2}:{1:D2}" -f $hours, $minutes
+    } else {
+        $timeZoneStr = "UTC-{0:D2}:{1:D2}" -f [Math]::Abs($hours), [Math]::Abs($minutes)
+    }
     $currentDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
     # Inside width for text area (excluding "| " and " |")
