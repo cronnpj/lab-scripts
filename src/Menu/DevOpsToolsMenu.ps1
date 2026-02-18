@@ -399,7 +399,16 @@ do {
 
         # === Quick Checks / Utilities ===
         "6" {
-            Invoke-ActionSafe -SuccessText "Versions displayed" -Action { Show-Versions }
+            Invoke-ActionSafe -SuccessText "Versions displayed" -Action {
+                $prev = $ErrorActionPreference
+                $ErrorActionPreference = "Continue"
+                try {
+                    Show-Versions
+                }
+                finally {
+                    $ErrorActionPreference = $prev
+                }
+            }
         }
 
         "7" {
