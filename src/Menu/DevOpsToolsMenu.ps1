@@ -279,13 +279,35 @@ function Show-Versions {
     else { Write-Host "git:     (not installed)" -ForegroundColor DarkYellow }
 }
 
+function Resolve-DevOpsRepoPath {
+    param([Parameter(Mandatory)][string]$TargetRelativePath)
+
+    $runtimeRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+    $candidates = @(
+        "C:\CITA_StudentRepos\lab-scripts",
+        $runtimeRoot
+    )
+
+    foreach ($candidate in $candidates) {
+        if (-not (Test-Path $candidate)) { continue }
+        $target = Join-Path $candidate $TargetRelativePath
+        if (Test-Path $target) { return $candidate }
+    }
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path $candidate) { return $candidate }
+    }
+
+    return $candidates[0]
+}
+
 # =========================
 # Menu
 # =========================
 $script:RepoUrl  = "https://github.com/cronnpj/lab-scripts.git"
-$script:RepoPath = "C:\CITA_StudentRepos\lab-scripts"
 $script:Branch   = "main"
 $script:Target   = "labs\k8s-baremetal-lab\bootstrap.ps1"
+$script:RepoPath = Resolve-DevOpsRepoPath -TargetRelativePath $script:Target
 
 $script:lastStatusText  = "Ready"
 $script:lastStatusColor = "DarkGray"
