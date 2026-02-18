@@ -642,7 +642,7 @@ if ($AddonsOnly) {
   Validate-VIPHttp
 
   Show-Header "Cluster summary" "Cyan"
-  Kube get nodes -o wide
+  Kube -- get nodes -o wide
   Kube get pods -A
   Kube get svc -A
   Kube get ingress
@@ -715,7 +715,7 @@ if (-not $SkipAddons) {
 Validate-VIPHttp
 
 Show-Header "Cluster summary" "Cyan"
-Kube get nodes -o wide
+Kube -- get nodes -o wide
 Kube get pods -A
 Kube get svc -A
 Kube get ingress
