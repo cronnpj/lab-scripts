@@ -282,10 +282,10 @@ function Show-Versions {
 # =========================
 # Menu
 # =========================
-$script:RepoUrl  = "https://github.com/cronnpj/k8s-baremetal-lab.git"
-$script:RepoPath = "C:\CITA_StudentRepos\k8s-baremetal-lab"
+$script:RepoUrl  = "https://github.com/cronnpj/lab-scripts.git"
+$script:RepoPath = "C:\CITA_StudentRepos\lab-scripts"
 $script:Branch   = "main"
-$script:Target   = "bootstrap.ps1"
+$script:Target   = "labs\k8s-baremetal-lab\bootstrap.ps1"
 
 $script:lastStatusText  = "Ready"
 $script:lastStatusColor = "DarkGray"
@@ -435,7 +435,7 @@ do {
         }
 
         "10" {
-            Invoke-ActionSafe -SuccessText "k8s-baremetal-lab updated and bootstrap executed" -Action {
+            Invoke-ActionSafe -SuccessText "lab-scripts updated and k8s bootstrap executed" -Action {
                 Bootstrap-RepoAndRun `
                     -RepoUrl $script:RepoUrl `
                     -RepoPath $script:RepoPath `
