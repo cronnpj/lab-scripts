@@ -246,7 +246,7 @@ function Show-Versions {
 
 # Repo defaults for option 6+
 $script:RepoUrl  = "https://github.com/cronnpj/k8s-baremetal-lab.git"
-$script:RepoPath = "C:\CITA_StudentRepos\k8s-baremetal-lab"   # <-- standardized path
+$script:RepoPath = "C:\CITA_StudentRepos\k8s-baremetal-lab"   # standardized path
 $script:Branch   = "main"
 $script:Target   = "bootstrap.ps1"
 
@@ -265,6 +265,8 @@ function Show-DevOpsMenu {
     Write-Host "  Lab repo (k8s-baremetal-lab)"
     Write-Host "  [6] Update + Run bootstrap (normal)"
     Write-Host "  [7] Run bootstrap (no repo update)  (uses existing local repo)"
+    Write-Host "  [14] Run bootstrap (interactive prompts)"
+    Write-Host "  [15] Wipe + Rebuild cluster (student reset mode)"
     Write-Host "  [8] Nuke local generated files (kubeconfig + student-overrides)"
     Write-Host "  [9] Repo status (clean/dirty + origin)"
     Write-Host " [10] Repo lab-safe reset (discard changes)"
@@ -345,6 +347,22 @@ do {
                 Ensure-GitInstalled
                 if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [6] first." }
                 Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target
+            }
+        }
+
+        "14" {
+            Invoke-ActionSafe -SuccessText "bootstrap executed (interactive)" -Action {
+                Ensure-GitInstalled
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [6] first." }
+                Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-Interactive")
+            }
+        }
+
+        "15" {
+            Invoke-ActionSafe -SuccessText "Wipe + rebuild executed" -Action {
+                Ensure-GitInstalled
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [6] first." }
+                Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-WipeAndRebuild","-Interactive")
             }
         }
 
