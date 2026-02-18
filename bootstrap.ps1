@@ -338,28 +338,54 @@ function Install-MetalLB {
   # NEW: student-proof webhook endpoints check (SOFT fail / continue)
   Write-Host "- Waiting for webhook endpoints..." -ForegroundColor Gray
 
-  $maxSeconds = 360
-  $start = Get-Date
+$maxSeconds = 360
+$start = Get-Date
 
-  while ($true) {
-    $ep = & kubectl --kubeconfig $Kubeconfig -n metallb-system get endpoints metallb-webhook-service -o json 2>$null
+while ($true) {
 
-    if (-not [string]::IsNullOrWhiteSpace($ep)) {
-      try {
-        $obj = $ep | ConvertFrom-Json
-        if ($obj.subsets -and $obj.subsets.addresses) { break }
-      } catch {}
-    }
+  # Capture BOTH stdout and stderr safely without triggering Stop
+  $epRaw = & kubectl --kubeconfig $Kubeconfig `
+      -n metallb-system `
+      get endpoints metallb-webhook-service `
+      -o json 2>&1
 
-    if (((Get-Date) - $start).TotalSeconds -gt $maxSeconds) {
+  # If kubectl failed entirely, ignore and retry
+  if ($LASTEXITCODE -ne 0) {
+      Start-Sleep -Seconds 5
+      if (((Get-Date) - $start).TotalSeconds -gt $maxSeconds) {
+          Write-Host ""
+          Write-Host "WARNING: Could not confirm webhook endpoints." -ForegroundColor Yellow
+          Write-Host "Continuing install (MetalLB pods appear healthy)." -ForegroundColor Yellow
+          break
+      }
+      continue
+  }
+
+  # Ignore deprecation warnings and parse JSON only if valid
+  try {
+      $jsonStart = $epRaw.IndexOf("{")
+      if ($jsonStart -ge 0) {
+          $json = $epRaw.Substring($jsonStart)
+          $obj = $json | ConvertFrom-Json
+
+          if ($obj.subsets -and $obj.subsets.addresses) {
+              break
+          }
+      }
+  } catch {
+      # JSON not ready yet
+  }
+
+  if (((Get-Date) - $start).TotalSeconds -gt $maxSeconds) {
       Write-Host ""
       Write-Host "WARNING: MetalLB webhook endpoints not ready after $maxSeconds seconds." -ForegroundColor Yellow
-      Write-Host "MetalLB pods may still be healthy. Continuing lab install." -ForegroundColor Yellow
+      Write-Host "Continuing lab install." -ForegroundColor Yellow
       break
-    }
-
-    Start-Sleep -Seconds 5
   }
+
+  Start-Sleep -Seconds 5
+}
+
 
   # Apply VIP pool + L2Advertisement
   Write-Host "- Applying IPAddressPool/L2Advertisement (VIP: $VipIP)..." -ForegroundColor Gray
