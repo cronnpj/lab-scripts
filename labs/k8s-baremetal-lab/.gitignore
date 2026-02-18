@@ -1,0 +1,6 @@
+# Generated per-cluster (do not commit)
+01-talos/student-overrides/
+kubeconfig
+talosconfig
+*.kubeconfig
+*.talosconfig
