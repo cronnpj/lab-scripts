@@ -319,10 +319,11 @@ function Show-DevOpsMenu {
     Write-Host "  Lab Repository - Advanced Operations"
     Write-Host "  [13] Run bootstrap (interactive prompts)"
     Write-Host "  [14] Wipe + Rebuild cluster (student reset mode)"
-    Write-Host "  [15] Install Kubernetes Dashboard (Ingress + token)"
-    Write-Host "  [16] Install / Reinstall MetalLB (VIP pool)"
-    Write-Host "  [17] Nuke local generated files (kubeconfig + student-overrides)"
-    Write-Host "  [18] Repo lab-safe reset (discard local changes)"
+    Write-Host "  [15] Install / Reinstall MetalLB (VIP pool)"
+    Write-Host "  [16] Install Kubernetes Dashboard (Ingress + token)"
+    Write-Host "  [17] Install / Reinstall NGINX Ingress Controller"
+    Write-Host "  [18] Nuke local generated files (kubeconfig + student-overrides)"
+    Write-Host "  [19] Repo lab-safe reset (discard local changes)"
     Write-Host ""
     Write-Host "  [0]  Back"
     Write-Host ""
@@ -481,18 +482,6 @@ do {
         }
 
         "15" {
-            Invoke-ActionSafe -SuccessText "Dashboard installed (Ingress + token)" -Action {
-                Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [11] or [10] first." }
-
-                Invoke-RepoTarget `
-                    -RepoPath $script:RepoPath `
-                    -TargetRelativePath $script:Target `
-                    -Arguments @("-DashboardOnly","-InstallDashboard")
-            }
-        }
-
-        "16" {
             Invoke-ActionSafe -SuccessText "MetalLB installed / VIP pool applied" -Action {
                 Ensure-GitInstalled
                 if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [11] or [10] first." }
@@ -504,7 +493,31 @@ do {
             }
         }
 
+        "16" {
+            Invoke-ActionSafe -SuccessText "Dashboard installed (Ingress + token)" -Action {
+                Ensure-GitInstalled
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [11] or [10] first." }
+
+                Invoke-RepoTarget `
+                    -RepoPath $script:RepoPath `
+                    -TargetRelativePath $script:Target `
+                    -Arguments @("-DashboardOnly","-InstallDashboard")
+            }
+        }
+
         "17" {
+            Invoke-ActionSafe -SuccessText "NGINX Ingress Controller installed / reinstalled" -Action {
+                Ensure-GitInstalled
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [11] or [10] first." }
+
+                Invoke-RepoTarget `
+                    -RepoPath $script:RepoPath `
+                    -TargetRelativePath $script:Target `
+                    -Arguments @("-AddonsOnly","-InstallNginx")
+            }
+        }
+
+        "18" {
             Invoke-ActionSafe -SuccessText "Local generated files removed" -Action {
                 if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [11] or [10] first." }
 
@@ -519,7 +532,7 @@ do {
             }
         }
 
-        "18" {
+        "19" {
             Invoke-ActionSafe -SuccessText "Repo reset to origin completed" -Action {
                 Ensure-GitInstalled
                 if (-not (Test-Path (Join-Path $script:RepoPath ".git"))) { throw "Repo not found: $($script:RepoPath)" }
