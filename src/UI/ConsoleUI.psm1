@@ -60,6 +60,46 @@ function Write-HostUserLine {
     Write-Host " |" -ForegroundColor Gray
 }
 
+function Write-TimezoneDateLine {
+    param(
+        [int]$Width = 64
+    )
+
+    # Get timezone and date
+    $timeZone = [System.TimeZoneInfo]::Local.DisplayName
+    $currentDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+    # Inside width for text area (excluding "| " and " |")
+    $inner = $Width - 4
+
+    $labelTZ = "TimeZone: "
+    $labelDate = "    Date: "
+
+    $textLen = $labelTZ.Length + $timeZone.Length + $labelDate.Length + $currentDate.Length
+    if ($textLen -gt $inner) {
+        # Truncate date first if needed, then timezone if still needed
+        $maxDate = [Math]::Max(0, $inner - ($labelTZ.Length + $timeZone.Length + $labelDate.Length))
+        if ($currentDate.Length -gt $maxDate) { $currentDate = $currentDate.Substring(0, $maxDate) }
+
+        $textLen = $labelTZ.Length + $timeZone.Length + $labelDate.Length + $currentDate.Length
+        if ($textLen -gt $inner) {
+            $maxTZ = [Math]::Max(0, $inner - ($labelTZ.Length + $labelDate.Length + $currentDate.Length))
+            if ($timeZone.Length -gt $maxTZ) { $timeZone = $timeZone.Substring(0, $maxTZ) }
+        }
+    }
+
+    $textLen = $labelTZ.Length + $timeZone.Length + $labelDate.Length + $currentDate.Length
+    $pad = " " * ($inner - $textLen)
+
+    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host $labelTZ -NoNewline -ForegroundColor Gray
+    Write-Host $timeZone -NoNewline -ForegroundColor Cyan
+    Write-Host $labelDate -NoNewline -ForegroundColor Gray
+    Write-Host $currentDate -NoNewline -ForegroundColor Cyan
+    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Gray
+}
+
 function Show-AppHeader {
     param(
         [Parameter(Mandatory=$true)][string]$Breadcrumb,
@@ -79,6 +119,9 @@ function Show-AppHeader {
     # Host/User line with cyan values
     Write-HostUserLine -HostName $hostName -UserName $userName -Width $Width
 
+    # Timezone/Date line with cyan values
+    Write-TimezoneDateLine -Width $Width
+
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor DarkGray
 
     Write-Host ""
@@ -87,4 +130,4 @@ function Show-AppHeader {
     Write-Host ""
 }
 
-Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Show-AppHeader
+Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader
