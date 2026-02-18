@@ -90,7 +90,7 @@ function Wait-ForPort([string]$Ip,[int]$Port,[int]$TimeoutSeconds,[string]$Label
 }
 
 function Wait-ForPortDownThenUp([string]$Ip,[int]$Port,[int]$TimeoutSeconds,[string]$Label) {
-  # This is useful right after apply-config when the node reboots:
+  # Useful right after apply-config when the node reboots:
   # wait for port to go down (briefly), then back up.
   $start = Get-Date
   $sawDown = $false
@@ -112,7 +112,7 @@ function Wait-ForPortDownThenUp([string]$Ip,[int]$Port,[int]$TimeoutSeconds,[str
 function Test-KubectlOK([string]$KubeconfigPath) {
   try {
     if (-not (Test-Path $KubeconfigPath)) { return $false }
-    & kubectl --kubeconfig $KubeconfigPath get nodes -o name 2>$null | Out-Null
+    & kubectl --kubeconfig $KubeconfigPath get nodes 2>$null | Out-Null
     return ($LASTEXITCODE -eq 0)
   } catch { return $false }
 }
@@ -157,20 +157,18 @@ function Set-TalosContext {
 function Talos-Apply([string]$NodeIP,[string]$FilePath) {
   Write-Host "Applying config to ${NodeIP} ..." -ForegroundColor Gray
 
-  # Important: for maintenance apply, endpoints should be the node itself (most reliable)
+  # For maintenance apply, endpoints should be the node itself (most reliable)
   $out = & talosctl apply-config --insecure --nodes $NodeIP --endpoints $NodeIP --file $FilePath 2>&1
 
   if ($LASTEXITCODE -ne 0) {
     $txt = ($out | Out-String)
 
-    # If you see these, it's old state on disk.
     if ($txt -match "x509:" -or $txt -match "unknown authority" -or $txt -match "failed to verify certificate") {
       Fail-WithWipeInstructions $txt
     }
 
-    # This specific case means we connected but the server demanded TLS (not expected in maintenance).
     if ($txt -match "tls: certificate required") {
-      throw "apply-config got 'tls: certificate required' on ${NodeIP}. This suggests the node is NOT in maintenance API state (or you are hitting a different service). Re-check Talos node stage + IP."
+      throw "apply-config got 'tls: certificate required' on ${NodeIP}. This suggests the node is NOT in maintenance API state (or IP mismatch). Check Talos node stage + IP."
     }
 
     throw "apply-config failed for ${NodeIP}:`n$txt"
@@ -180,7 +178,6 @@ function Talos-Apply([string]$NodeIP,[string]$FilePath) {
 function Talos-Bootstrap {
   Write-Host "Bootstrapping etcd/Kubernetes on control plane..." -ForegroundColor Gray
 
-  # No --insecure here (talosctl bootstrap doesn't support it)
   $out = & talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP 2>&1
 
   if ($LASTEXITCODE -ne 0) {
@@ -190,7 +187,6 @@ function Talos-Bootstrap {
       Fail-WithWipeInstructions $txt
     }
 
-    # Very common right after apply-config: port 50000 not up yet
     if ($txt -match "connectex:" -or $txt -match "connection refused" -or $txt -match "No connection could be made") {
       Write-Host "Bootstrap hit connection issue; waiting for Talos API to settle and retrying once..." -ForegroundColor Yellow
       Wait-ForPort $ControlPlaneIP 50000 120 "Talos API (post-apply)"
@@ -210,7 +206,6 @@ function Talos-Bootstrap {
 function Talos-Kubeconfig {
   Write-Host "Fetching kubeconfig..." -ForegroundColor Gray
 
-  # No --insecure here either; once configured, we rely on TALOSCONFIG certs
   $out = & talosctl kubeconfig $Kubeconfig --nodes $ControlPlaneIP --endpoints $ControlPlaneIP --force 2>&1
 
   if ($LASTEXITCODE -ne 0) {
@@ -222,33 +217,38 @@ function Talos-Kubeconfig {
   }
 }
 
+# IMPORTANT: dumb passthrough so kubectl flags like -o/-A aren't treated as PowerShell parameters
 function Kube {
-  param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Args)
-  & kubectl --kubeconfig $Kubeconfig @Args
+  & kubectl --kubeconfig $Kubeconfig @args
 }
 
 function Install-MetalLB {
   Show-Header "Installing MetalLB" "Yellow"
 
-  $metallbBase    = Join-Path $RepoRoot "02-metallb\base"
-  $metallbOverlay = Join-Path $RepoRoot "02-metallb\overlays\example"
-  if (-not (Test-Path $metallbBase))    { throw "Missing folder: $metallbBase" }
-  if (-not (Test-Path $metallbOverlay)) { throw "Missing folder: $metallbOverlay" }
+  # Option A: official manifest (includes CRDs)
+  $manifest = "https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-native.yaml"
+  Kube apply -f $manifest | Out-Null
 
-  Kube apply -f $metallbBase | Out-Null
+  # Wait for CRDs to be established so IPAddressPool/L2Advertisement are recognized
+  Kube wait --for=condition=Established crd/ipaddresspools.metallb.io --timeout=180s | Out-Null
+  Kube wait --for=condition=Established crd/l2advertisements.metallb.io --timeout=180s | Out-Null
 
-  $poolFile = Join-Path $metallbOverlay "metallb-pool.yaml"
-  if (Test-Path $poolFile) {
-    $content = Get-Content $poolFile -Raw
-    $content = [regex]::Replace(
-      $content,
-      '(?m)^\s*-\s*\d{1,3}(\.\d{1,3}){3}/32\s*$',
-      "    - $VipIP/32"
-    )
-    Set-Content -Path $poolFile -Value $content -Encoding utf8
-  }
+  # Wait for controller rollout
+  Kube rollout status deployment/controller -n metallb-system --timeout=240s | Out-Null
 
-  Kube apply -f $metallbOverlay | Out-Null
+  # Apply your IP pool + advertisement (patch VIP)
+  $poolFile = Join-Path $RepoRoot "02-metallb\overlays\example\metallb-pool.yaml"
+  if (-not (Test-Path $poolFile)) { throw "Missing file: $poolFile" }
+
+  $content = Get-Content $poolFile -Raw
+  $content = [regex]::Replace(
+    $content,
+    '(?m)^\s*-\s*\d{1,3}(\.\d{1,3}){3}/32\s*$',
+    "    - $VipIP/32"
+  )
+  Set-Content -Path $poolFile -Value $content -Encoding utf8
+
+  Kube apply -f $poolFile | Out-Null
 }
 
 function Install-IngressNginx {
@@ -320,7 +320,6 @@ if (-not $SkipApply) {
   Talos-Apply $ControlPlaneIP (Join-Path $OverridesDir "controlplane.yaml")
   foreach ($w in $WorkerIPs) { Talos-Apply $w (Join-Path $OverridesDir "worker.yaml") }
 
-  # Nodes reboot after apply-config; wait for CP Talos API to come back
   Show-Header "Waiting for Talos API to restart after apply-config" "Yellow"
   Wait-ForPortDownThenUp $ControlPlaneIP 50000 240 "Talos API restart (CP)"
 } else {
