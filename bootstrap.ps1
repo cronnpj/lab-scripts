@@ -1,8 +1,8 @@
 <#
-bootstrap.ps1 (simple + reliable)
+bootstrap.ps1
 
 Assumptions (lab standard):
-- Run on Win11 "CTL" VM.
+- Run on Win11 "CTL" VM (management workstation).
 - Talos nodes are fresh/wiped (no old STATE).
 - Static IPs are set on Talos VMs BEFORE running this.
 
@@ -20,6 +20,12 @@ Notes:
 - apply-config uses --insecure (maintenance API).
 - bootstrap does NOT use --insecure (talosctl has no such flag for bootstrap).
 - After apply-config, nodes reboot, so we WAIT for port 50000 to return before bootstrap.
+
+This version includes:
+- MetalLB install via official manifest (Option A)
+- deterministic waits for CRDs, controller/speaker, webhook endpoints
+- robust pool apply verification (no more webhook race)
+- fixed kubectl passthrough wrapper (no -o ambiguous issues)
 #>
 
 [CmdletBinding()]
@@ -222,6 +228,30 @@ function Kube {
   & kubectl --kubeconfig $Kubeconfig @args
 }
 
+function Wait-ForEndpointSubsets {
+  param(
+    [string]$Namespace,
+    [string]$EndpointName,
+    [int]$TimeoutSeconds = 180
+  )
+
+  $start = Get-Date
+  while ($true) {
+    try {
+      $json = & kubectl --kubeconfig $Kubeconfig -n $Namespace get endpoints $EndpointName -o json 2>$null
+      if ($LASTEXITCODE -eq 0 -and $json) {
+        $eps = $json | ConvertFrom-Json
+        if ($eps -and $eps.subsets -and $eps.subsets.Count -gt 0) { return $true }
+      }
+    } catch { }
+
+    if (((Get-Date) - $start).TotalSeconds -ge $TimeoutSeconds) {
+      throw "Endpoints not ready in time: ${Namespace}/${EndpointName}"
+    }
+    Start-Sleep -Seconds 3
+  }
+}
+
 function Install-MetalLB {
   Show-Header "Installing MetalLB" "Yellow"
 
@@ -233,8 +263,12 @@ function Install-MetalLB {
   Kube wait --for=condition=Established crd/ipaddresspools.metallb.io --timeout=180s | Out-Null
   Kube wait --for=condition=Established crd/l2advertisements.metallb.io --timeout=180s | Out-Null
 
-  # Wait for controller rollout
+  # Wait for controller + speaker to be ready
   Kube rollout status deployment/controller -n metallb-system --timeout=240s | Out-Null
+  Kube rollout status daemonset/speaker -n metallb-system --timeout=240s | Out-Null
+
+  # Wait for webhook endpoints (prevents "context deadline exceeded" race)
+  Wait-ForEndpointSubsets -Namespace "metallb-system" -EndpointName "metallb-webhook-service" -TimeoutSeconds 180 | Out-Null
 
   # Apply your IP pool + advertisement (patch VIP)
   $poolFile = Join-Path $RepoRoot "02-metallb\overlays\example\metallb-pool.yaml"
@@ -248,7 +282,17 @@ function Install-MetalLB {
   )
   Set-Content -Path $poolFile -Value $content -Encoding utf8
 
+  # Apply (now deterministic)
   Kube apply -f $poolFile | Out-Null
+
+  # Verify pool exists
+  $start = Get-Date
+  while ($true) {
+    $out = & kubectl --kubeconfig $Kubeconfig -n metallb-system get ipaddresspools 2>$null
+    if ($LASTEXITCODE -eq 0 -and $out -match "ingress-pool") { break }
+    if (((Get-Date) - $start).TotalSeconds -ge 60) { throw "MetalLB IPAddressPool did not appear after apply." }
+    Start-Sleep -Seconds 2
+  }
 }
 
 function Install-IngressNginx {
@@ -292,6 +336,11 @@ Assert-Command talosctl
 Assert-Command kubectl
 Assert-Command helm
 
+# Quick time sanity marker (helps debug TLS issues)
+Show-Header "Time sanity check (Windows)" "Yellow"
+Write-Host "Windows time: $(Get-Date)" -ForegroundColor Gray
+
+Write-Host ""
 Write-Host "ClusterName:    $ClusterName"
 Write-Host "ControlPlaneIP: $ControlPlaneIP"
 Write-Host "Workers:        $($WorkerIPs -join ', ')"
@@ -340,6 +389,10 @@ Write-Host ""
 Write-Host "Kubernetes is up." -ForegroundColor Green
 
 if (-not $SkipAddons) {
+  # Helpful to ensure DNS is up before webhook-based resources
+  Show-Header "Ensuring CoreDNS is ready" "Yellow"
+  Kube rollout status deployment/coredns -n kube-system --timeout=240s | Out-Null
+
   Install-MetalLB
   Install-IngressNginx
   Install-AppAndIngress
