@@ -79,8 +79,8 @@ function Show-MainMenu {
     Write-Host "  [3] Member Server Tools"
     Write-Host "  [4] Windows Client Tools"
     Write-Host "  [5] Troubleshooting & Validation"
-    Write-Host "  [6] Maintenance & Updates"
-    Write-Host "  [7] Devops & Automation"
+    Write-Host "  [6] Devops & Automation"
+    Write-Host "  [7] Maintenance & Updates"
     Write-Host "  [0] Exit"
     Write-Host ""
 
@@ -102,8 +102,8 @@ do {
         "3" { & (Join-Path $PSScriptRoot "MemberServerMenu.ps1") }
         "4" { & (Join-Path $PSScriptRoot "ClientToolsMenu.ps1") }
         "5" { & (Join-Path $PSScriptRoot "TroubleshootingMenu.ps1") }
-        "6" { & (Join-Path $PSScriptRoot "MaintenanceMenu.ps1") }
-        "7" { & (Join-Path $PSScriptRoot "DevOpsToolsMenu.ps1") }
+        "6" { & (Join-Path $PSScriptRoot "DevOpsToolsMenu.ps1") }
+        "7" { & (Join-Path $PSScriptRoot "MaintenanceMenu.ps1") }
         "0" { $exit = $true }
         default { Start-Sleep -Milliseconds 300 }
     }
