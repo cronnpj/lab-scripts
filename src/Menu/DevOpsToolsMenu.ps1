@@ -310,15 +310,15 @@ function Show-DevOpsMenu {
     Write-Host "  [7]  kubectl get nodes/pods (uses repo kubeconfig if present)"
     Write-Host "  [8]  Open repo folder in File Explorer"
     Write-Host ""
-    Write-Host "  Lab Repository - Basic Operations"
+    Write-Host "  Lab Repository - Install Operations"
     Write-Host "  [9]  Install Kubernetes Cluster (normal)"
+    Write-Host "  [10] Install / Reinstall MetalLB (VIP pool)"
+    Write-Host "  [11] Install Portainer (Ingress)"
+    Write-Host "  [12] Install / Reinstall NGINX Ingress Controller"
     Write-Host ""
     Write-Host "  Lab Repository - Advanced Operations"
-    Write-Host "  [10] Install Kubernetes Cluster (interactive prompts)"
-    Write-Host "  [11] Wipe + Rebuild cluster (student reset mode)"
-    Write-Host "  [12] Install / Reinstall MetalLB (VIP pool)"
-    Write-Host "  [13] Install Portainer (Ingress)"
-    Write-Host "  [14] Install / Reinstall NGINX Ingress Controller"
+    Write-Host "  [13] Install Kubernetes Cluster (interactive prompts)"
+    Write-Host "  [14] Wipe + Rebuild cluster (student reset mode)"
     Write-Host "  [15] Nuke local generated files (kubeconfig + student-overrides)"
     Write-Host "  [16] Repo lab-safe reset (discard local changes)"
     Write-Host ""
@@ -410,24 +410,7 @@ do {
             }
         }
 
-        # === Lab Repository - Advanced Operations ===
         "10" {
-            Invoke-ActionSafe -SuccessText "Kubernetes cluster install executed (interactive)" -Action {
-                Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
-                Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-Interactive")
-            }
-        }
-
-        "11" {
-            Invoke-ActionSafe -SuccessText "Wipe + rebuild executed" -Action {
-                Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
-                Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-WipeAndRebuild","-Interactive")
-            }
-        }
-
-        "12" {
             Invoke-ActionSafe -SuccessText "MetalLB installed / VIP pool applied" -Action {
                 Ensure-GitInstalled
                 if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
@@ -439,7 +422,7 @@ do {
             }
         }
 
-        "13" {
+        "11" {
             Invoke-ActionSafe -SuccessText "Portainer installed" -Action {
                 Ensure-GitInstalled
             if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
@@ -451,7 +434,7 @@ do {
             }
         }
 
-        "14" {
+        "12" {
             Invoke-ActionSafe -SuccessText "NGINX Ingress Controller installed / reinstalled" -Action {
                 Ensure-GitInstalled
             if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
@@ -460,6 +443,22 @@ do {
                     -RepoPath $script:RepoPath `
                     -TargetRelativePath $script:Target `
                     -Arguments @("-AddonsOnly","-InstallNginx")
+            }
+        }
+
+        "13" {
+            Invoke-ActionSafe -SuccessText "Kubernetes cluster install executed (interactive)" -Action {
+                Ensure-GitInstalled
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
+                Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-Interactive")
+            }
+        }
+
+        "14" {
+            Invoke-ActionSafe -SuccessText "Wipe + rebuild executed" -Action {
+                Ensure-GitInstalled
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
+                Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-WipeAndRebuild","-Interactive")
             }
         }
 
