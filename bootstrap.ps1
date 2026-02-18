@@ -26,6 +26,7 @@ Key flags:
   -AddonsOnly       Only do add-ons (assumes kubeconfig exists and cluster is reachable)
   -InstallMetalLB   Install/repair MetalLB + VIP pool
   -InstallIngress   Install ingress-nginx (Helm)
+  -InstallNginx     Alias for -InstallIngress (menu compatibility)
   -InstallApp       Deploy sample app + ingress
   -InstallDashboard Install Kubernetes Dashboard (Ingress + token)
   -DashboardOnly    Only dashboard install (assumes ingress + VIP already working)
@@ -59,6 +60,7 @@ param(
 
   # Add-on selectors (can be combined with -AddonsOnly)
   [switch]$InstallMetalLB,
+  [Alias('InstallNginx')]
   [switch]$InstallIngress,
   [switch]$InstallApp,
   [switch]$InstallDashboard
