@@ -1,31 +1,10 @@
 <#
-bootstrap.ps1 (interactive + reliable)
-
-What this does (end-to-end):
-1) Generates Talos cluster config + PKI
-2) Applies controlplane/worker configs (maintenance API, --insecure)
-3) Bootsraps etcd/Kubernetes
-4) Fetches kubeconfig
-5) Installs MetalLB (official manifest) + waits for webhook via EndpointSlice
-6) Installs ingress-nginx (Helm)
-7) Deploys sample nginx app + ingress
-8) Final health validation (HTTP 200 from VIP)
-
-NEW FEATURES:
-- Interactive input for CP/W1/W2.../VIP (press Enter to accept defaults)
-- Variable number of workers (comma-separated list)
-- Final health validation (Invoke-WebRequest -> confirm HTTP 200)
-- Optional -WipeAndRebuild mode:
-    * Best-effort Talos reset on all nodes (no Proxmox access needed)
-    * Cleans local generated configs/kubeconfig
-    * Then proceeds with a normal rebuild
-  NOTE: If a node still has old STATE/CA on disk and reset doesn't truly wipe it,
-        the guaranteed fix is still: delete VM disks in Proxmox.
+bootstrap.ps1 (simple + reliable)
 
 Assumptions (lab standard):
-- Run on Win11 "CTL" VM (management workstation).
-- Talos nodes are reachable on the lab network.
-- Static IPs already set on Talos VMs BEFORE running this.
+- Run on Win11 "CTL" VM.
+- Talos nodes are fresh/wiped (no old STATE).
+- Static IPs are set on Talos VMs BEFORE running this.
 
 Defaults:
   CP  = 192.168.1.3
@@ -35,33 +14,36 @@ Defaults:
 
 Usage:
   .\bootstrap.ps1
-  .\bootstrap.ps1 -Interactive
   .\bootstrap.ps1 -ControlPlaneIP 192.168.1.13 -WorkerIPs 192.168.1.15,192.168.1.16 -VipIP 192.168.1.210
-  .\bootstrap.ps1 -WipeAndRebuild
+
+Dashboard (optional):
+  .\bootstrap.ps1 -InstallDashboard
+  .\bootstrap.ps1 -DashboardOnly -InstallDashboard
+
+Notes:
+- apply-config uses --insecure (maintenance API).
+- bootstrap does NOT use --insecure (talosctl bootstrap doesn't support it).
+- After apply-config, nodes reboot, so we WAIT for port 50000 to return before bootstrap.
 #>
 
 [CmdletBinding()]
 param(
-  # If you don't pass these, the script will prompt (press Enter for defaults)
   [string]  $ClusterName    = "cita360",
   [string]  $ControlPlaneIP = "192.168.1.3",
   [string[]]$WorkerIPs      = @("192.168.1.5","192.168.1.6"),
   [string]  $VipIP          = "192.168.1.200",
 
-  [switch]$Interactive,
-  [switch]$WipeAndRebuild,
-
   [int]$TimeoutTalosApiSeconds = 420,
   [int]$TimeoutK8sApiSeconds   = 600,
   [int]$TimeoutKubectlSeconds  = 600,
-  [int]$TimeoutMetalLbWebhookSeconds = 420,
 
-  # Final health check
-  [int]$TimeoutHttpSeconds = 180,
-
-  # If you ever need to re-run after configs already applied:
+  # Full flow toggles
   [switch]$SkipApply,
-  [switch]$SkipAddons
+  [switch]$SkipAddons,
+
+  # Dashboard
+  [switch]$InstallDashboard,
+  [switch]$DashboardOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -74,9 +56,6 @@ $OverridesDir = Join-Path $RepoRoot "01-talos\student-overrides"
 $TalosConfig  = Join-Path $OverridesDir "talosconfig"
 $Kubeconfig   = Join-Path $RepoRoot "kubeconfig"
 
-# -------------------------
-# Helpers
-# -------------------------
 function Show-Header([string]$Title,[string]$Color="Cyan") {
   Write-Host ""
   Write-Host $Title -ForegroundColor $Color
@@ -87,40 +66,6 @@ function Assert-Command([string]$name) {
   if (-not (Get-Command $name -ErrorAction SilentlyContinue)) {
     throw "Missing required command '${name}'. Install it first (talosctl / kubectl / helm)."
   }
-}
-
-function Test-IPv4([string]$ip) {
-  return $ip -match '^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)$'
-}
-
-function Normalize-WorkerIPs([string[]]$ips) {
-  $clean = @()
-  foreach ($x in $ips) {
-    if (-not $x) { continue }
-    $t = $x.Trim()
-    if (-not $t) { continue }
-    $clean += $t
-  }
-  # de-dupe while preserving order
-  $seen = @{}
-  $out = @()
-  foreach ($i in $clean) {
-    if (-not $seen.ContainsKey($i)) { $seen[$i] = $true; $out += $i }
-  }
-  return $out
-}
-
-function Prompt-Value([string]$Label,[string]$Default) {
-  $v = Read-Host "$Label [$Default]"
-  if ([string]::IsNullOrWhiteSpace($v)) { return $Default }
-  return $v.Trim()
-}
-
-function Prompt-WorkerList([string[]]$DefaultWorkers) {
-  $d = ($DefaultWorkers -join ",")
-  $raw = Read-Host "Worker IPs (comma-separated) [$d]"
-  if ([string]::IsNullOrWhiteSpace($raw)) { return $DefaultWorkers }
-  return (Normalize-WorkerIPs ($raw.Split(",") | ForEach-Object { $_.Trim() }))
 }
 
 function Assert-Reachable([string]$ip,[string]$label) {
@@ -155,6 +100,7 @@ function Wait-ForPort([string]$Ip,[int]$Port,[int]$TimeoutSeconds,[string]$Label
 function Wait-ForPortDownThenUp([string]$Ip,[int]$Port,[int]$TimeoutSeconds,[string]$Label) {
   $start = Get-Date
   $sawDown = $false
+
   while ($true) {
     $open = Test-TcpPort $Ip $Port
     if (-not $open) { $sawDown = $true }
@@ -171,7 +117,7 @@ function Wait-ForPortDownThenUp([string]$Ip,[int]$Port,[int]$TimeoutSeconds,[str
 function Test-KubectlOK([string]$KubeconfigPath) {
   try {
     if (-not (Test-Path $KubeconfigPath)) { return $false }
-    & kubectl --kubeconfig $KubeconfigPath get nodes 2>$null | Out-Null
+    & kubectl --kubeconfig $KubeconfigPath get nodes -o name 2>$null | Out-Null
     return ($LASTEXITCODE -eq 0)
   } catch { return $false }
 }
@@ -215,6 +161,7 @@ function Set-TalosContext {
 
 function Talos-Apply([string]$NodeIP,[string]$FilePath) {
   Write-Host "Applying config to ${NodeIP} ..." -ForegroundColor Gray
+
   $out = & talosctl apply-config --insecure --nodes $NodeIP --endpoints $NodeIP --file $FilePath 2>&1
 
   if ($LASTEXITCODE -ne 0) {
@@ -223,17 +170,16 @@ function Talos-Apply([string]$NodeIP,[string]$FilePath) {
     if ($txt -match "x509:" -or $txt -match "unknown authority" -or $txt -match "failed to verify certificate") {
       Fail-WithWipeInstructions $txt
     }
-
     if ($txt -match "tls: certificate required") {
-      throw "apply-config got 'tls: certificate required' on ${NodeIP}. This suggests the node is NOT in maintenance API state (or IP mismatch). Check Talos node stage + IP."
+      throw "apply-config got 'tls: certificate required' on ${NodeIP}. Node may not be in maintenance mode; re-check Talos stage + IP."
     }
-
     throw "apply-config failed for ${NodeIP}:`n$txt"
   }
 }
 
 function Talos-Bootstrap {
   Write-Host "Bootstrapping etcd/Kubernetes on control plane..." -ForegroundColor Gray
+
   $out = & talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP 2>&1
 
   if ($LASTEXITCODE -ne 0) {
@@ -261,6 +207,7 @@ function Talos-Bootstrap {
 
 function Talos-Kubeconfig {
   Write-Host "Fetching kubeconfig..." -ForegroundColor Gray
+
   $out = & talosctl kubeconfig $Kubeconfig --nodes $ControlPlaneIP --endpoints $ControlPlaneIP --force 2>&1
 
   if ($LASTEXITCODE -ne 0) {
@@ -272,110 +219,77 @@ function Talos-Kubeconfig {
   }
 }
 
-# IMPORTANT: dumb passthrough so kubectl flags like -o/-A aren't treated as PowerShell parameters
 function Kube {
-  & kubectl --kubeconfig $Kubeconfig @args
+  param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Args)
+  & kubectl --kubeconfig $Kubeconfig @Args
 }
 
-function Wait-ForMetalLbWebhookReady {
-  param(
-    [string]$Namespace = "metallb-system",
-    [string]$ServiceName = "metallb-webhook-service",
-    [int]$TimeoutSeconds = 420
-  )
+function Wait-ForDeploymentReady([string]$Namespace,[string]$Deployment,[int]$TimeoutSeconds=300) {
+  Kube rollout status ("deployment/$Deployment") -n $Namespace --timeout=("$TimeoutSeconds" + "s") | Out-Null
+}
 
+function Wait-ForDaemonSetReady([string]$Namespace,[string]$DaemonSet,[int]$TimeoutSeconds=300) {
+  # Wait until desired == ready
   $start = Get-Date
   while ($true) {
-    # Use EndpointSlice (avoids Endpoints deprecation warning and stderr Stop)
-    $json = & kubectl --kubeconfig $Kubeconfig -n $Namespace `
-      get endpointslice -l "kubernetes.io/service-name=$ServiceName" -o json 2>$null
+    $ds = Kube get ds $DaemonSet -n $Namespace -o json | ConvertFrom-Json
+    $desired = [int]$ds.status.desiredNumberScheduled
+    $ready   = [int]$ds.status.numberReady
+    if ($desired -gt 0 -and $desired -eq $ready) { return $true }
 
-    if ($LASTEXITCODE -eq 0 -and $json) {
-      try {
-        $obj = $json | ConvertFrom-Json
-        foreach ($item in @($obj.items)) {
-          foreach ($ep in @($item.endpoints)) {
-            foreach ($addr in @($ep.addresses)) {
-              if ($addr -match '^\d+\.\d+\.\d+\.\d+$') { return $true }
-            }
-          }
-        }
-      } catch { }
+    if (((Get-Date)-$start).TotalSeconds -ge $TimeoutSeconds) {
+      throw "DaemonSet not ready in time: $Namespace/$DaemonSet (ready $ready / desired $desired)"
     }
-
-    if (((Get-Date) - $start).TotalSeconds -ge $TimeoutSeconds) {
-      Write-Host ""
-      Write-Host "Webhook endpoints not ready after ${TimeoutSeconds}s. Dumping diagnostics..." -ForegroundColor Yellow
-
-      & kubectl --kubeconfig $Kubeconfig -n $Namespace get pods -o wide
-      & kubectl --kubeconfig $Kubeconfig -n $Namespace get svc -o wide
-      & kubectl --kubeconfig $Kubeconfig -n $Namespace get endpointslice -l "kubernetes.io/service-name=$ServiceName" -o wide
-
-      Write-Host ""
-      Write-Host "Recent metallb-system events:" -ForegroundColor Yellow
-      & kubectl --kubeconfig $Kubeconfig -n $Namespace get events --sort-by=.lastTimestamp | Select-Object -Last 40
-
-      Write-Host ""
-      Write-Host "controller logs (tail):" -ForegroundColor Yellow
-      & kubectl --kubeconfig $Kubeconfig -n $Namespace logs deploy/controller --tail=120
-
-      throw "Webhook EndpointSlice not ready in time: ${Namespace}/${ServiceName}"
-    }
-
-    Start-Sleep -Seconds 3
+    Start-Sleep -Seconds 5
   }
 }
 
 function Install-MetalLB {
   Show-Header "Installing MetalLB" "Yellow"
 
-  # Option A: official manifest (includes CRDs)
-  $manifest = "https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-native.yaml"
+  $metallbBase    = Join-Path $RepoRoot "02-metallb\base"
+  $metallbOverlay = Join-Path $RepoRoot "02-metallb\overlays\example"
+  if (-not (Test-Path $metallbBase))    { throw "Missing folder: $metallbBase" }
+  if (-not (Test-Path $metallbOverlay)) { throw "Missing folder: $metallbOverlay" }
 
-  Write-Host " - Applying MetalLB manifest..." -ForegroundColor Gray
-  Kube apply -f $manifest | Out-Null
+  Write-Host "- Applying MetalLB manifest..." -ForegroundColor Gray
+  Kube apply -f $metallbBase | Out-Null
 
-  Write-Host " - Waiting for CRDs..." -ForegroundColor Gray
+  Write-Host "- Waiting for CRDs..." -ForegroundColor Gray
   Kube wait --for=condition=Established crd/ipaddresspools.metallb.io --timeout=180s | Out-Null
   Kube wait --for=condition=Established crd/l2advertisements.metallb.io --timeout=180s | Out-Null
 
-  Write-Host " - Waiting for controller deployment..." -ForegroundColor Gray
-  Kube rollout status deployment/controller -n metallb-system --timeout=240s | Out-Null
+  Write-Host "- Waiting for controller deployment..." -ForegroundColor Gray
+  Wait-ForDeploymentReady -Namespace "metallb-system" -Deployment "controller" -TimeoutSeconds 300
 
-  Write-Host " - Waiting for speaker DaemonSet..." -ForegroundColor Gray
-  Kube rollout status daemonset/speaker -n metallb-system --timeout=240s | Out-Null
+  Write-Host "- Waiting for speaker DaemonSet..." -ForegroundColor Gray
+  Wait-ForDaemonSetReady -Namespace "metallb-system" -DaemonSet "speaker" -TimeoutSeconds 300
 
-  Write-Host " - Waiting for webhook endpoints..." -ForegroundColor Gray
-  Wait-ForMetalLbWebhookReady -Namespace "metallb-system" -ServiceName "metallb-webhook-service" -TimeoutSeconds $TimeoutMetalLbWebhookSeconds | Out-Null
-
-  Write-Host " - Applying IPAddressPool/L2Advertisement (VIP: $VipIP)..." -ForegroundColor Gray
-  $poolFile = Join-Path $RepoRoot "02-metallb\overlays\example\metallb-pool.yaml"
-  if (-not (Test-Path $poolFile)) { throw "Missing file: $poolFile" }
-
-  $content = Get-Content $poolFile -Raw
-  $content = [regex]::Replace(
-    $content,
-    '(?m)^\s*-\s*\d{1,3}(\.\d{1,3}){3}/32\s*$',
-    "    - $VipIP/32"
-  )
-  Set-Content -Path $poolFile -Value $content -Encoding utf8
-
-  Kube apply -f $poolFile | Out-Null
-
-  Write-Host " - Verifying IPAddressPool exists..." -ForegroundColor Gray
-  $start = Get-Date
-  while ($true) {
-    $out2 = & kubectl --kubeconfig $Kubeconfig -n metallb-system get ipaddresspools 2>$null
-    if ($LASTEXITCODE -eq 0 -and $out2 -match "ingress-pool") { break }
-    if (((Get-Date) - $start).TotalSeconds -ge 60) { throw "MetalLB IPAddressPool did not appear after apply." }
-    Start-Sleep -Seconds 2
+  # Apply / update pool with VIP
+  $poolFile = Join-Path $metallbOverlay "metallb-pool.yaml"
+  if (Test-Path $poolFile) {
+    $content = Get-Content $poolFile -Raw
+    $content = [regex]::Replace(
+      $content,
+      '(?m)^\s*-\s*\d{1,3}(\.\d{1,3}){3}/32\s*$',
+      "    - $VipIP/32"
+    )
+    Set-Content -Path $poolFile -Value $content -Encoding utf8
   }
+
+  Write-Host "- Applying IPAddressPool/L2Advertisement (VIP: $VipIP)..." -ForegroundColor Gray
+  Kube apply -f $metallbOverlay | Out-Null
+
+  # Verify pool exists
+  Write-Host "- Verifying IPAddressPool exists..." -ForegroundColor Gray
+  Kube get ipaddresspool -n metallb-system | Out-Null
 }
 
 function Install-IngressNginx {
   Show-Header "Installing ingress-nginx (Helm)" "Yellow"
 
   $env:KUBECONFIG = $Kubeconfig
+
   helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx | Out-Null
   helm repo update | Out-Null
 
@@ -399,126 +313,143 @@ function Install-AppAndIngress {
   Kube apply -f $ingressYaml | Out-Null
 }
 
-function Wait-ForHttp200 {
-  param(
-    [string]$Url,
-    [int]$TimeoutSeconds = 180
-  )
+function Install-KubernetesDashboard {
+  Show-Header "Installing Kubernetes Dashboard" "Yellow"
 
-  $start = Get-Date
-  while ($true) {
-    try {
-      $resp = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 15
-      if ($resp.StatusCode -eq 200) {
-        return $true
-      }
-    } catch {
-      # ignore until timeout
-    }
+  # Install official recommended manifest (stable for labs)
+  $dashUrl = "https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml"
+  Write-Host "- Applying dashboard manifest..." -ForegroundColor Gray
+  Kube apply -f $dashUrl | Out-Null
 
-    if (((Get-Date) - $start).TotalSeconds -ge $TimeoutSeconds) {
-      throw "HTTP health check failed (no 200) within ${TimeoutSeconds}s: $Url"
-    }
-    Start-Sleep -Seconds 3
+  Write-Host "- Waiting for dashboard deployments..." -ForegroundColor Gray
+  # Manifest includes kubernetes-dashboard + dashboard-metrics-scraper
+  Wait-ForDeploymentReady -Namespace "kubernetes-dashboard" -Deployment "kubernetes-dashboard" -TimeoutSeconds 300
+  Wait-ForDeploymentReady -Namespace "kubernetes-dashboard" -Deployment "dashboard-metrics-scraper" -TimeoutSeconds 300
+
+  # Create admin ServiceAccount + ClusterRoleBinding (lab mode)
+  Write-Host "- Creating admin ServiceAccount + ClusterRoleBinding..." -ForegroundColor Gray
+  $rbac = @"
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user-kubernetes-dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard
+"@
+  $rbac | Kube apply -f - | Out-Null
+
+  # Ingress host example: dashboard.<VIP>
+  # (Students can later create real DNS; for now you can use HOSTS file)
+  $dashHost = "dashboard.$VipIP"
+
+  Write-Host "- Creating Ingress (host: $dashHost)..." -ForegroundColor Gray
+  $ing = @"
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  rules:
+  - host: $dashHost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kubernetes-dashboard
+            port:
+              number: 443
+"@
+  $ing | Kube apply -f - | Out-Null
+
+  # Token
+  Write-Host "- Generating login token..." -ForegroundColor Gray
+  $token = (& kubectl --kubeconfig $Kubeconfig -n kubernetes-dashboard create token admin-user 2>$null).Trim()
+  if (-not $token) {
+    Write-Host "WARNING: Could not generate token automatically. Run:" -ForegroundColor DarkYellow
+    Write-Host "kubectl --kubeconfig `"$Kubeconfig`" -n kubernetes-dashboard create token admin-user" -ForegroundColor DarkYellow
+  }
+
+  Write-Host ""
+  Write-Host "Dashboard URL:" -ForegroundColor Green
+  Write-Host ("  https://{0}" -f $dashHost) -ForegroundColor Green
+  Write-Host ""
+  Write-Host "If DNS isn't set yet, add this to the CTL VM HOSTS file:" -ForegroundColor Yellow
+  Write-Host ("  {0}  {1}" -f $VipIP, $dashHost) -ForegroundColor Yellow
+  Write-Host "HOSTS path: C:\Windows\System32\drivers\etc\hosts" -ForegroundColor Yellow
+  Write-Host ""
+  if ($token) {
+    Write-Host "Login token (paste into Dashboard):" -ForegroundColor Cyan
+    Write-Host $token -ForegroundColor Cyan
   }
 }
 
-function Invoke-TalosResetBestEffort {
-  param(
-    [string[]]$NodeIPs
-  )
-
-  Show-Header "WipeAndRebuild: Best-effort Talos reset" "Yellow"
-  Write-Host "Attempting to reset nodes via talosctl (best effort)..." -ForegroundColor Gray
-  Write-Host "If a node still has old STATE/CA on disk after this, the guaranteed fix is deleting VM disks in Proxmox." -ForegroundColor DarkYellow
-  Write-Host ""
-
-  foreach ($ip in $NodeIPs) {
-    Write-Host "Resetting Talos node: $ip" -ForegroundColor Gray
-    # Use node itself as endpoint (most reliable)
-    $out = & talosctl reset --nodes $ip --endpoints $ip --graceful=false --reboot 2>&1
-    if ($LASTEXITCODE -ne 0) {
-      Write-Host "Reset command failed on $ip (continuing):" -ForegroundColor Yellow
-      Write-Host ($out | Out-String) -ForegroundColor DarkGray
-    }
+function Ensure-KubeReady {
+  Assert-Command kubectl
+  if (-not (Test-Path $Kubeconfig)) {
+    # Try to fetch if talosctl is available and CP reachable
+    Assert-Command talosctl
+    Show-Header "kubeconfig missing; fetching via talosctl" "Yellow"
+    Set-TalosContext
+    Talos-Kubeconfig
   }
-
-  Write-Host ""
-  Write-Host "Waiting briefly for nodes to reboot..." -ForegroundColor Gray
-  Start-Sleep -Seconds 20
+  Wait-ForKubectl $Kubeconfig $TimeoutKubectlSeconds
 }
 
 # -------------------------
 # Main
 # -------------------------
 Clear-Host
-Show-Header "== CITA 360 Talos + Kubernetes Bootstrap (Interactive) ==" "Cyan"
+Show-Header "== CITA 360 Talos + Kubernetes Bootstrap (Simple) ==" "Cyan"
 
 Write-Host "Repo path: $RepoRoot" -ForegroundColor DarkGray
 Write-Host ""
 
+# Dashboard-only mode (no rebuild)
+if ($DashboardOnly) {
+  Show-Header "Dashboard-only mode" "DarkYellow"
+  Ensure-KubeReady
+
+  if ($InstallDashboard) {
+    Install-KubernetesDashboard
+  } else {
+    Write-Host "Nothing to do: -DashboardOnly was set but -InstallDashboard was not." -ForegroundColor DarkYellow
+  }
+
+  Write-Host ""
+  Write-Host "Done." -ForegroundColor Green
+  return
+}
+
+# Full build requirements
 Assert-Command talosctl
 Assert-Command kubectl
 Assert-Command helm
 
-# Auto-prompt if user didn't pass explicit IP args OR if -Interactive is set
-$shouldPrompt = $Interactive
-if (-not $Interactive) {
-  # If they didn't explicitly pass any of these, prompt anyway for student-friendliness
-  if (-not $PSBoundParameters.ContainsKey("ControlPlaneIP") -and
-      -not $PSBoundParameters.ContainsKey("WorkerIPs") -and
-      -not $PSBoundParameters.ContainsKey("VipIP")) {
-    $shouldPrompt = $true
-  }
-}
-
-if ($shouldPrompt) {
-  Show-Header "Interactive configuration (press Enter to accept defaults)" "Yellow"
-
-  $ClusterName    = Prompt-Value "Cluster name" $ClusterName
-  $ControlPlaneIP = Prompt-Value "Control plane IP" $ControlPlaneIP
-  $WorkerIPs      = Prompt-WorkerList $WorkerIPs
-  $VipIP          = Prompt-Value "VIP (MetalLB)" $VipIP
-}
-
-# Normalize worker list
-$WorkerIPs = Normalize-WorkerIPs $WorkerIPs
-
-# Basic validation
-if (-not (Test-IPv4 $ControlPlaneIP)) { throw "Invalid ControlPlaneIP: $ControlPlaneIP" }
-if (-not (Test-IPv4 $VipIP))          { throw "Invalid VipIP: $VipIP" }
-if ($WorkerIPs.Count -lt 1)           { throw "You must provide at least one worker IP." }
-foreach ($w in $WorkerIPs) { if (-not (Test-IPv4 $w)) { throw "Invalid worker IP: $w" } }
-
-Show-Header "Time sanity check (Windows)" "Yellow"
-Write-Host "Windows time: $(Get-Date)" -ForegroundColor Gray
-
-Write-Host ""
 Write-Host "ClusterName:    $ClusterName"
 Write-Host "ControlPlaneIP: $ControlPlaneIP"
 Write-Host "Workers:        $($WorkerIPs -join ', ')"
 Write-Host "VIP (MetalLB):  $VipIP"
+Write-Host "InstallDashboard: $InstallDashboard"
 Write-Host ""
 
-# Optional wipe/rebuild path
-if ($WipeAndRebuild) {
-  # Clean local artifacts first
-  Show-Header "WipeAndRebuild: cleaning local generated files" "Yellow"
-  New-CleanOverridesDir
-
-  # Set a context if we can (may fail if Talosconfig not present yet, that's OK)
-  try { Set-TalosContext } catch { }
-
-  # Attempt reset on all nodes
-  $allNodes = @($ControlPlaneIP) + @($WorkerIPs)
-  Invoke-TalosResetBestEffort -NodeIPs $allNodes
-
-  # After reset, we wait for CP Talos API
-  Show-Header "WipeAndRebuild: waiting for Talos API (50000) on control plane" "Yellow"
-  Wait-ForPort $ControlPlaneIP 50000 $TimeoutTalosApiSeconds "Talos API (after reset)"
-}
-
-# Reachability checks
 Assert-Reachable $ControlPlaneIP "Control Plane"
 foreach ($w in $WorkerIPs) { Assert-Reachable $w "Worker" }
 
@@ -561,12 +492,13 @@ Write-Host ""
 Write-Host "Kubernetes is up." -ForegroundColor Green
 
 if (-not $SkipAddons) {
-  Show-Header "Ensuring CoreDNS is ready" "Yellow"
-  Kube rollout status deployment/coredns -n kube-system --timeout=240s | Out-Null
-
   Install-MetalLB
   Install-IngressNginx
   Install-AppAndIngress
+
+  if ($InstallDashboard) {
+    Install-KubernetesDashboard
+  }
 } else {
   Show-Header "Skipping add-ons (SkipAddons set)" "DarkYellow"
 }
@@ -575,15 +507,8 @@ Show-Header "Cluster summary" "Cyan"
 Kube get nodes -o wide
 Kube get pods -A
 Kube get svc -A
-Kube get ingress
-
-# Final health validation
-Show-Header "Final health validation" "Yellow"
-$testUrl = "http://$VipIP"
-Write-Host "Checking: $testUrl (expect HTTP 200)..." -ForegroundColor Gray
-Wait-ForHttp200 -Url $testUrl -TimeoutSeconds $TimeoutHttpSeconds | Out-Null
-Write-Host "HTTP 200 confirmed: $testUrl" -ForegroundColor Green
+Kube get ingress -A
 
 Write-Host ""
 Write-Host "Done." -ForegroundColor Green
-Write-Host "Test URL (inside lab network): $testUrl"
+Write-Host "Test URL (inside lab network): http://$VipIP"
