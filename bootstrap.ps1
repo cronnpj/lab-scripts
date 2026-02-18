@@ -229,7 +229,6 @@ function Wait-ForDeploymentReady([string]$Namespace,[string]$Deployment,[int]$Ti
 }
 
 function Wait-ForDaemonSetReady([string]$Namespace,[string]$DaemonSet,[int]$TimeoutSeconds=300) {
-  # Wait until desired == ready
   $start = Get-Date
   while ($true) {
     $ds = Kube get ds $DaemonSet -n $Namespace -o json | ConvertFrom-Json
@@ -244,16 +243,18 @@ function Wait-ForDaemonSetReady([string]$Namespace,[string]$DaemonSet,[int]$Time
   }
 }
 
+# --------------------------------------------
+# MetalLB (repo-independent core install)
+# --------------------------------------------
 function Install-MetalLB {
   Show-Header "Installing MetalLB" "Yellow"
 
-  $metallbBase    = Join-Path $RepoRoot "02-metallb\base"
-  $metallbOverlay = Join-Path $RepoRoot "02-metallb\overlays\example"
-  if (-not (Test-Path $metallbBase))    { throw "Missing folder: $metallbBase" }
-  if (-not (Test-Path $metallbOverlay)) { throw "Missing folder: $metallbOverlay" }
+  # Install MetalLB core from official manifest (no repo folder dependency)
+  # Pin a known-good version for repeatable labs.
+  $manifestUrl = "https://raw.githubusercontent.com/metallb/metallb/v0.14.5/config/manifests/metallb-native.yaml"
 
   Write-Host "- Applying MetalLB manifest..." -ForegroundColor Gray
-  Kube apply -f $metallbBase | Out-Null
+  Kube apply -f $manifestUrl | Out-Null
 
   Write-Host "- Waiting for CRDs..." -ForegroundColor Gray
   Kube wait --for=condition=Established crd/ipaddresspools.metallb.io --timeout=180s | Out-Null
@@ -265,9 +266,14 @@ function Install-MetalLB {
   Write-Host "- Waiting for speaker DaemonSet..." -ForegroundColor Gray
   Wait-ForDaemonSetReady -Namespace "metallb-system" -DaemonSet "speaker" -TimeoutSeconds 300
 
-  # Apply / update pool with VIP
+  # Prefer using your repo pool file if present; otherwise apply inline YAML
+  $metallbOverlay = Join-Path $RepoRoot "02-metallb\overlays\example"
   $poolFile = Join-Path $metallbOverlay "metallb-pool.yaml"
+
+  Write-Host "- Applying IPAddressPool/L2Advertisement (VIP: $VipIP)..." -ForegroundColor Gray
+
   if (Test-Path $poolFile) {
+    # Update VIP inside the pool file
     $content = Get-Content $poolFile -Raw
     $content = [regex]::Replace(
       $content,
@@ -275,12 +281,33 @@ function Install-MetalLB {
       "    - $VipIP/32"
     )
     Set-Content -Path $poolFile -Value $content -Encoding utf8
+
+    Kube apply -f $poolFile | Out-Null
+  }
+  else {
+    # Inline fallback if pool file is missing
+    $poolYaml = @"
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: ingress-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - $VipIP/32
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: l2adv
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - ingress-pool
+"@
+    $poolYaml | Kube apply -f - | Out-Null
   }
 
-  Write-Host "- Applying IPAddressPool/L2Advertisement (VIP: $VipIP)..." -ForegroundColor Gray
-  Kube apply -f $metallbOverlay | Out-Null
-
-  # Verify pool exists
   Write-Host "- Verifying IPAddressPool exists..." -ForegroundColor Gray
   Kube get ipaddresspool -n metallb-system | Out-Null
 }
@@ -322,11 +349,9 @@ function Install-KubernetesDashboard {
   Kube apply -f $dashUrl | Out-Null
 
   Write-Host "- Waiting for dashboard deployments..." -ForegroundColor Gray
-  # Manifest includes kubernetes-dashboard + dashboard-metrics-scraper
   Wait-ForDeploymentReady -Namespace "kubernetes-dashboard" -Deployment "kubernetes-dashboard" -TimeoutSeconds 300
   Wait-ForDeploymentReady -Namespace "kubernetes-dashboard" -Deployment "dashboard-metrics-scraper" -TimeoutSeconds 300
 
-  # Create admin ServiceAccount + ClusterRoleBinding (lab mode)
   Write-Host "- Creating admin ServiceAccount + ClusterRoleBinding..." -ForegroundColor Gray
   $rbac = @"
 apiVersion: v1
@@ -350,8 +375,7 @@ subjects:
 "@
   $rbac | Kube apply -f - | Out-Null
 
-  # Ingress host example: dashboard.<VIP>
-  # (Students can later create real DNS; for now you can use HOSTS file)
+  # Example host without DNS (hosts-file later):
   $dashHost = "dashboard.$VipIP"
 
   Write-Host "- Creating Ingress (host: $dashHost)..." -ForegroundColor Gray
@@ -379,13 +403,8 @@ spec:
 "@
   $ing | Kube apply -f - | Out-Null
 
-  # Token
   Write-Host "- Generating login token..." -ForegroundColor Gray
   $token = (& kubectl --kubeconfig $Kubeconfig -n kubernetes-dashboard create token admin-user 2>$null).Trim()
-  if (-not $token) {
-    Write-Host "WARNING: Could not generate token automatically. Run:" -ForegroundColor DarkYellow
-    Write-Host "kubectl --kubeconfig `"$Kubeconfig`" -n kubernetes-dashboard create token admin-user" -ForegroundColor DarkYellow
-  }
 
   Write-Host ""
   Write-Host "Dashboard URL:" -ForegroundColor Green
@@ -398,13 +417,15 @@ spec:
   if ($token) {
     Write-Host "Login token (paste into Dashboard):" -ForegroundColor Cyan
     Write-Host $token -ForegroundColor Cyan
+  } else {
+    Write-Host "Token generation failed. Run:" -ForegroundColor DarkYellow
+    Write-Host "  kubectl --kubeconfig `"$Kubeconfig`" -n kubernetes-dashboard create token admin-user" -ForegroundColor DarkYellow
   }
 }
 
 function Ensure-KubeReady {
   Assert-Command kubectl
   if (-not (Test-Path $Kubeconfig)) {
-    # Try to fetch if talosctl is available and CP reachable
     Assert-Command talosctl
     Show-Header "kubeconfig missing; fetching via talosctl" "Yellow"
     Set-TalosContext
@@ -443,10 +464,10 @@ Assert-Command talosctl
 Assert-Command kubectl
 Assert-Command helm
 
-Write-Host "ClusterName:    $ClusterName"
-Write-Host "ControlPlaneIP: $ControlPlaneIP"
-Write-Host "Workers:        $($WorkerIPs -join ', ')"
-Write-Host "VIP (MetalLB):  $VipIP"
+Write-Host "ClusterName:      $ClusterName"
+Write-Host "ControlPlaneIP:   $ControlPlaneIP"
+Write-Host "Workers:          $($WorkerIPs -join ', ')"
+Write-Host "VIP (MetalLB):    $VipIP"
 Write-Host "InstallDashboard: $InstallDashboard"
 Write-Host ""
 
