@@ -1,10 +1,31 @@
 <#
-bootstrap.ps1 (simple + reliable)
+bootstrap.ps1 (interactive + reliable)
+
+What this does (end-to-end):
+1) Generates Talos cluster config + PKI
+2) Applies controlplane/worker configs (maintenance API, --insecure)
+3) Bootsraps etcd/Kubernetes
+4) Fetches kubeconfig
+5) Installs MetalLB (official manifest) + waits for webhook via EndpointSlice
+6) Installs ingress-nginx (Helm)
+7) Deploys sample nginx app + ingress
+8) Final health validation (HTTP 200 from VIP)
+
+NEW FEATURES:
+- Interactive input for CP/W1/W2.../VIP (press Enter to accept defaults)
+- Variable number of workers (comma-separated list)
+- Final health validation (Invoke-WebRequest -> confirm HTTP 200)
+- Optional -WipeAndRebuild mode:
+    * Best-effort Talos reset on all nodes (no Proxmox access needed)
+    * Cleans local generated configs/kubeconfig
+    * Then proceeds with a normal rebuild
+  NOTE: If a node still has old STATE/CA on disk and reset doesn't truly wipe it,
+        the guaranteed fix is still: delete VM disks in Proxmox.
 
 Assumptions (lab standard):
 - Run on Win11 "CTL" VM (management workstation).
-- Talos nodes are fresh/wiped (no old STATE).
-- Static IPs are set on Talos VMs BEFORE running this.
+- Talos nodes are reachable on the lab network.
+- Static IPs already set on Talos VMs BEFORE running this.
 
 Defaults:
   CP  = 192.168.1.3
@@ -14,35 +35,29 @@ Defaults:
 
 Usage:
   .\bootstrap.ps1
+  .\bootstrap.ps1 -Interactive
   .\bootstrap.ps1 -ControlPlaneIP 192.168.1.13 -WorkerIPs 192.168.1.15,192.168.1.16 -VipIP 192.168.1.210
-
-Notes:
-- apply-config uses --insecure (maintenance API).
-- bootstrap does NOT use --insecure (talosctl has no such flag for bootstrap).
-- After apply-config, nodes reboot, so we WAIT for port 50000 to return before bootstrap.
-
-This version includes:
-- MetalLB install via official manifest (Option A)
-- deterministic waits for CRDs, controller/speaker, webhook readiness
-- webhook readiness uses EndpointSlice (avoids Endpoints deprecation warning + stderr Stop)
-- diagnostics on webhook timeout (pods/svc/endpointslice/events/logs)
-- fixed kubectl passthrough wrapper (no -o ambiguous issues)
-- extra progress output so it doesn't look "hung"
+  .\bootstrap.ps1 -WipeAndRebuild
 #>
 
 [CmdletBinding()]
 param(
+  # If you don't pass these, the script will prompt (press Enter for defaults)
   [string]  $ClusterName    = "cita360",
   [string]  $ControlPlaneIP = "192.168.1.3",
   [string[]]$WorkerIPs      = @("192.168.1.5","192.168.1.6"),
   [string]  $VipIP          = "192.168.1.200",
 
+  [switch]$Interactive,
+  [switch]$WipeAndRebuild,
+
   [int]$TimeoutTalosApiSeconds = 420,
   [int]$TimeoutK8sApiSeconds   = 600,
   [int]$TimeoutKubectlSeconds  = 600,
-
-  # MetalLB webhook readiness can be slow on fresh clusters
   [int]$TimeoutMetalLbWebhookSeconds = 420,
+
+  # Final health check
+  [int]$TimeoutHttpSeconds = 180,
 
   # If you ever need to re-run after configs already applied:
   [switch]$SkipApply,
@@ -59,6 +74,9 @@ $OverridesDir = Join-Path $RepoRoot "01-talos\student-overrides"
 $TalosConfig  = Join-Path $OverridesDir "talosconfig"
 $Kubeconfig   = Join-Path $RepoRoot "kubeconfig"
 
+# -------------------------
+# Helpers
+# -------------------------
 function Show-Header([string]$Title,[string]$Color="Cyan") {
   Write-Host ""
   Write-Host $Title -ForegroundColor $Color
@@ -69,6 +87,40 @@ function Assert-Command([string]$name) {
   if (-not (Get-Command $name -ErrorAction SilentlyContinue)) {
     throw "Missing required command '${name}'. Install it first (talosctl / kubectl / helm)."
   }
+}
+
+function Test-IPv4([string]$ip) {
+  return $ip -match '^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)$'
+}
+
+function Normalize-WorkerIPs([string[]]$ips) {
+  $clean = @()
+  foreach ($x in $ips) {
+    if (-not $x) { continue }
+    $t = $x.Trim()
+    if (-not $t) { continue }
+    $clean += $t
+  }
+  # de-dupe while preserving order
+  $seen = @{}
+  $out = @()
+  foreach ($i in $clean) {
+    if (-not $seen.ContainsKey($i)) { $seen[$i] = $true; $out += $i }
+  }
+  return $out
+}
+
+function Prompt-Value([string]$Label,[string]$Default) {
+  $v = Read-Host "$Label [$Default]"
+  if ([string]::IsNullOrWhiteSpace($v)) { return $Default }
+  return $v.Trim()
+}
+
+function Prompt-WorkerList([string[]]$DefaultWorkers) {
+  $d = ($DefaultWorkers -join ",")
+  $raw = Read-Host "Worker IPs (comma-separated) [$d]"
+  if ([string]::IsNullOrWhiteSpace($raw)) { return $DefaultWorkers }
+  return (Normalize-WorkerIPs ($raw.Split(",") | ForEach-Object { $_.Trim() }))
 }
 
 function Assert-Reachable([string]$ip,[string]$label) {
@@ -103,7 +155,6 @@ function Wait-ForPort([string]$Ip,[int]$Port,[int]$TimeoutSeconds,[string]$Label
 function Wait-ForPortDownThenUp([string]$Ip,[int]$Port,[int]$TimeoutSeconds,[string]$Label) {
   $start = Get-Date
   $sawDown = $false
-
   while ($true) {
     $open = Test-TcpPort $Ip $Port
     if (-not $open) { $sawDown = $true }
@@ -348,11 +399,60 @@ function Install-AppAndIngress {
   Kube apply -f $ingressYaml | Out-Null
 }
 
+function Wait-ForHttp200 {
+  param(
+    [string]$Url,
+    [int]$TimeoutSeconds = 180
+  )
+
+  $start = Get-Date
+  while ($true) {
+    try {
+      $resp = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 15
+      if ($resp.StatusCode -eq 200) {
+        return $true
+      }
+    } catch {
+      # ignore until timeout
+    }
+
+    if (((Get-Date) - $start).TotalSeconds -ge $TimeoutSeconds) {
+      throw "HTTP health check failed (no 200) within ${TimeoutSeconds}s: $Url"
+    }
+    Start-Sleep -Seconds 3
+  }
+}
+
+function Invoke-TalosResetBestEffort {
+  param(
+    [string[]]$NodeIPs
+  )
+
+  Show-Header "WipeAndRebuild: Best-effort Talos reset" "Yellow"
+  Write-Host "Attempting to reset nodes via talosctl (best effort)..." -ForegroundColor Gray
+  Write-Host "If a node still has old STATE/CA on disk after this, the guaranteed fix is deleting VM disks in Proxmox." -ForegroundColor DarkYellow
+  Write-Host ""
+
+  foreach ($ip in $NodeIPs) {
+    Write-Host "Resetting Talos node: $ip" -ForegroundColor Gray
+    # Use node itself as endpoint (most reliable)
+    $out = & talosctl reset --nodes $ip --endpoints $ip --graceful=false --reboot 2>&1
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "Reset command failed on $ip (continuing):" -ForegroundColor Yellow
+      Write-Host ($out | Out-String) -ForegroundColor DarkGray
+    }
+  }
+
+  Write-Host ""
+  Write-Host "Waiting briefly for nodes to reboot..." -ForegroundColor Gray
+  Start-Sleep -Seconds 20
+}
+
 # -------------------------
 # Main
 # -------------------------
 Clear-Host
-Show-Header "== CITA 360 Talos + Kubernetes Bootstrap (Simple) ==" "Cyan"
+Show-Header "== CITA 360 Talos + Kubernetes Bootstrap (Interactive) ==" "Cyan"
 
 Write-Host "Repo path: $RepoRoot" -ForegroundColor DarkGray
 Write-Host ""
@@ -360,6 +460,35 @@ Write-Host ""
 Assert-Command talosctl
 Assert-Command kubectl
 Assert-Command helm
+
+# Auto-prompt if user didn't pass explicit IP args OR if -Interactive is set
+$shouldPrompt = $Interactive
+if (-not $Interactive) {
+  # If they didn't explicitly pass any of these, prompt anyway for student-friendliness
+  if (-not $PSBoundParameters.ContainsKey("ControlPlaneIP") -and
+      -not $PSBoundParameters.ContainsKey("WorkerIPs") -and
+      -not $PSBoundParameters.ContainsKey("VipIP")) {
+    $shouldPrompt = $true
+  }
+}
+
+if ($shouldPrompt) {
+  Show-Header "Interactive configuration (press Enter to accept defaults)" "Yellow"
+
+  $ClusterName    = Prompt-Value "Cluster name" $ClusterName
+  $ControlPlaneIP = Prompt-Value "Control plane IP" $ControlPlaneIP
+  $WorkerIPs      = Prompt-WorkerList $WorkerIPs
+  $VipIP          = Prompt-Value "VIP (MetalLB)" $VipIP
+}
+
+# Normalize worker list
+$WorkerIPs = Normalize-WorkerIPs $WorkerIPs
+
+# Basic validation
+if (-not (Test-IPv4 $ControlPlaneIP)) { throw "Invalid ControlPlaneIP: $ControlPlaneIP" }
+if (-not (Test-IPv4 $VipIP))          { throw "Invalid VipIP: $VipIP" }
+if ($WorkerIPs.Count -lt 1)           { throw "You must provide at least one worker IP." }
+foreach ($w in $WorkerIPs) { if (-not (Test-IPv4 $w)) { throw "Invalid worker IP: $w" } }
 
 Show-Header "Time sanity check (Windows)" "Yellow"
 Write-Host "Windows time: $(Get-Date)" -ForegroundColor Gray
@@ -371,6 +500,25 @@ Write-Host "Workers:        $($WorkerIPs -join ', ')"
 Write-Host "VIP (MetalLB):  $VipIP"
 Write-Host ""
 
+# Optional wipe/rebuild path
+if ($WipeAndRebuild) {
+  # Clean local artifacts first
+  Show-Header "WipeAndRebuild: cleaning local generated files" "Yellow"
+  New-CleanOverridesDir
+
+  # Set a context if we can (may fail if Talosconfig not present yet, that's OK)
+  try { Set-TalosContext } catch { }
+
+  # Attempt reset on all nodes
+  $allNodes = @($ControlPlaneIP) + @($WorkerIPs)
+  Invoke-TalosResetBestEffort -NodeIPs $allNodes
+
+  # After reset, we wait for CP Talos API
+  Show-Header "WipeAndRebuild: waiting for Talos API (50000) on control plane" "Yellow"
+  Wait-ForPort $ControlPlaneIP 50000 $TimeoutTalosApiSeconds "Talos API (after reset)"
+}
+
+# Reachability checks
 Assert-Reachable $ControlPlaneIP "Control Plane"
 foreach ($w in $WorkerIPs) { Assert-Reachable $w "Worker" }
 
@@ -429,6 +577,13 @@ Kube get pods -A
 Kube get svc -A
 Kube get ingress
 
+# Final health validation
+Show-Header "Final health validation" "Yellow"
+$testUrl = "http://$VipIP"
+Write-Host "Checking: $testUrl (expect HTTP 200)..." -ForegroundColor Gray
+Wait-ForHttp200 -Url $testUrl -TimeoutSeconds $TimeoutHttpSeconds | Out-Null
+Write-Host "HTTP 200 confirmed: $testUrl" -ForegroundColor Green
+
 Write-Host ""
 Write-Host "Done." -ForegroundColor Green
-Write-Host "Test URL (inside lab network): http://$VipIP"
+Write-Host "Test URL (inside lab network): $testUrl"
