@@ -435,7 +435,7 @@ spec:
   }
 
   Write-Host "- Verifying IPAddressPool exists..." -ForegroundColor Gray
-  Kube -n metallb-system get ipaddresspools metallb-system/ingress-pool 2>$null | Out-Null
+  Kube -n metallb-system get ipaddresspools ingress-pool 2>$null | Out-Null
 }
 
 function Install-IngressNginx {
