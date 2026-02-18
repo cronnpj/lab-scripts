@@ -312,18 +312,17 @@ function Show-DevOpsMenu {
     Write-Host ""
     Write-Host "  Lab Repository - Basic Operations"
     Write-Host "  [9]  Repo status (clean/dirty + origin)"
-    Write-Host "  [10] Update repo only (no bootstrap)"
-    Write-Host "  [11] Update + Run bootstrap (normal)"
-    Write-Host "  [12] Run bootstrap (no repo update) - uses existing local repo"
+    Write-Host "  [10] Update + Run bootstrap (normal)"
+    Write-Host "  [11] Run bootstrap (no repo update) - uses existing local repo"
     Write-Host ""
     Write-Host "  Lab Repository - Advanced Operations"
-    Write-Host "  [13] Run bootstrap (interactive prompts)"
-    Write-Host "  [14] Wipe + Rebuild cluster (student reset mode)"
-    Write-Host "  [15] Install / Reinstall MetalLB (VIP pool)"
-    Write-Host "  [16] Install Kubernetes Dashboard (Ingress + token)"
-    Write-Host "  [17] Install / Reinstall NGINX Ingress Controller"
-    Write-Host "  [18] Nuke local generated files (kubeconfig + student-overrides)"
-    Write-Host "  [19] Repo lab-safe reset (discard local changes)"
+    Write-Host "  [12] Run bootstrap (interactive prompts)"
+    Write-Host "  [13] Wipe + Rebuild cluster (student reset mode)"
+    Write-Host "  [14] Install / Reinstall MetalLB (VIP pool)"
+    Write-Host "  [15] Install Portainer (Ingress)"
+    Write-Host "  [16] Install / Reinstall NGINX Ingress Controller"
+    Write-Host "  [17] Nuke local generated files (kubeconfig + student-overrides)"
+    Write-Host "  [18] Repo lab-safe reset (discard local changes)"
     Write-Host ""
     Write-Host "  [0]  Back"
     Write-Host ""
@@ -399,7 +398,7 @@ do {
 
         "8" {
             Invoke-ActionSafe -SuccessText "Opened repo folder" -Action {
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [11] or [10] first." }
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
                 Start-Process explorer.exe $script:RepoPath
             }
         }
@@ -436,16 +435,6 @@ do {
         }
 
         "10" {
-            Invoke-ActionSafe -SuccessText "Repo updated (no bootstrap)" -Action {
-                Update-RepoOnly `
-                    -RepoUrl $script:RepoUrl `
-                    -RepoPath $script:RepoPath `
-                    -Branch $script:Branch `
-                    -AutoResetIfDirty
-            }
-        }
-
-        "11" {
             Invoke-ActionSafe -SuccessText "k8s-baremetal-lab updated and bootstrap executed" -Action {
                 Bootstrap-RepoAndRun `
                     -RepoUrl $script:RepoUrl `
@@ -456,35 +445,35 @@ do {
             }
         }
 
-        "12" {
+        "11" {
             Invoke-ActionSafe -SuccessText "bootstrap executed (no repo update)" -Action {
                 Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [11] or [10] first." }
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
                 Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target
             }
         }
 
         # === Lab Repository - Advanced Operations ===
-        "13" {
+        "12" {
             Invoke-ActionSafe -SuccessText "bootstrap executed (interactive)" -Action {
                 Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [11] or [10] first." }
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
                 Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-Interactive")
             }
         }
 
-        "14" {
+        "13" {
             Invoke-ActionSafe -SuccessText "Wipe + rebuild executed" -Action {
                 Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [11] or [10] first." }
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
                 Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-WipeAndRebuild","-Interactive")
             }
         }
 
-        "15" {
+        "14" {
             Invoke-ActionSafe -SuccessText "MetalLB installed / VIP pool applied" -Action {
                 Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [11] or [10] first." }
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
 
                 Invoke-RepoTarget `
                     -RepoPath $script:RepoPath `
@@ -493,22 +482,22 @@ do {
             }
         }
 
-        "16" {
-            Invoke-ActionSafe -SuccessText "Dashboard installed (Ingress + token)" -Action {
+        "15" {
+            Invoke-ActionSafe -SuccessText "Portainer installed" -Action {
                 Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [11] or [10] first." }
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
 
                 Invoke-RepoTarget `
                     -RepoPath $script:RepoPath `
                     -TargetRelativePath $script:Target `
-                    -Arguments @("-DashboardOnly","-InstallDashboard")
+                    -Arguments @("-PortainerOnly","-InstallPortainer")
             }
         }
 
-        "17" {
+        "16" {
             Invoke-ActionSafe -SuccessText "NGINX Ingress Controller installed / reinstalled" -Action {
                 Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [11] or [10] first." }
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
 
                 Invoke-RepoTarget `
                     -RepoPath $script:RepoPath `
@@ -517,9 +506,9 @@ do {
             }
         }
 
-        "18" {
+        "17" {
             Invoke-ActionSafe -SuccessText "Local generated files removed" -Action {
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [11] or [10] first." }
+            if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
 
                 $kube = Join-Path $script:RepoPath "kubeconfig"
                 $ovr  = Join-Path $script:RepoPath "01-talos\student-overrides"
@@ -532,7 +521,7 @@ do {
             }
         }
 
-        "19" {
+        "18" {
             Invoke-ActionSafe -SuccessText "Repo reset to origin completed" -Action {
                 Ensure-GitInstalled
                 if (-not (Test-Path (Join-Path $script:RepoPath ".git"))) { throw "Repo not found: $($script:RepoPath)" }

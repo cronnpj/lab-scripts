@@ -13,6 +13,7 @@ $RepoUrl  = "https://github.com/cronnpj/lab-scripts.git"
 $RepoPath = "C:\CITA\_LabToolsRepo"   # local clone cache (server model)
 $DestPath = "C:\CITA\LabTools"        # runtime path (win11 may be a repo)
 $SrcRel   = "src"                     # deployable folder in repo-cache model
+$LabsRel  = "labs"                    # merged lab content
 
 function Pause-Menu {
     Write-Host ""
@@ -77,6 +78,9 @@ function Deploy-FilesFromRepo([string]$RepoRoot) {
         throw "Deployable folder not found: $src"
     }
 
+    $labs = Join-Path $RepoRoot $LabsRel
+    $labsDest = Join-Path $DestPath $LabsRel
+
     # Backup current deployed tools
     $backupRoot = "C:\CITA\_LabToolsBackup"
     if (-not (Test-Path $backupRoot)) {
@@ -92,6 +96,18 @@ function Deploy-FilesFromRepo([string]$RepoRoot) {
 
     Write-Host "Deploying latest LabTools into: $DestPath"
     robocopy $src $DestPath /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
+
+    if (Test-Path $labs) {
+        if (-not (Test-Path $labsDest)) {
+            New-Item -Path $labsDest -ItemType Directory -Force | Out-Null
+        }
+
+        Write-Host "Deploying merged labs into: $labsDest"
+        robocopy $labs $labsDest /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
+    }
+    else {
+        Write-Host "Merged labs folder not found in repo cache, skipping labs deploy." -ForegroundColor DarkYellow
+    }
 
     $verFile = Join-Path $DestPath "VERSION.txt"
     $ver = if (Test-Path $verFile) { (Get-Content $verFile | Select-Object -First 1).Trim() } else { "unknown" }
