@@ -267,6 +267,7 @@ function Show-DevOpsMenu {
     Write-Host "  [7] Run bootstrap (no repo update)  (uses existing local repo)"
     Write-Host "  [14] Run bootstrap (interactive prompts)"
     Write-Host "  [15] Wipe + Rebuild cluster (student reset mode)"
+    Write-Host "  [16] Install Kubernetes Dashboard (Ingress + token)"
     Write-Host "  [8] Nuke local generated files (kubeconfig + student-overrides)"
     Write-Host "  [9] Repo status (clean/dirty + origin)"
     Write-Host " [10] Repo lab-safe reset (discard changes)"
@@ -363,6 +364,18 @@ do {
                 Ensure-GitInstalled
                 if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [6] first." }
                 Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-WipeAndRebuild","-Interactive")
+            }
+        }
+
+        "16" {
+            Invoke-ActionSafe -SuccessText "Dashboard installed (Ingress + token)" -Action {
+                Ensure-GitInstalled
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [6] first." }
+
+                Invoke-RepoTarget `
+                    -RepoPath $script:RepoPath `
+                    -TargetRelativePath $script:Target `
+                    -Arguments @("-DashboardOnly","-InstallDashboard")
             }
         }
 
