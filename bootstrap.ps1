@@ -321,7 +321,7 @@ function Install-MetalLB {
   $manifestUrl = "https://raw.githubusercontent.com/metallb/metallb/v0.14.5/config/manifests/metallb-native.yaml"
 
   Write-Host "- Applying MetalLB manifest..." -ForegroundColor Gray
-  Kube apply -f $manifestUrl | Out-Null
+  Kube -- apply -f $manifestUrl | Out-Null
 
   Write-Host "- Waiting for CRDs..." -ForegroundColor Gray
   Wait-ForK8s -TimeoutSeconds 240 -What "MetalLB CRDs" -Test {
@@ -429,13 +429,13 @@ spec:
   $tmp = Join-Path $env:TEMP ("metallb-pool-" + [Guid]::NewGuid().ToString() + ".yaml")
   Set-Content -Path $tmp -Value $poolYaml -Encoding utf8
   try {
-    Kube apply -f $tmp | Out-Null
+    Kube -- apply -f $tmp | Out-Null
   } finally {
     Remove-Item -Force -ErrorAction SilentlyContinue $tmp
   }
 
   Write-Host "- Verifying IPAddressPool exists..." -ForegroundColor Gray
-  Kube -n metallb-system get ipaddresspools ingress-pool 2>$null | Out-Null
+  Kube -- -n metallb-system get ipaddresspools ingress-pool 2>$null | Out-Null
 }
 
 function Install-IngressNginx {
@@ -450,7 +450,7 @@ function Install-IngressNginx {
     --namespace ingress-nginx --create-namespace `
     --set controller.service.type=LoadBalancer | Out-Null
 
-  Kube rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=240s | Out-Null
+  Kube -- rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=240s | Out-Null
 }
 
 function Install-AppAndIngress {
@@ -462,8 +462,8 @@ function Install-AppAndIngress {
   if (-not (Test-Path $appDir))      { throw "Missing folder: $appDir" }
   if (-not (Test-Path $ingressYaml)) { throw "Missing file: $ingressYaml" }
 
-  Kube apply -f $appDir | Out-Null
-  Kube apply -f $ingressYaml | Out-Null
+  Kube -- apply -f $appDir | Out-Null
+  Kube -- apply -f $ingressYaml | Out-Null
 }
 
 function Validate-VIPHttp {
@@ -492,7 +492,7 @@ function Install-KubernetesDashboard {
   $dashUrl = "https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml"
 
   Write-Host "- Applying dashboard manifest..." -ForegroundColor Gray
-  Kube apply -f $dashUrl | Out-Null
+  Kube -- apply -f $dashUrl | Out-Null
 
   Write-Host "- Waiting for dashboard deployment..." -ForegroundColor Gray
   & kubectl --kubeconfig $Kubeconfig -n kubernetes-dashboard rollout status deployment/kubernetes-dashboard --timeout="240s" | Out-Null
@@ -524,7 +524,7 @@ subjects:
   $tmp = Join-Path $env:TEMP ("dashboard-admin-" + [Guid]::NewGuid().ToString() + ".yaml")
   Set-Content -Path $tmp -Value $adminYaml -Encoding utf8
   try {
-    Kube apply -f $tmp | Out-Null
+    Kube -- apply -f $tmp | Out-Null
   } finally {
     Remove-Item -Force -ErrorAction SilentlyContinue $tmp
   }
@@ -562,7 +562,7 @@ spec:
   $tmp2 = Join-Path $env:TEMP ("dashboard-ing-" + [Guid]::NewGuid().ToString() + ".yaml")
   Set-Content -Path $tmp2 -Value $ingYaml -Encoding utf8
   try {
-    Kube apply -f $tmp2 | Out-Null
+    Kube -- apply -f $tmp2 | Out-Null
   } finally {
     Remove-Item -Force -ErrorAction SilentlyContinue $tmp2
   }
@@ -643,9 +643,9 @@ if ($AddonsOnly) {
 
   Show-Header "Cluster summary" "Cyan"
   Kube -- get nodes -o wide
-  Kube get pods -A
-  Kube get svc -A
-  Kube get ingress
+  Kube -- get pods -A
+  Kube -- get svc -A
+  Kube -- get ingress
 
   Write-Host ""
   Write-Host "Done." -ForegroundColor Green
@@ -716,9 +716,9 @@ Validate-VIPHttp
 
 Show-Header "Cluster summary" "Cyan"
 Kube -- get nodes -o wide
-Kube get pods -A
-Kube get svc -A
-Kube get ingress
+Kube -- get pods -A
+Kube -- get svc -A
+Kube -- get ingress
 
 Write-Host ""
 Write-Host "Done." -ForegroundColor Green
