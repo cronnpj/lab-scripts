@@ -311,18 +311,16 @@ function Show-DevOpsMenu {
     Write-Host "  [8]  Open repo folder in File Explorer"
     Write-Host ""
     Write-Host "  Lab Repository - Basic Operations"
-    Write-Host "  [9]  Repo status (clean/dirty + origin)"
-    Write-Host "  [10] Update + Run bootstrap (normal)"
-    Write-Host "  [11] Run bootstrap (no repo update) - uses existing local repo"
+    Write-Host "  [9]  Install Kubernetes Cluster (normal)"
     Write-Host ""
     Write-Host "  Lab Repository - Advanced Operations"
-    Write-Host "  [12] Run bootstrap (interactive prompts)"
-    Write-Host "  [13] Wipe + Rebuild cluster (student reset mode)"
-    Write-Host "  [14] Install / Reinstall MetalLB (VIP pool)"
-    Write-Host "  [15] Install Portainer (Ingress)"
-    Write-Host "  [16] Install / Reinstall NGINX Ingress Controller"
-    Write-Host "  [17] Nuke local generated files (kubeconfig + student-overrides)"
-    Write-Host "  [18] Repo lab-safe reset (discard local changes)"
+    Write-Host "  [10] Install Kubernetes Cluster (interactive prompts)"
+    Write-Host "  [11] Wipe + Rebuild cluster (student reset mode)"
+    Write-Host "  [12] Install / Reinstall MetalLB (VIP pool)"
+    Write-Host "  [13] Install Portainer (Ingress)"
+    Write-Host "  [14] Install / Reinstall NGINX Ingress Controller"
+    Write-Host "  [15] Nuke local generated files (kubeconfig + student-overrides)"
+    Write-Host "  [16] Repo lab-safe reset (discard local changes)"
     Write-Host ""
     Write-Host "  [0]  Back"
     Write-Host ""
@@ -398,82 +396,41 @@ do {
 
         "8" {
             Invoke-ActionSafe -SuccessText "Opened repo folder" -Action {
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
                 Start-Process explorer.exe $script:RepoPath
             }
         }
 
         # === Lab Repository - Basic Operations ===
         "9" {
-            Invoke-ActionSafe -SuccessText "Repo status displayed" -Action {
+            Invoke-ActionSafe -SuccessText "Kubernetes cluster install executed" -Action {
                 Ensure-GitInstalled
-
-                if (-not (Test-Path $script:RepoPath)) {
-                    Write-Host "Repo not present yet: $($script:RepoPath)" -ForegroundColor DarkYellow
-                    return
-                }
-                if (-not (Test-Path (Join-Path $script:RepoPath ".git"))) {
-                    Write-Host "Folder exists but is not a git repo: $($script:RepoPath)" -ForegroundColor DarkYellow
-                    return
-                }
-
-                $remote = Get-RepoRemoteUrl -RepoPath $script:RepoPath
-                $dirty  = Test-RepoDirty -RepoPath $script:RepoPath
-                $branch = (& git -C $script:RepoPath rev-parse --abbrev-ref HEAD 2>$null)
-
-                Write-Host "RepoPath: $($script:RepoPath)"
-                Write-Host "Origin:   $remote"
-                Write-Host "Branch:   $branch"
-                Write-Host ("Dirty:    " + $dirty) -ForegroundColor ($(if ($dirty) { "DarkYellow" } else { "Green" }))
-
-                if ($dirty) {
-                    Write-Host ""
-                    Write-Host "Changed files:" -ForegroundColor DarkYellow
-                    git -C $script:RepoPath status --porcelain
-                }
-            }
-        }
-
-        "10" {
-            Invoke-ActionSafe -SuccessText "lab-scripts updated and k8s bootstrap executed" -Action {
-                Bootstrap-RepoAndRun `
-                    -RepoUrl $script:RepoUrl `
-                    -RepoPath $script:RepoPath `
-                    -Branch $script:Branch `
-                    -TargetRelativePath $script:Target `
-                    -AutoResetIfDirty
-            }
-        }
-
-        "11" {
-            Invoke-ActionSafe -SuccessText "bootstrap executed (no repo update)" -Action {
-                Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run Maintenance update first." }
                 Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target
             }
         }
 
         # === Lab Repository - Advanced Operations ===
-        "12" {
-            Invoke-ActionSafe -SuccessText "bootstrap executed (interactive)" -Action {
+        "10" {
+            Invoke-ActionSafe -SuccessText "Kubernetes cluster install executed (interactive)" -Action {
                 Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
                 Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-Interactive")
             }
         }
 
-        "13" {
+        "11" {
             Invoke-ActionSafe -SuccessText "Wipe + rebuild executed" -Action {
                 Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
                 Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-WipeAndRebuild","-Interactive")
             }
         }
 
-        "14" {
+        "12" {
             Invoke-ActionSafe -SuccessText "MetalLB installed / VIP pool applied" -Action {
                 Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
 
                 Invoke-RepoTarget `
                     -RepoPath $script:RepoPath `
@@ -482,10 +439,10 @@ do {
             }
         }
 
-        "15" {
+        "13" {
             Invoke-ActionSafe -SuccessText "Portainer installed" -Action {
                 Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
+            if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
 
                 Invoke-RepoTarget `
                     -RepoPath $script:RepoPath `
@@ -494,10 +451,10 @@ do {
             }
         }
 
-        "16" {
+        "14" {
             Invoke-ActionSafe -SuccessText "NGINX Ingress Controller installed / reinstalled" -Action {
                 Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
+            if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
 
                 Invoke-RepoTarget `
                     -RepoPath $script:RepoPath `
@@ -506,9 +463,9 @@ do {
             }
         }
 
-        "17" {
+        "15" {
             Invoke-ActionSafe -SuccessText "Local generated files removed" -Action {
-            if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [10] first." }
+            if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
 
                 $kube = Join-Path $script:RepoPath "kubeconfig"
                 $ovr  = Join-Path $script:RepoPath "01-talos\student-overrides"
@@ -521,7 +478,7 @@ do {
             }
         }
 
-        "18" {
+        "16" {
             Invoke-ActionSafe -SuccessText "Repo reset to origin completed" -Action {
                 Ensure-GitInstalled
                 if (-not (Test-Path (Join-Path $script:RepoPath ".git"))) { throw "Repo not found: $($script:RepoPath)" }
