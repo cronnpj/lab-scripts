@@ -338,6 +338,40 @@ function Resolve-KubeconfigPath {
     return $candidates[0]
 }
 
+function Resolve-TalosConfigPath {
+    param([Parameter(Mandatory)][string]$RepoPath)
+
+    $candidates = @(
+        (Join-Path $RepoPath "labs\k8s-baremetal-lab\01-talos\student-overrides\talosconfig"),
+        (Join-Path $RepoPath "01-talos\student-overrides\talosconfig"),
+        "C:\CITA\LabTools\labs\k8s-baremetal-lab\01-talos\student-overrides\talosconfig",
+        "C:\CITA\LabTools\01-talos\student-overrides\talosconfig"
+    )
+
+    foreach ($path in $candidates) {
+        if (Test-Path $path) { return $path }
+    }
+
+    return $candidates[0]
+}
+
+function Resolve-WorkerConfigPath {
+    param([Parameter(Mandatory)][string]$RepoPath)
+
+    $candidates = @(
+        (Join-Path $RepoPath "labs\k8s-baremetal-lab\01-talos\student-overrides\worker.yaml"),
+        (Join-Path $RepoPath "01-talos\student-overrides\worker.yaml"),
+        "C:\CITA\LabTools\labs\k8s-baremetal-lab\01-talos\student-overrides\worker.yaml",
+        "C:\CITA\LabTools\01-talos\student-overrides\worker.yaml"
+    )
+
+    foreach ($path in $candidates) {
+        if (Test-Path $path) { return $path }
+    }
+
+    return $candidates[0]
+}
+
 # =========================
 # Menu
 # =========================
@@ -380,6 +414,7 @@ function Show-DevOpsMenu {
     Write-Host "  [14] Wipe + Rebuild cluster (student reset mode)"
     Write-Host "  [15] Nuke local generated files (kubeconfig + student-overrides)"
     Write-Host "  [16] Repo lab-safe reset (discard local changes)"
+    Write-Host "  [17] Add new worker node to existing cluster"
     Write-Host ""
     Write-Host "  [0]  Back"
     Write-Host ""
@@ -571,6 +606,48 @@ do {
                 Ensure-GitInstalled
                 if (-not (Test-Path (Join-Path $script:RepoPath ".git"))) { throw "Repo not found: $($script:RepoPath)" }
                 Reset-RepoToOrigin -RepoPath $script:RepoPath -Branch $script:Branch
+            }
+        }
+
+        "17" {
+            Invoke-ActionSafe -SuccessText "Worker add operation completed" -Action {
+                Ensure-GitInstalled
+                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
+                if (-not (Test-Cmd talosctl)) { throw "talosctl not found. Install it from option [2]." }
+
+                $workerIp = (Read-Host "Enter NEW worker IP address").Trim()
+                if ([string]::IsNullOrWhiteSpace($workerIp)) { throw "Worker IP cannot be blank." }
+
+                $workerCfg = Resolve-WorkerConfigPath -RepoPath $script:RepoPath
+                if (-not (Test-Path $workerCfg)) {
+                    throw "worker.yaml not found at: $workerCfg`nRun option [9] or [13] first to generate Talos configs."
+                }
+
+                Write-Host "Checking worker reachability: $workerIp" -ForegroundColor Gray
+                if (-not (Test-Connection -ComputerName $workerIp -Count 1 -Quiet)) {
+                    throw "Worker node is not reachable: $workerIp"
+                }
+
+                Write-Host "Applying worker config to $workerIp (Talos maintenance API)..." -ForegroundColor Yellow
+                & talosctl apply-config --insecure --nodes $workerIp --endpoints $workerIp --file $workerCfg
+                if ($LASTEXITCODE -ne 0) {
+                    throw "talosctl apply-config failed for worker: $workerIp"
+                }
+
+                $talosconfig = Resolve-TalosConfigPath -RepoPath $script:RepoPath
+                if (Test-Path $talosconfig) {
+                    Write-Host "Using talosconfig: $talosconfig" -ForegroundColor DarkGray
+                }
+
+                $kubeconfig = Resolve-KubeconfigPath -RepoPath $script:RepoPath
+                if ((Test-Path $kubeconfig) -and (Test-Cmd kubectl)) {
+                    Write-Host "Waiting briefly, then checking node registration..." -ForegroundColor Gray
+                    Start-Sleep -Seconds 12
+                    kubectl --kubeconfig $kubeconfig get nodes -o wide
+                }
+                else {
+                    Write-Host "Worker config applied. Install/locate kubeconfig to verify node join with kubectl." -ForegroundColor DarkYellow
+                }
             }
         }
 
