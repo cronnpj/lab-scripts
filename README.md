@@ -14,33 +14,33 @@ This repository contains a collection of PowerShell modules and scripts used to 
 
 ## Repository Layout
 
-- File: [src/VERSION.txt](src/VERSION.txt#L1)
-- File: [src/config/labtools.json](src/config/labtools.json#L1)
-- File: [src/Lib/Logging.psm1](src/Lib/Logging.psm1#L1)
-- File: [src/Lib/Validation.psm1](src/Lib/Validation.psm1#L1)
-- File: [src/Menu/ServerRoleMenu.ps1](src/Menu/ServerRoleMenu.ps1#L1)
-- Files: [src/Tasks/Install-Roles.ps1](src/Tasks/Install-Roles.ps1#L1), [src/Tasks/Join-Domain.ps1](src/Tasks/Join-Domain.ps1#L1), [src/Tasks/Rename-Computer.ps1](src/Tasks/Rename-Computer.ps1#L1), [src/Tasks/Set-StaticIP.ps1](src/Tasks/Set-StaticIP.ps1#L1), [src/Tasks/System-Snapshot.ps1](src/Tasks/System-Snapshot.ps1#L1), [src/Tasks/Update-LabToolsFromGitHub.ps1](src/Tasks/Update-LabToolsFromGitHub.ps1#L1)
+- File: [src/VERSION.txt](src/VERSION.txt)
+- File: [src/config/labtools.json](src/config/labtools.json)
+- Files: [src/Lib/Logging.psm1](src/Lib/Logging.psm1), [src/Lib/Validation.psm1](src/Lib/Validation.psm1)
+- Menus: [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1), [src/Menu/DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1), [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1), [src/Menu/ServerToolsMenu.ps1](src/Menu/ServerToolsMenu.ps1), [src/Menu/TroubleshootingMenu.ps1](src/Menu/TroubleshootingMenu.ps1)
+- Core tasks: [src/Tasks/Install-Roles.ps1](src/Tasks/Install-Roles.ps1), [src/Tasks/Join-Domain.ps1](src/Tasks/Join-Domain.ps1), [src/Tasks/Rename-Computer.ps1](src/Tasks/Rename-Computer.ps1), [src/Tasks/Set-StaticIP.ps1](src/Tasks/Set-StaticIP.ps1), [src/Tasks/System-Snapshot.ps1](src/Tasks/System-Snapshot.ps1), [src/Tasks/Update-LabTools.ps1](src/Tasks/Update-LabTools.ps1)
+- Kubernetes lab: [labs/k8s-baremetal-lab/README.md](labs/k8s-baremetal-lab/README.md), [labs/k8s-baremetal-lab/bootstrap.ps1](labs/k8s-baremetal-lab/bootstrap.ps1)
 
 ## Usage
 
 1. Open PowerShell as Administrator.
 2. (Optional) Allow script execution for the session:
 
-``powershell
+```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
-``
+```
 
-3. Run a script, for example the server role menu:
+3. Launch the main menu:
 
-``powershell
-.\src\Menu\ServerRoleMenu.ps1
-``
+```powershell
+.\src\Menu\MainMenu.ps1
+```
 
 Or run a task directly, for example to install roles:
 
-``powershell
+```powershell
 .\src\Tasks\Install-Roles.ps1
-``
+```
 
 ## Contributing
 

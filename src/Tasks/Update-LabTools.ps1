@@ -1,4 +1,4 @@
-# src\Tasks\Update-LabToolsFromGitHub.ps1
+# src\Tasks\Update-LabTools.ps1
 # Works in BOTH environments:
 # - If C:\CITA\_LabToolsRepo is a git repo => repo-cache + deploy model (server side)
 # - Else if C:\CITA\LabTools is a git repo => in-place pull model (Win11 side)
