@@ -372,7 +372,7 @@ function Show-DevOpsMenu {
     Write-Host "  Lab Repository - Install Operations"
     Write-Host "  [9]  Install Kubernetes Cluster (normal)"
     Write-Host "  [10] Install / Reinstall MetalLB (VIP pool)"
-    Write-Host "  [11] Install Portainer (Ingress)"
+    Write-Host "  [11] Install Portainer (IP/NodePort)"
     Write-Host "  [12] Install / Reinstall NGINX Ingress Controller"
     Write-Host ""
     Write-Host "  Lab Repository - Advanced Operations"
