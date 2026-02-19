@@ -546,14 +546,33 @@ function Install-Portainer {
   }
 
   $helmExit = 0
+  $helmOut = ""
+  $maxHelmAttempts = 6
+  $attempt = 0
   try {
     $ErrorActionPreference = "Continue"
-    $helmOut = & helm upgrade --install portainer portainer/portainer `
-      --namespace portainer --create-namespace `
-      --set service.type=$serviceType `
-      --set persistence.enabled=false `
-      --wait --timeout 10m 2>&1
-    $helmExit = $LASTEXITCODE
+    while ($true) {
+      $attempt++
+
+      $helmOut = & helm upgrade --install portainer portainer/portainer `
+        --namespace portainer --create-namespace `
+        --set service.type=$serviceType `
+        --set persistence.enabled=false `
+        --wait --timeout 10m 2>&1
+      $helmExit = $LASTEXITCODE
+
+      if ($helmExit -eq 0) { break }
+
+      $helmText = ($helmOut | Out-String)
+      $isLock = $helmText -match "another operation \(install/upgrade/rollback\) is in progress"
+      if ($isLock -and $attempt -lt $maxHelmAttempts) {
+        Write-Host "- Helm reports release lock (attempt $attempt/$maxHelmAttempts). Waiting 10s and retrying..." -ForegroundColor Yellow
+        Start-Sleep -Seconds 10
+        continue
+      }
+
+      break
+    }
   } finally {
     $ErrorActionPreference = $prevEap
     if ($nativeVar) {
