@@ -537,12 +537,31 @@ function Install-Portainer {
   $serviceType = if ($useIngressHost) { "ClusterIP" } else { "NodePort" }
 
   Write-Host "- Installing/upgrading Portainer release (lab mode: persistence disabled, service: $serviceType)..." -ForegroundColor Gray
-  $helmOut = & helm upgrade --install portainer portainer/portainer `
-    --namespace portainer --create-namespace `
-    --set service.type=$serviceType `
-    --set persistence.enabled=false `
-    --wait --timeout 10m 2>&1
-  if ($LASTEXITCODE -ne 0) {
+  $prevEap = $ErrorActionPreference
+  $nativeVar = Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue
+  $prevNativePref = $null
+  if ($nativeVar) {
+    $prevNativePref = $PSNativeCommandUseErrorActionPreference
+    $PSNativeCommandUseErrorActionPreference = $false
+  }
+
+  $helmExit = 0
+  try {
+    $ErrorActionPreference = "Continue"
+    $helmOut = & helm upgrade --install portainer portainer/portainer `
+      --namespace portainer --create-namespace `
+      --set service.type=$serviceType `
+      --set persistence.enabled=false `
+      --wait --timeout 10m 2>&1
+    $helmExit = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $prevEap
+    if ($nativeVar) {
+      $PSNativeCommandUseErrorActionPreference = $prevNativePref
+    }
+  }
+
+  if ($helmExit -ne 0) {
     throw "Portainer helm install failed:`n$($helmOut | Out-String)"
   }
 
