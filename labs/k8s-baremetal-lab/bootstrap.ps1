@@ -493,8 +493,23 @@ function Install-AppAndIngress {
   if (-not (Test-Path $appDir))      { throw "Missing folder: $appDir" }
   if (-not (Test-Path $ingressYaml)) { throw "Missing file: $ingressYaml" }
 
-  Kube -- apply -f $appDir | Out-Null
-  Kube -- apply -f $ingressYaml | Out-Null
+  Write-Host "- Applying app manifests..." -ForegroundColor Gray
+  $appOut = & kubectl --kubeconfig $Kubeconfig apply -f $appDir 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    throw "Failed applying app manifests:`n$($appOut | Out-String)"
+  }
+
+  Write-Host "- Applying ingress manifest..." -ForegroundColor Gray
+  $ingOut = & kubectl --kubeconfig $Kubeconfig apply -f $ingressYaml 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    throw "Failed applying ingress manifest:`n$($ingOut | Out-String)"
+  }
+
+  Write-Host "- Verifying ingress resource exists..." -ForegroundColor Gray
+  Wait-ForK8s -TimeoutSeconds 120 -What "nginx ingress resource" -Test {
+    $x = & kubectl --kubeconfig $Kubeconfig -n default get ingress nginx-ingress -o name 2>$null
+    return ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($x))
+  } | Out-Null
 }
 
 function Validate-VIPHttp {
