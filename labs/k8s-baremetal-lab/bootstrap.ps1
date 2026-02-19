@@ -591,9 +591,9 @@ function Install-Portainer {
 
     Write-Host ""
     Write-Host "Portainer URL(s) (IP mode):" -ForegroundColor Cyan
-    Write-Host "  $scheme://${ControlPlaneIP}:$nodePort" -ForegroundColor Cyan
+    Write-Host "  ${scheme}://${ControlPlaneIP}:$nodePort" -ForegroundColor Cyan
     foreach ($w in $WorkerIPs) {
-      Write-Host "  $scheme://${w}:$nodePort" -ForegroundColor Cyan
+      Write-Host "  ${scheme}://${w}:$nodePort" -ForegroundColor Cyan
     }
     Write-Host ""
     Write-Host "Tip: use -PortainerDomain to enable host-based ingress mode." -ForegroundColor DarkGray
