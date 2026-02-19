@@ -667,6 +667,11 @@ function Install-Portainer {
     $scheme = if ($portainerSvcPort -eq 9443) { "https" } else { "http" }
 
     Write-Host ""
+    Write-Host "Portainer install complete (IP mode)" -ForegroundColor Green
+    Write-Host "Control Plane IP: $ControlPlaneIP" -ForegroundColor Cyan
+    Write-Host "Portainer NodePort: $nodePort" -ForegroundColor Cyan
+    Write-Host "Primary URL: ${scheme}://${ControlPlaneIP}:$nodePort" -ForegroundColor Cyan
+    Write-Host ""
     Write-Host "Portainer URL(s) (IP mode):" -ForegroundColor Cyan
     Write-Host "  ${scheme}://${ControlPlaneIP}:$nodePort" -ForegroundColor Cyan
     foreach ($w in $WorkerIPs) {
