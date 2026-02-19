@@ -459,6 +459,13 @@ do {
                 kubectl --kubeconfig $kubeconfig get nodes -o wide
                 Write-Host ""
                 kubectl --kubeconfig $kubeconfig get pods -A
+                Write-Host ""
+                kubectl --kubeconfig $kubeconfig get svc -A
+                Write-Host ""
+                kubectl --kubeconfig $kubeconfig get ingress -A
+                Write-Host ""
+                Write-Host "ingress-nginx controller service:" -ForegroundColor Gray
+                kubectl --kubeconfig $kubeconfig -n ingress-nginx get svc ingress-nginx-controller -o wide
             }
         }
 
