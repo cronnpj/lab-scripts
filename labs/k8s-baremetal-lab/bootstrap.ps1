@@ -549,16 +549,19 @@ function Install-Portainer {
   $helmOut = ""
   $maxHelmAttempts = 6
   $attempt = 0
+  $runHelmInstall = {
+    & helm upgrade --install portainer portainer/portainer `
+      --namespace portainer --create-namespace `
+      --set service.type=$serviceType `
+      --set persistence.enabled=false `
+      --wait --timeout 10m 2>&1
+  }
   try {
     $ErrorActionPreference = "Continue"
     while ($true) {
       $attempt++
 
-      $helmOut = & helm upgrade --install portainer portainer/portainer `
-        --namespace portainer --create-namespace `
-        --set service.type=$serviceType `
-        --set persistence.enabled=false `
-        --wait --timeout 10m 2>&1
+      $helmOut = & $runHelmInstall
       $helmExit = $LASTEXITCODE
 
       if ($helmExit -eq 0) { break }
@@ -578,6 +581,42 @@ function Install-Portainer {
     if ($nativeVar) {
       $PSNativeCommandUseErrorActionPreference = $prevNativePref
     }
+  }
+
+  $helmText = ($helmOut | Out-String)
+  $isHelmLock = $helmText -match "another operation \(install/upgrade/rollback\) is in progress"
+
+  if ($helmExit -ne 0 -and $isHelmLock) {
+    Write-Host "- Helm release lock persisted. Attempting recovery..." -ForegroundColor Yellow
+
+    $historyRaw = & helm history portainer -n portainer -o json 2>$null
+    $deployedRev = $null
+    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($historyRaw)) {
+      try {
+        $history = $historyRaw | ConvertFrom-Json
+        if ($history) {
+          $deployed = @($history | Where-Object { $_.status -eq "deployed" })
+          if ($deployed.Count -gt 0) {
+            $latest = $deployed | Sort-Object -Property revision -Descending | Select-Object -First 1
+            $deployedRev = [int]$latest.revision
+          }
+        }
+      } catch {}
+    }
+
+    if ($null -ne $deployedRev) {
+      Write-Host "- Rolling back Portainer release to revision $deployedRev ..." -ForegroundColor Yellow
+      & helm rollback portainer $deployedRev -n portainer --wait --timeout 5m | Out-Null
+      Start-Sleep -Seconds 3
+    } else {
+      Write-Host "- No deployed revision found. Uninstalling stuck Portainer release..." -ForegroundColor Yellow
+      & helm uninstall portainer -n portainer 2>$null | Out-Null
+      Start-Sleep -Seconds 3
+    }
+
+    Write-Host "- Retrying Portainer install after recovery..." -ForegroundColor Yellow
+    $helmOut = & $runHelmInstall
+    $helmExit = $LASTEXITCODE
   }
 
   if ($helmExit -ne 0) {
