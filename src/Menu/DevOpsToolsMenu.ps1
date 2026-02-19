@@ -269,7 +269,27 @@ function Show-Versions {
     if (Test-Cmd talosctl) { Write-Host ("talosctl: " + (& talosctl version 2>$null | Out-String).Trim()) -ForegroundColor Gray }
     else { Write-Host "talosctl: (not installed)" -ForegroundColor DarkYellow }
 
-    if (Test-Cmd kubectl) { Write-Host ("kubectl:  " + (& kubectl version --client --short 2>$null | Out-String).Trim()) -ForegroundColor Gray }
+    if (Test-Cmd kubectl) {
+        $kubectlVersion = (& kubectl version --client --short 2>$null | Out-String).Trim()
+
+        if ([string]::IsNullOrWhiteSpace($kubectlVersion)) {
+            $kubectlVersion = (& kubectl version --client 2>$null | Out-String).Trim()
+        }
+
+        if ([string]::IsNullOrWhiteSpace($kubectlVersion)) {
+            $kubectlVersion = (& kubectl version 2>$null | Out-String).Trim()
+        }
+
+        if ([string]::IsNullOrWhiteSpace($kubectlVersion)) {
+            $kubectlVersion = (& kubectl --client version 2>$null | Out-String).Trim()
+        }
+
+        if ([string]::IsNullOrWhiteSpace($kubectlVersion)) {
+            $kubectlVersion = "installed (version output unavailable)"
+        }
+
+        Write-Host ("kubectl:  " + $kubectlVersion) -ForegroundColor Gray
+    }
     else { Write-Host "kubectl:  (not installed)" -ForegroundColor DarkYellow }
 
     if (Test-Cmd helm)    { Write-Host ("helm:    " + (& helm version --short 2>$null | Out-String).Trim()) -ForegroundColor Gray }
@@ -296,6 +316,23 @@ function Resolve-DevOpsRepoPath {
 
     foreach ($candidate in $candidates) {
         if (Test-Path $candidate) { return $candidate }
+    }
+
+    return $candidates[0]
+}
+
+function Resolve-KubeconfigPath {
+    param([Parameter(Mandatory)][string]$RepoPath)
+
+    $candidates = @(
+        (Join-Path $RepoPath "labs\k8s-baremetal-lab\kubeconfig"),
+        (Join-Path $RepoPath "kubeconfig"),
+        "C:\CITA\LabTools\labs\k8s-baremetal-lab\kubeconfig",
+        "C:\CITA\LabTools\kubeconfig"
+    )
+
+    foreach ($path in $candidates) {
+        if (Test-Path $path) { return $path }
     }
 
     return $candidates[0]
@@ -413,7 +450,7 @@ do {
 
         "7" {
             Invoke-ActionSafe -SuccessText "kubectl checks completed" -Action {
-                $kubeconfig = Join-Path $script:RepoPath "kubeconfig"
+                $kubeconfig = Resolve-KubeconfigPath -RepoPath $script:RepoPath
                 if (-not (Test-Path $kubeconfig)) {
                     throw "kubeconfig not found at: $kubeconfig (run bootstrap first)"
                 }
