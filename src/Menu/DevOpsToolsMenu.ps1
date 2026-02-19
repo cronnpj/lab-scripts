@@ -456,15 +456,29 @@ do {
                 }
 
                 Write-Host "Using kubeconfig: $kubeconfig" -ForegroundColor Gray
+
+                Write-Host ""
+                Write-Host "=== Section 1: Nodes ===" -ForegroundColor Cyan
                 kubectl --kubeconfig $kubeconfig get nodes -o wide
+                Pause-Menu
+
                 Write-Host ""
+                Write-Host "=== Section 2: Pods (all namespaces) ===" -ForegroundColor Cyan
                 kubectl --kubeconfig $kubeconfig get pods -A
+                Pause-Menu
+
                 Write-Host ""
+                Write-Host "=== Section 3: Services (all namespaces) ===" -ForegroundColor Cyan
                 kubectl --kubeconfig $kubeconfig get svc -A
+                Pause-Menu
+
                 Write-Host ""
+                Write-Host "=== Section 4: Ingress (all namespaces) ===" -ForegroundColor Cyan
                 kubectl --kubeconfig $kubeconfig get ingress -A
+                Pause-Menu
+
                 Write-Host ""
-                Write-Host "ingress-nginx controller service:" -ForegroundColor Gray
+                Write-Host "=== Section 5: ingress-nginx controller service ===" -ForegroundColor Cyan
                 kubectl --kubeconfig $kubeconfig -n ingress-nginx get svc ingress-nginx-controller -o wide
             }
         }
