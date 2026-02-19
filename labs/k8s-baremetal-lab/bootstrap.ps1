@@ -542,13 +542,23 @@ function Install-Portainer {
   helm repo add portainer https://portainer.github.io/k8s/ | Out-Null
   helm repo update | Out-Null
 
-  Write-Host "- Installing/upgrading Portainer release..." -ForegroundColor Gray
-  helm upgrade --install portainer portainer/portainer `
+  Write-Host "- Installing/upgrading Portainer release (lab mode: persistence disabled)..." -ForegroundColor Gray
+  $helmOut = & helm upgrade --install portainer portainer/portainer `
     --namespace portainer --create-namespace `
-    --set service.type=ClusterIP | Out-Null
+    --set service.type=ClusterIP `
+    --set persistence.enabled=false `
+    --wait --timeout 10m 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    throw "Portainer helm install failed:`n$($helmOut | Out-String)"
+  }
 
   Write-Host "- Waiting for Portainer deployment..." -ForegroundColor Gray
-  & kubectl --kubeconfig $Kubeconfig -n portainer rollout status deployment/portainer --timeout="300s" | Out-Null
+  $rolloutOut = & kubectl --kubeconfig $Kubeconfig -n portainer rollout status deployment/portainer --timeout="300s" 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    $pods = & kubectl --kubeconfig $Kubeconfig -n portainer get pods -o wide 2>&1
+    $events = & kubectl --kubeconfig $Kubeconfig -n portainer get events --sort-by=.lastTimestamp 2>&1
+    throw "Portainer deployment did not become ready:`n$($rolloutOut | Out-String)`nPods:`n$($pods | Out-String)`nRecent events:`n$($events | Out-String)"
+  }
 
   Write-Host "- Discovering Portainer service port..." -ForegroundColor Gray
   $svcRaw = & kubectl --kubeconfig $Kubeconfig -n portainer get svc portainer -o json
