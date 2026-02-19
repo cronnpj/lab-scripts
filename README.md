@@ -1,5 +1,15 @@
 # Lab Scripts
 
+![PowerShell](https://img.shields.io/badge/PowerShell-Automation-5391FE?style=for-the-badge&logo=powershell&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-Lab%20Ops-0078D4?style=for-the-badge&logo=windows&logoColor=white)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-Bare%20Metal-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
+![Talos Linux](https://img.shields.io/badge/Talos-Linux-111111?style=for-the-badge)
+![Helm](https://img.shields.io/badge/Helm-Charts-0F1689?style=for-the-badge&logo=helm&logoColor=white)
+![MetalLB](https://img.shields.io/badge/MetalLB-LoadBalancer-5B2C87?style=for-the-badge)
+![NGINX Ingress](https://img.shields.io/badge/NGINX-Ingress-009639?style=for-the-badge&logo=nginx&logoColor=white)
+![Portainer](https://img.shields.io/badge/Portainer-Management-13BEF9?style=for-the-badge)
+![Lab](https://img.shields.io/badge/Lab-Infrastructure%20Automation-34C759?style=for-the-badge)
+
 PowerShell scripts and helpers for provisioning and managing lab environments.
 
 ## Overview
