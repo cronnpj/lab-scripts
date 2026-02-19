@@ -301,26 +301,17 @@ function Read-WorkerIPs([string[]]$DefaultWorkers) {
 }
 
 function Resolve-PortainerHost([string]$VipIP,[string]$ConfiguredDomain="") {
-  $candidate = $ConfiguredDomain
-
-  while ($true) {
-    if ([string]::IsNullOrWhiteSpace($candidate)) {
-      $candidate = Read-Host "Portainer base domain (example doom.local). Leave blank for $VipIP.sslip.io"
-    }
-
-    if ([string]::IsNullOrWhiteSpace($candidate)) {
-      return "portainer.$VipIP.sslip.io"
-    }
-
-    $base = $candidate.Trim().TrimStart('.')
-    if ($base -match '^[A-Za-z0-9][A-Za-z0-9.-]*$') {
-      if ($base.ToLower().StartsWith('portainer.')) { return $base }
-      return "portainer.$base"
-    }
-
-    Write-Host "Invalid domain format. Try again (example: doom.local)." -ForegroundColor DarkYellow
-    $candidate = ""
+  if ([string]::IsNullOrWhiteSpace($ConfiguredDomain)) {
+    return ""
   }
+
+  $base = $ConfiguredDomain.Trim().TrimStart('.')
+  if ($base -notmatch '^[A-Za-z0-9][A-Za-z0-9.-]*$') {
+    throw "Invalid Portainer domain format: $ConfiguredDomain"
+  }
+
+  if ($base.ToLower().StartsWith('portainer.')) { return $base }
+  return "portainer.$base"
 }
 
 # -------------------------
@@ -532,7 +523,7 @@ function Validate-VIPHttp {
 }
 
 function Install-Portainer {
-  param([Parameter(Mandatory)][string]$PortainerHost)
+  param([string]$PortainerHost = "")
 
   Show-Header "Installing Portainer CE (Helm + Ingress)" "Yellow"
 
@@ -542,10 +533,13 @@ function Install-Portainer {
   helm repo add portainer https://portainer.github.io/k8s/ | Out-Null
   helm repo update | Out-Null
 
-  Write-Host "- Installing/upgrading Portainer release (lab mode: persistence disabled)..." -ForegroundColor Gray
+  $useIngressHost = -not [string]::IsNullOrWhiteSpace($PortainerHost)
+  $serviceType = if ($useIngressHost) { "ClusterIP" } else { "NodePort" }
+
+  Write-Host "- Installing/upgrading Portainer release (lab mode: persistence disabled, service: $serviceType)..." -ForegroundColor Gray
   $helmOut = & helm upgrade --install portainer portainer/portainer `
     --namespace portainer --create-namespace `
-    --set service.type=ClusterIP `
+    --set service.type=$serviceType `
     --set persistence.enabled=false `
     --wait --timeout 10m 2>&1
   if ($LASTEXITCODE -ne 0) {
@@ -579,6 +573,32 @@ function Install-Portainer {
   }
 
   $backendProtocol = if ($portainerSvcPort -eq 9443) { "HTTPS" } else { "HTTP" }
+
+  if (-not $useIngressHost) {
+    $portObj = $null
+    foreach ($p in $svcObj.spec.ports) {
+      if ($p.port -eq $portainerSvcPort) { $portObj = $p; break }
+    }
+    if ($null -eq $portObj -and $svcObj.spec.ports -and $svcObj.spec.ports.Count -gt 0) {
+      $portObj = $svcObj.spec.ports[0]
+    }
+    if ($null -eq $portObj -or $null -eq $portObj.nodePort) {
+      throw "Unable to determine Portainer NodePort."
+    }
+
+    $nodePort = [int]$portObj.nodePort
+    $scheme = if ($portainerSvcPort -eq 9443) { "https" } else { "http" }
+
+    Write-Host ""
+    Write-Host "Portainer URL(s) (IP mode):" -ForegroundColor Cyan
+    Write-Host "  $scheme://${ControlPlaneIP}:$nodePort" -ForegroundColor Cyan
+    foreach ($w in $WorkerIPs) {
+      Write-Host "  $scheme://${w}:$nodePort" -ForegroundColor Cyan
+    }
+    Write-Host ""
+    Write-Host "Tip: use -PortainerDomain to enable host-based ingress mode." -ForegroundColor DarkGray
+    return
+  }
 
   Write-Host "- Creating Ingress (host: $PortainerHost, port: $portainerSvcPort)..." -ForegroundColor Gray
 
@@ -664,7 +684,11 @@ Write-Host ""
 $ResolvedPortainerHost = $null
 if ($PortainerOnly -or $InstallPortainer) {
   $ResolvedPortainerHost = Resolve-PortainerHost -VipIP $VipIP -ConfiguredDomain $PortainerDomain
-  Write-Host "Portainer host: $ResolvedPortainerHost" -ForegroundColor DarkGray
+  if ([string]::IsNullOrWhiteSpace($ResolvedPortainerHost)) {
+    Write-Host "Portainer mode: IP (NodePort)" -ForegroundColor DarkGray
+  } else {
+    Write-Host "Portainer host: $ResolvedPortainerHost" -ForegroundColor DarkGray
+  }
 }
 
 # Portainer-only: assumes kubeconfig exists and cluster is reachable
