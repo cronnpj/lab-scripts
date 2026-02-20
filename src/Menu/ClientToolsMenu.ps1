@@ -95,6 +95,7 @@ function Show-ClientMenu {
 
     Write-Host "Client Actions"
     Write-Host "  [12] Rename computer"
+    Write-Host "  [13] Set timezone to Eastern + resync clock"
     Write-Host ""
 
     Write-Host "Client Maintenance"
@@ -115,6 +116,7 @@ function Show-ClientMenu {
 # Task paths (unchanged from your original intent)
 $joinDomainScript   = Join-Path $PSScriptRoot "..\Tasks\Join-Domain.ps1"
 $renameScript       = Join-Path $PSScriptRoot "..\Tasks\Rename-Computer.ps1"
+$timezoneScript     = Join-Path $PSScriptRoot "..\Tasks\Set-EasternTimeAndResync.ps1"
 
 $joinStatusScript   = Join-Path $PSScriptRoot "..\Tasks\Client\Get-JoinStatus.ps1"
 $gpoReportScript    = Join-Path $PSScriptRoot "..\Tasks\Client\GPO-Report.ps1"
@@ -163,6 +165,7 @@ do {
 
         # Client Actions
         "12" { Invoke-TaskSafe   -Path $renameScript -SuccessText "Rename computer completed" }
+        "13" { Invoke-TaskSafe   -Path $timezoneScript -SuccessText "Timezone set and clock resynced" }
 
         # Client Maintenance
         "14" {

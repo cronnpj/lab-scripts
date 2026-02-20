@@ -52,6 +52,7 @@ function Show-ServerToolsMenu {
 
     Write-Host "  [1] Rename computer"
     Write-Host "  [2] Configure static IP"
+    Write-Host "  [3] Set timezone to Eastern + resync clock"
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
@@ -59,7 +60,7 @@ function Show-ServerToolsMenu {
     Write-Host "Status: " -NoNewline
     Write-Host $StatusText -ForegroundColor $StatusColor
 
-    Write-Host "Keys: 1-2 Select  |  0 Back"
+    Write-Host "Keys: 1-3 Select  |  0 Back"
     Write-Host ""
 }
 
@@ -69,6 +70,7 @@ $script:lastStatusColor = "DarkGray"
 
 $renameScript    = Join-Path $PSScriptRoot "..\Tasks\Rename-Computer.ps1"
 $staticIPScript  = Join-Path $PSScriptRoot "..\Tasks\Set-StaticIP.ps1"
+$timezoneScript  = Join-Path $PSScriptRoot "..\Tasks\Set-EasternTimeAndResync.ps1"
 
 do {
     Show-ServerToolsMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor
@@ -77,6 +79,7 @@ do {
     switch ($choice) {
         "1" { Invoke-TaskSafe -Path $renameScript   -SuccessText "Rename computer completed" }
         "2" { Invoke-TaskSafe -Path $staticIPScript -SuccessText "Static IP task completed" }
+        "3" { Invoke-TaskSafe -Path $timezoneScript -SuccessText "Timezone set and clock resynced" }
         "0" { $back = $true }
         default {
             $script:lastStatusText  = "Invalid selection"
