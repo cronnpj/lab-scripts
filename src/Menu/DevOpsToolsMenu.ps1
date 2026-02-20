@@ -727,9 +727,28 @@ do {
                 $clusterExists = $false
 
                 if (Test-Path $kubeconfig) {
-                    $nodesRaw = & kubectl --kubeconfig $kubeconfig get nodes -o name 2>$null
-                    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($nodesRaw | Out-String).Trim())) {
-                        $clusterExists = $true
+                    $nativePrefVar = Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -ErrorAction SilentlyContinue
+                    $hadNativePref = ($null -ne $nativePrefVar)
+                    $previousNativePref = $false
+
+                    if ($hadNativePref) {
+                        $previousNativePref = [bool]$global:PSNativeCommandUseErrorActionPreference
+                        $global:PSNativeCommandUseErrorActionPreference = $false
+                    }
+
+                    try {
+                        $nodesRaw = & kubectl --kubeconfig $kubeconfig --request-timeout=8s get nodes -o name 2>$null
+                        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($nodesRaw | Out-String).Trim())) {
+                            $clusterExists = $true
+                        }
+                    }
+                    catch {
+                        $clusterExists = $false
+                    }
+                    finally {
+                        if ($hadNativePref) {
+                            $global:PSNativeCommandUseErrorActionPreference = $previousNativePref
+                        }
                     }
                 }
 
