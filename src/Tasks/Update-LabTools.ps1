@@ -48,6 +48,20 @@ function Is-GitRepo([string]$Path) {
     return ($LASTEXITCODE -eq 0 -and $out.Trim() -eq "true")
 }
 
+function Repair-KnownLabDrift([string]$Path) {
+    $knownTrackedPath = "labs/k8s-baremetal-lab/01-talos/student-overrides/README.md"
+
+    $restoreOut = git -C $Path restore --worktree --staged --source=HEAD -- $knownTrackedPath 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        if (-not [string]::IsNullOrWhiteSpace(($restoreOut | Out-String).Trim())) {
+            Write-Host "Repaired known lab-generated drift: $knownTrackedPath" -ForegroundColor DarkGray
+        }
+        return
+    }
+
+    git -C $Path checkout -- $knownTrackedPath 2>$null | Out-Null
+}
+
 function Clone-Or-Pull([string]$Path) {
     if (-not (Test-Path $Path)) {
         Write-Host "Cloning repo to $Path ..."
@@ -72,6 +86,8 @@ function Clone-Or-Pull([string]$Path) {
         }
         return
     }
+
+    Repair-KnownLabDrift -Path $Path
 
     $localChanges = git -C $Path status --porcelain 2>$null
     if ($LASTEXITCODE -ne 0) {
