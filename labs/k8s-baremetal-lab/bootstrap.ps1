@@ -502,9 +502,30 @@ function Install-IngressNginx {
   $env:KUBECONFIG = $Kubeconfig
 
   $releaseExists = $false
-  $statusOut = & helm status ingress-nginx -n ingress-nginx 2>$null
-  if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($statusOut | Out-String))) {
-    $releaseExists = $true
+  $nativePrefVar = Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -ErrorAction SilentlyContinue
+  $hadNativePref = ($null -ne $nativePrefVar)
+  $previousNativePref = $false
+
+  if ($hadNativePref) {
+    $previousNativePref = [bool]$global:PSNativeCommandUseErrorActionPreference
+    $global:PSNativeCommandUseErrorActionPreference = $false
+  }
+
+  try {
+    $allReleases = & helm list -A -q 2>$null
+    if ($LASTEXITCODE -eq 0) {
+      foreach ($name in @($allReleases)) {
+        if ($name -eq "ingress-nginx") {
+          $releaseExists = $true
+          break
+        }
+      }
+    }
+  }
+  finally {
+    if ($hadNativePref) {
+      $global:PSNativeCommandUseErrorActionPreference = $previousNativePref
+    }
   }
 
   if ($releaseExists -and -not $ReinstallIngress) {
