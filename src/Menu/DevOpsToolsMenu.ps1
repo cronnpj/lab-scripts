@@ -2,14 +2,14 @@
 # DevOps / CLI Tools Menu (cleaned + consistent)
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = "SilentlyContinue"
+$ErrorActionPreference = "Continue"
 
-Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force -ErrorAction Stop
 
 # =========================
 # Small UX helpers
 # =========================
-function Pause-Menu {
+function Wait-Menu {
     Write-Host ""
     Read-Host "Press Enter to continue" | Out-Null
 }
@@ -22,7 +22,7 @@ function Test-IsAdmin {
     } catch { return $false }
 }
 
-function Require-Admin {
+function Assert-Admin {
     if (-not (Test-IsAdmin)) {
         throw "This action requires Administrator. Right-click PowerShell and choose 'Run as administrator'."
     }
@@ -59,7 +59,7 @@ function Invoke-ActionSafe {
     }
     finally {
         $ErrorActionPreference = $prev
-        Pause-Menu
+        Wait-Menu
     }
 }
 
@@ -95,7 +95,7 @@ function Install-WingetPackage {
 # =========================
 function Test-GitInstalled { return [bool](Get-Command git -ErrorAction SilentlyContinue) }
 
-function Ensure-GitInstalled {
+function Install-GitIfMissing {
     if (Test-GitInstalled) { return }
 
     if (-not (Get-WingetPath)) { throw "winget not found." }
@@ -141,7 +141,7 @@ function Reset-RepoToOrigin {
     git -C $RepoPath clean -fd
 }
 
-function Ensure-RepoHealthy {
+function Repair-RepoState {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$RepoUrl,
@@ -173,7 +173,7 @@ function Ensure-RepoHealthy {
     }
 }
 
-function Ensure-RepoPresentAndUpdated {
+function Sync-RepoContent {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$RepoUrl,
@@ -215,7 +215,7 @@ function Invoke-RepoTarget {
     }
 }
 
-function Bootstrap-RepoAndRun {
+function Invoke-RepoBootstrap {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$RepoUrl,
@@ -226,9 +226,9 @@ function Bootstrap-RepoAndRun {
         [switch]$AutoResetIfDirty
     )
 
-    Ensure-GitInstalled
-    Ensure-RepoHealthy -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch -AutoResetIfDirty:$AutoResetIfDirty
-    Ensure-RepoPresentAndUpdated -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch
+    Install-GitIfMissing
+    Repair-RepoState -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch -AutoResetIfDirty:$AutoResetIfDirty
+    Sync-RepoContent -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch
 
     if ((Test-Path (Join-Path $RepoPath ".git")) -and (Test-RepoDirty -RepoPath $RepoPath) -and $AutoResetIfDirty) {
         Reset-RepoToOrigin -RepoPath $RepoPath -Branch $Branch
@@ -246,9 +246,9 @@ function Update-RepoOnly {
         [switch]$AutoResetIfDirty
     )
 
-    Ensure-GitInstalled
-    Ensure-RepoHealthy -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch -AutoResetIfDirty:$AutoResetIfDirty
-    Ensure-RepoPresentAndUpdated -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch
+    Install-GitIfMissing
+    Repair-RepoState -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch -AutoResetIfDirty:$AutoResetIfDirty
+    Sync-RepoContent -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch
 
     Write-Host ""
     Write-Host "Repo update complete." -ForegroundColor Green
@@ -372,6 +372,178 @@ function Resolve-WorkerConfigPath {
     return $candidates[0]
 }
 
+function Assert-RepoReady {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoPath,
+        [string]$HintOption = "[9]"
+    )
+
+    if (-not (Test-Path $RepoPath)) {
+        throw "Prerequisite check failed: lab repo not found at $RepoPath. Run option $HintOption first."
+    }
+}
+
+function Initialize-RepoPrereqs {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoUrl,
+        [Parameter(Mandatory)][string]$RepoPath,
+        [Parameter(Mandatory)][string]$Branch,
+        [string]$HintOption = "[9]"
+    )
+
+    Install-GitIfMissing
+    Sync-RepoContent -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch
+    Assert-RepoReady -RepoPath $RepoPath -HintOption $HintOption
+}
+
+function Assert-KubeconfigReady {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoPath,
+        [switch]$RequireReachable,
+        [string]$HintOption = "[9]"
+    )
+
+    if (-not (Test-Cmd kubectl)) {
+        throw "kubectl not found. Install it from option [3]."
+    }
+
+    $kubeconfig = Resolve-KubeconfigPath -RepoPath $RepoPath
+    if (-not (Test-Path $kubeconfig)) {
+        throw "Prerequisite check failed: kubeconfig not found at $kubeconfig. Run option $HintOption first."
+    }
+
+    if ($RequireReachable) {
+        $nodesCheck = & kubectl --kubeconfig $kubeconfig get nodes -o name 2>$null
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($nodesCheck | Out-String).Trim())) {
+            throw "Prerequisite check failed: cluster is not reachable with current kubeconfig. Run option $HintOption first."
+        }
+    }
+
+    return $kubeconfig
+}
+
+function Ensure-CitaWebDemoAssets {
+        param([Parameter(Mandatory)][string]$RepoPath)
+
+        $demoDir  = Join-Path $RepoPath "labs\k8s-baremetal-lab\05-web-demo"
+        $htmlPath = Join-Path $demoDir "index.html"
+        $yamlPath = Join-Path $demoDir "cita-web.yaml"
+
+        if (-not (Test-Path $demoDir)) {
+                New-Item -ItemType Directory -Path $demoDir -Force | Out-Null
+        }
+
+        if (-not (Test-Path $htmlPath)) {
+                $today = Get-Date -Format "yyyy-MM-dd"
+                $starterHtml = @"
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>CITA 360</title>
+    </head>
+    <body>
+        <h1>CITA 360 Kubernetes Demo</h1>
+        <p>Name: YOUR NAME HERE</p>
+        <p>Section: YOUR SECTION HERE</p>
+        <p>Updated: $today</p>
+    </body>
+</html>
+"@
+                Set-Content -Path $htmlPath -Value $starterHtml -Encoding utf8
+        }
+
+        if (-not (Test-Path $yamlPath)) {
+                $citaYaml = @"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: web
+    namespace: cita-web
+spec:
+    replicas: 2
+    selector:
+        matchLabels:
+            app: web
+    template:
+        metadata:
+            labels:
+                app: web
+        spec:
+            containers:
+            - name: nginx
+                image: nginx:stable
+                ports:
+                - containerPort: 80
+                volumeMounts:
+                - name: web-content
+                    mountPath: /usr/share/nginx/html
+            volumes:
+            - name: web-content
+                configMap:
+                    name: cita-html
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: web
+    namespace: cita-web
+spec:
+    selector:
+        app: web
+    ports:
+    - port: 80
+        targetPort: 80
+    type: LoadBalancer
+"@
+                Set-Content -Path $yamlPath -Value $citaYaml -Encoding utf8
+        }
+
+        return @{
+                DemoDir  = $demoDir
+                HtmlPath = $htmlPath
+                YamlPath = $yamlPath
+        }
+}
+
+    function Remove-CitaWebDemo {
+        [CmdletBinding()]
+        param(
+            [Parameter(Mandatory)][string]$RepoPath,
+            [switch]$Force
+        )
+
+        $kubeconfig = Assert-KubeconfigReady -RepoPath $RepoPath -RequireReachable -HintOption "[9]"
+
+        $existsOut = & kubectl --kubeconfig $kubeconfig get namespace cita-web -o name 2>$null
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($existsOut | Out-String).Trim())) {
+            Write-Host "CITA web demo namespace (cita-web) does not exist. Nothing to remove." -ForegroundColor DarkYellow
+            return
+        }
+
+        if (-not $Force) {
+            Write-Host "" 
+            Write-Host "This will delete namespace 'cita-web' and all demo resources inside it." -ForegroundColor Yellow
+            $confirm = (Read-Host "Type DELETE to confirm").Trim()
+            if ($confirm -ne "DELETE") {
+                Write-Host "Cancelled. Demo reset was not performed." -ForegroundColor DarkYellow
+                return
+            }
+        }
+
+        Write-Host "Deleting namespace cita-web..." -ForegroundColor Cyan
+        & kubectl --kubeconfig $kubeconfig delete namespace cita-web --wait=true
+
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to delete namespace cita-web."
+        }
+
+        Write-Host "CITA web demo reset complete. Namespace cita-web removed." -ForegroundColor Green
+    }
+
 # =========================
 # Menu
 # =========================
@@ -404,17 +576,21 @@ function Show-DevOpsMenu {
     Write-Host "  [8]  Open repo folder in File Explorer"
     Write-Host ""
     Write-Host "  Lab Repository - Install Operations"
-    Write-Host "  [9]  Install Kubernetes Cluster (normal)"
-    Write-Host "  [10] Install / Reinstall MetalLB (VIP pool)"
-    Write-Host "  [11] Install Portainer (IP/NodePort)"
-    Write-Host "  [12] Install / Reinstall NGINX Ingress Controller"
+    Write-Host "  [9]  Install core platform (Cluster + MetalLB + Ingress)"
+    Write-Host "  [10] Repair / Reinstall MetalLB (IP pool/range)"
+    Write-Host "  [11] Install / Reinstall Portainer Admin UI (Ingress route)"
+    Write-Host "  [12] Deploy / Update CITA Web Demo (namespace + ConfigMap + LoadBalancer)"
+    Write-Host "  [13] Scale CITA Web Demo (2/4/5/custom replicas)"
+    Write-Host "  [14] Scale any deployed app (interactive selector)"
+    Write-Host "  [15] Install / Update app via Helm (interactive)"
     Write-Host ""
     Write-Host "  Lab Repository - Advanced Operations"
-    Write-Host "  [13] Install Kubernetes Cluster (interactive prompts)"
-    Write-Host "  [14] Wipe + Rebuild cluster (student reset mode)"
-    Write-Host "  [15] Nuke local generated files (kubeconfig + student-overrides)"
-    Write-Host "  [16] Repo lab-safe reset (discard local changes)"
-    Write-Host "  [17] Add new worker node to existing cluster"
+    Write-Host "  [16] Install Kubernetes Cluster (interactive prompts)"
+    Write-Host "  [17] Wipe + Rebuild cluster (student reset mode)"
+    Write-Host "  [18] Nuke local generated files (kubeconfig + student-overrides)"
+    Write-Host "  [19] Repo lab-safe reset (discard local changes)"
+    Write-Host "  [20] Add new worker node to existing cluster"
+    Write-Host "  [21] Reset CITA Web Demo only (delete namespace cita-web)"
     Write-Host ""
     Write-Host "  [0]  Back"
     Write-Host ""
@@ -434,35 +610,35 @@ do {
         # === Install / Update Tools ===
         "1" {
             Invoke-ActionSafe -SuccessText "Winget upgrade completed" -Action {
-                Require-Admin
+                Assert-Admin
                 winget upgrade --all --accept-package-agreements --accept-source-agreements
             }
         }
 
         "2" {
             Invoke-ActionSafe -SuccessText "talosctl install completed (or already installed)" -Action {
-                Require-Admin
+                Assert-Admin
                 Install-WingetPackage -Id "Sidero.talosctl"
             }
         }
 
         "3" {
             Invoke-ActionSafe -SuccessText "kubectl install completed (or already installed)" -Action {
-                Require-Admin
+                Assert-Admin
                 Install-WingetPackage -Id "Kubernetes.kubectl"
             }
         }
 
         "4" {
             Invoke-ActionSafe -SuccessText "helm install completed (or already installed)" -Action {
-                Require-Admin
+                Assert-Admin
                 Install-WingetPackage -Id "Helm.Helm"
             }
         }
 
         "5" {
             Invoke-ActionSafe -SuccessText "DevOps bundle installed" -Action {
-                Require-Admin
+                Assert-Admin
                 Install-WingetPackage -Id "Sidero.talosctl"
                 Install-WingetPackage -Id "Kubernetes.kubectl"
                 Install-WingetPackage -Id "Helm.Helm"
@@ -495,22 +671,22 @@ do {
                 Write-Host ""
                 Write-Host "=== Section 1: Nodes ===" -ForegroundColor Cyan
                 kubectl --kubeconfig $kubeconfig get nodes -o wide
-                Pause-Menu
+                Wait-Menu
 
                 Write-Host ""
                 Write-Host "=== Section 2: Pods (all namespaces) ===" -ForegroundColor Cyan
                 kubectl --kubeconfig $kubeconfig get pods -A
-                Pause-Menu
+                Wait-Menu
 
                 Write-Host ""
                 Write-Host "=== Section 3: Services (all namespaces) ===" -ForegroundColor Cyan
                 kubectl --kubeconfig $kubeconfig get svc -A
-                Pause-Menu
+                Wait-Menu
 
                 Write-Host ""
                 Write-Host "=== Section 4: Ingress (all namespaces) ===" -ForegroundColor Cyan
                 kubectl --kubeconfig $kubeconfig get ingress -A
-                Pause-Menu
+                Wait-Menu
 
                 Write-Host ""
                 Write-Host "=== Section 5: ingress-nginx controller service ===" -ForegroundColor Cyan
@@ -520,24 +696,84 @@ do {
 
         "8" {
             Invoke-ActionSafe -SuccessText "Opened repo folder" -Action {
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 Start-Process explorer.exe $script:RepoPath
             }
         }
 
         # === Lab Repository - Basic Operations ===
         "9" {
-            Invoke-ActionSafe -SuccessText "Kubernetes cluster install executed" -Action {
-                Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run Maintenance update first." }
-                Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target
+            Invoke-ActionSafe -SuccessText "Option 9 platform workflow completed" -Action {
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
+                if (-not (Test-Cmd kubectl)) { throw "kubectl not found. Install it from option [3]." }
+
+                $kubeconfig = Resolve-KubeconfigPath -RepoPath $script:RepoPath
+                $clusterExists = $false
+
+                if (Test-Path $kubeconfig) {
+                    $nodesRaw = & kubectl --kubeconfig $kubeconfig get nodes -o name 2>$null
+                    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($nodesRaw | Out-String).Trim())) {
+                        $clusterExists = $true
+                    }
+                }
+
+                Write-Host ""
+                if ($clusterExists) {
+                    Write-Host "Cluster status: Existing cluster detected." -ForegroundColor Green
+                    Write-Host "Mode: add-ons only (skip cluster rebuild/bootstrap)." -ForegroundColor Green
+                }
+                else {
+                    Write-Host "Cluster status: No reachable existing cluster detected." -ForegroundColor Yellow
+                    Write-Host "Mode: full cluster workflow (build + add-ons)." -ForegroundColor Yellow
+                }
+
+                Write-Host ""
+                Write-Host "Ingress action for this run:" -ForegroundColor Cyan
+                Write-Host "  [E] Ensure ingress (install if missing, skip if already installed)"
+                Write-Host "  [R] Reinstall ingress"
+                Write-Host "  [S] Skip ingress"
+
+                $ingressChoice = (Read-Host "Select ingress action [E/R/S] (default E)").Trim().ToUpper()
+                if ([string]::IsNullOrWhiteSpace($ingressChoice)) { $ingressChoice = "E" }
+                if ($ingressChoice -notin @("E","R","S")) {
+                    throw "Invalid ingress selection: $ingressChoice"
+                }
+
+                $bootstrapArgs = @("-InstallMetalLB")
+                if ($ingressChoice -eq "E" -or $ingressChoice -eq "R") {
+                    $bootstrapArgs += "-InstallIngress"
+                }
+                if ($ingressChoice -eq "R") {
+                    $bootstrapArgs += "-ReinstallIngress"
+                }
+                if ($clusterExists) {
+                    $bootstrapArgs = @("-AddonsOnly") + $bootstrapArgs
+                }
+
+                Write-Host ""
+                $runPathText = if ($clusterExists) { "Add-ons only" } else { "Full cluster workflow" }
+                $ingressModeText = switch ($ingressChoice) {
+                    "E" { "Ensure ingress" }
+                    "R" { "Reinstall ingress" }
+                    "S" { "Skip ingress" }
+                    default { "Unknown" }
+                }
+                Write-Host "Plan: $runPathText | Ingress: $ingressModeText" -ForegroundColor Cyan
+                Write-Host "Executing bootstrap with args: $($bootstrapArgs -join ' ')" -ForegroundColor DarkGray
+
+                Invoke-RepoTarget `
+                    -RepoPath $script:RepoPath `
+                    -TargetRelativePath $script:Target `
+                    -Arguments $bootstrapArgs
+
+                Write-Host ""
+                Write-Host "Summary: Completed option [9] using '$runPathText' with '$ingressModeText'." -ForegroundColor Green
             }
         }
 
         "10" {
             Invoke-ActionSafe -SuccessText "MetalLB installed / VIP pool applied" -Action {
-                Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
 
                 Invoke-RepoTarget `
                     -RepoPath $script:RepoPath `
@@ -547,48 +783,129 @@ do {
         }
 
         "11" {
-            Invoke-ActionSafe -SuccessText "Portainer installed" -Action {
-                Ensure-GitInstalled
-            if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
+            Invoke-ActionSafe -SuccessText "Portainer installed (Ingress route)" -Action {
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
+                $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
 
-                Invoke-RepoTarget `
-                    -RepoPath $script:RepoPath `
-                    -TargetRelativePath $script:Target `
-                    -Arguments @("-PortainerOnly","-InstallPortainer")
+                $baseDomain = (Read-Host "Enter Portainer base domain [lab.local]").Trim()
+                if ([string]::IsNullOrWhiteSpace($baseDomain)) { $baseDomain = "lab.local" }
+
+                try {
+                    Invoke-RepoTarget `
+                        -RepoPath $script:RepoPath `
+                        -TargetRelativePath $script:Target `
+                        -Arguments @("-AddonsOnly","-InstallIngress","-InstallPortainer","-PortainerDomain",$baseDomain)
+                }
+                catch {
+                    Write-Host "" 
+                    Write-Host "Portainer install failed." -ForegroundColor Red
+                    Write-Host "Most common cause: ingress not installed/healthy or cluster not ready." -ForegroundColor Yellow
+                    Write-Host "Next steps:" -ForegroundColor Yellow
+                    Write-Host "  1) Run option [9] and choose ingress = Ensure or Reinstall" -ForegroundColor Yellow
+                    Write-Host "  2) Verify ingress controller: kubectl --kubeconfig $kubeconfig -n ingress-nginx get svc ingress-nginx-controller" -ForegroundColor Yellow
+                    Write-Host "  3) Retry option [11]" -ForegroundColor Yellow
+                    throw
+                }
             }
         }
 
         "12" {
-            Invoke-ActionSafe -SuccessText "NGINX Ingress Controller installed / reinstalled" -Action {
-                Ensure-GitInstalled
-            if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
+            Invoke-ActionSafe -SuccessText "CITA web demo deployed / updated" -Action {
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
+                $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
 
-                Invoke-RepoTarget `
-                    -RepoPath $script:RepoPath `
-                    -TargetRelativePath $script:Target `
-                    -Arguments @("-AddonsOnly","-InstallNginx")
+                $assets = Ensure-CitaWebDemoAssets -RepoPath $script:RepoPath
+
+                Write-Host "Using kubeconfig: $kubeconfig" -ForegroundColor Gray
+                Write-Host "Using index.html: $($assets.HtmlPath)" -ForegroundColor Gray
+                Write-Host "Using manifest:   $($assets.YamlPath)" -ForegroundColor Gray
+                Write-Host "" 
+                Write-Host "Step 1/7 - Ensure namespace exists: cita-web" -ForegroundColor Cyan
+
+                kubectl --kubeconfig $kubeconfig create namespace cita-web --dry-run=client -o yaml | kubectl --kubeconfig $kubeconfig apply -f -
+
+                Write-Host "" 
+                Write-Host "Step 2/7 - Create or update ConfigMap from index.html (cita-html)" -ForegroundColor Cyan
+
+                kubectl --kubeconfig $kubeconfig create configmap cita-html --from-file $($assets["HtmlPath"]) -n cita-web --dry-run=client -o yaml | kubectl --kubeconfig $kubeconfig apply -f -
+
+                Write-Host "" 
+                Write-Host "Step 3/7 - Apply workload manifest (Deployment + LoadBalancer Service)" -ForegroundColor Cyan
+
+                kubectl --kubeconfig $kubeconfig apply -f $($assets.YamlPath)
+
+                Write-Host "" 
+                Write-Host "Step 4/7 - Restart deployment so pods pick up the updated HTML content" -ForegroundColor Cyan
+
+                kubectl --kubeconfig $kubeconfig rollout restart deployment/web -n cita-web
+
+                Write-Host "" 
+                Write-Host "Step 5/7 - Wait for deployment rollout to finish" -ForegroundColor Cyan
+
+                kubectl --kubeconfig $kubeconfig -n cita-web rollout status deployment/web --timeout=180s
+
+                Write-Host "" 
+                Write-Host "Step 6/7 - Show pods and service status" -ForegroundColor Cyan
+                Write-Host "" 
+                Write-Host "=== cita-web status ===" -ForegroundColor Cyan
+                kubectl --kubeconfig $kubeconfig get pods -n cita-web
+                kubectl --kubeconfig $kubeconfig get svc -n cita-web
+
+                Write-Host ""
+                Write-Host "Step 7/7 - Wait for service EXTERNAL-IP (up to 3 minutes)" -ForegroundColor Cyan
+
+                $externalIp = ""
+                $deadline = (Get-Date).AddMinutes(3)
+                while ((Get-Date) -lt $deadline) {
+                    $ip = (& kubectl --kubeconfig $kubeconfig -n cita-web get svc web -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>$null | Out-String).Trim()
+                    $hostname = ""
+                    if ([string]::IsNullOrWhiteSpace($ip)) {
+                        $hostname = (& kubectl --kubeconfig $kubeconfig -n cita-web get svc web -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>$null | Out-String).Trim()
+                    }
+
+                    if (-not [string]::IsNullOrWhiteSpace($ip)) {
+                        $externalIp = $ip
+                        break
+                    }
+                    if (-not [string]::IsNullOrWhiteSpace($hostname)) {
+                        $externalIp = $hostname
+                        break
+                    }
+                    Start-Sleep -Seconds 5
+                }
+
+                if (-not [string]::IsNullOrWhiteSpace($externalIp)) {
+                    Write-Host "EXTERNAL-IP assigned: $externalIp" -ForegroundColor Green
+                    Write-Host "Open in browser: http://$externalIp" -ForegroundColor Green
+                }
+                else {
+                    Write-Host "EXTERNAL-IP not assigned yet (timeout reached)." -ForegroundColor Yellow
+                }
+
+                Write-Host "" 
+                Write-Host "Next step: watch for an EXTERNAL-IP on service/web" -ForegroundColor Yellow
+                Write-Host "Command: kubectl --kubeconfig $kubeconfig get svc -n cita-web" -ForegroundColor Yellow
+                Write-Host "Then browse to: http://<EXTERNAL-IP>" -ForegroundColor Yellow
             }
         }
 
-        "13" {
-            Invoke-ActionSafe -SuccessText "Kubernetes cluster install executed (interactive)" -Action {
-                Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
-                Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-Interactive")
+        "16" {
+            Invoke-ActionSafe -SuccessText "Kubernetes + MetalLB + Ingress install executed (interactive, no sample app)" -Action {
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
+                Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-Interactive","-InstallMetalLB","-InstallIngress")
             }
         }
 
-        "14" {
+        "17" {
             Invoke-ActionSafe -SuccessText "Wipe + rebuild executed" -Action {
-                Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-WipeAndRebuild","-Interactive")
             }
         }
 
-        "15" {
+        "18" {
             Invoke-ActionSafe -SuccessText "Local generated files removed" -Action {
-            if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
 
                 $kube = Join-Path $script:RepoPath "kubeconfig"
                 $ovr  = Join-Path $script:RepoPath "01-talos\student-overrides"
@@ -601,18 +918,17 @@ do {
             }
         }
 
-        "16" {
+        "19" {
             Invoke-ActionSafe -SuccessText "Repo reset to origin completed" -Action {
-                Ensure-GitInstalled
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 if (-not (Test-Path (Join-Path $script:RepoPath ".git"))) { throw "Repo not found: $($script:RepoPath)" }
                 Reset-RepoToOrigin -RepoPath $script:RepoPath -Branch $script:Branch
             }
         }
 
-        "17" {
+        "20" {
             Invoke-ActionSafe -SuccessText "Worker add operation completed" -Action {
-                Ensure-GitInstalled
-                if (-not (Test-Path $script:RepoPath)) { throw "Repo not present: $($script:RepoPath). Run option [9] first." }
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 if (-not (Test-Cmd talosctl)) { throw "talosctl not found. Install it from option [2]." }
 
                 $workerIp = (Read-Host "Enter NEW worker IP address").Trim()
@@ -620,7 +936,7 @@ do {
 
                 $workerCfg = Resolve-WorkerConfigPath -RepoPath $script:RepoPath
                 if (-not (Test-Path $workerCfg)) {
-                    throw "worker.yaml not found at: $workerCfg`nRun option [9] or [13] first to generate Talos configs."
+                    throw "worker.yaml not found at: $workerCfg`nRun option [9] or [16] first to generate Talos configs."
                 }
 
                 Write-Host "Checking worker reachability: $workerIp" -ForegroundColor Gray
@@ -639,8 +955,12 @@ do {
                     Write-Host "Using talosconfig: $talosconfig" -ForegroundColor DarkGray
                 }
 
-                $kubeconfig = Resolve-KubeconfigPath -RepoPath $script:RepoPath
-                if ((Test-Path $kubeconfig) -and (Test-Cmd kubectl)) {
+                $kubeconfig = $null
+                $hasKubectl = Test-Cmd kubectl
+                if ($hasKubectl) {
+                    $kubeconfig = Resolve-KubeconfigPath -RepoPath $script:RepoPath
+                }
+                if ($hasKubectl -and $kubeconfig -and (Test-Path $kubeconfig)) {
                     Write-Host "Waiting briefly, then checking node registration..." -ForegroundColor Gray
                     Start-Sleep -Seconds 12
                     kubectl --kubeconfig $kubeconfig get nodes -o wide
@@ -651,11 +971,230 @@ do {
             }
         }
 
+        "21" {
+            Invoke-ActionSafe -SuccessText "CITA web demo reset completed" -Action {
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
+                Remove-CitaWebDemo -RepoPath $script:RepoPath
+            }
+        }
+
+        "13" {
+            Invoke-ActionSafe -SuccessText "CITA web demo scaled" -Action {
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
+                $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
+
+                Write-Host "" 
+                Write-Host "Scale CITA Web Demo (namespace: cita-web, deployment: web)" -ForegroundColor Cyan
+                Write-Host "  [1] 2 replicas"
+                Write-Host "  [2] 4 replicas"
+                Write-Host "  [3] 5 replicas"
+                Write-Host "  [4] Custom"
+
+                $scaleChoice = (Read-Host "Select replica target").Trim()
+                $replicas = 0
+
+                switch ($scaleChoice) {
+                    "1" { $replicas = 2 }
+                    "2" { $replicas = 4 }
+                    "3" { $replicas = 5 }
+                    "4" {
+                        $custom = (Read-Host "Enter custom replica count (integer >= 1)").Trim()
+                        if (-not [int]::TryParse($custom, [ref]$replicas) -or $replicas -lt 1) {
+                            throw "Invalid replica count: $custom"
+                        }
+                    }
+                    default { throw "Invalid selection: $scaleChoice" }
+                }
+
+                Write-Host "" 
+                Write-Host "Scaling deployment/web in cita-web to $replicas replicas..." -ForegroundColor Cyan
+                kubectl --kubeconfig $kubeconfig scale deployment web --replicas=$replicas -n cita-web
+
+                Write-Host "" 
+                Write-Host "Pods (wide):" -ForegroundColor Cyan
+                kubectl --kubeconfig $kubeconfig get pods -o wide -n cita-web
+            }
+        }
+
+        "14" {
+            Invoke-ActionSafe -SuccessText "Selected deployment scaled" -Action {
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
+                $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
+
+                $raw = kubectl --kubeconfig $kubeconfig get deployments -A -o json
+                if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($raw)) {
+                    throw "Failed to list deployments. Verify cluster connectivity."
+                }
+
+                $obj = $raw | ConvertFrom-Json
+                if (-not $obj.items -or $obj.items.Count -eq 0) {
+                    throw "No deployments found in the cluster."
+                }
+
+                $items = @($obj.items | Sort-Object { $_.metadata.namespace }, { $_.metadata.name })
+                Write-Host "" 
+                Write-Host "Select a deployment to scale:" -ForegroundColor Cyan
+
+                for ($i = 0; $i -lt $items.Count; $i++) {
+                    $ns = $items[$i].metadata.namespace
+                    $name = $items[$i].metadata.name
+                    $cur = $items[$i].spec.replicas
+                    Write-Host ("  [{0}] {1}/{2} (current replicas: {3})" -f ($i + 1), $ns, $name, $cur)
+                }
+
+                $pickRaw = (Read-Host "Enter selection number").Trim()
+                $pick = 0
+                if (-not [int]::TryParse($pickRaw, [ref]$pick) -or $pick -lt 1 -or $pick -gt $items.Count) {
+                    throw "Invalid selection: $pickRaw"
+                }
+
+                $selected = $items[$pick - 1]
+                $selNs = $selected.metadata.namespace
+                $selName = $selected.metadata.name
+
+                $repRaw = (Read-Host "Enter replica count (integer >= 1)").Trim()
+                $targetReplicas = 0
+                if (-not [int]::TryParse($repRaw, [ref]$targetReplicas) -or $targetReplicas -lt 1) {
+                    throw "Invalid replica count: $repRaw"
+                }
+
+                Write-Host "" 
+                Write-Host "Scaling $selNs/$selName to $targetReplicas replicas..." -ForegroundColor Cyan
+                kubectl --kubeconfig $kubeconfig scale deployment $selName --replicas=$targetReplicas -n $selNs
+
+                Write-Host "" 
+                Write-Host "Pods in namespace $selNs (wide):" -ForegroundColor Cyan
+                kubectl --kubeconfig $kubeconfig get pods -o wide -n $selNs
+            }
+        }
+
+        "15" {
+            Invoke-ActionSafe -SuccessText "Helm app install / update completed" -Action {
+                if (-not (Test-Cmd helm)) { throw "helm not found. Install it from option [4]." }
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
+
+                Write-Host "" 
+                Write-Host "Helm install examples:" -ForegroundColor Cyan
+                Write-Host "  Repo name: bitnami" -ForegroundColor Gray
+                Write-Host "  Repo URL:  https://charts.bitnami.com/bitnami" -ForegroundColor Gray
+                Write-Host "  Chart ref: bitnami/nginx" -ForegroundColor Gray
+                Write-Host "  --set:     service.type=LoadBalancer,replicaCount=2" -ForegroundColor Gray
+                Write-Host "  Repo name: prometheus-community" -ForegroundColor Gray
+                Write-Host "  Repo URL:  https://prometheus-community.github.io/helm-charts" -ForegroundColor Gray
+                Write-Host "  Chart ref: prometheus-community/prometheus" -ForegroundColor Gray
+
+                $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
+
+                $repoName = (Read-Host "Helm repo name (optional, e.g. bitnami)").Trim()
+                $repoUrl  = (Read-Host "Helm repo URL (optional, e.g. https://charts.bitnami.com/bitnami)").Trim()
+
+                if ((-not [string]::IsNullOrWhiteSpace($repoName)) -or (-not [string]::IsNullOrWhiteSpace($repoUrl))) {
+                    if ([string]::IsNullOrWhiteSpace($repoName) -or [string]::IsNullOrWhiteSpace($repoUrl)) {
+                        throw "If adding a repo, provide both repo name and repo URL."
+                    }
+                    Write-Host "" 
+                    Write-Host "Adding/updating Helm repo $repoName ..." -ForegroundColor Cyan
+                    helm repo add $repoName $repoUrl --force-update | Out-Null
+                }
+
+                Write-Host "" 
+                Write-Host "Updating Helm repo index..." -ForegroundColor Cyan
+                helm repo update | Out-Null
+
+                $chartRef = (Read-Host "Chart reference (e.g. bitnami/nginx)").Trim()
+                if ([string]::IsNullOrWhiteSpace($chartRef)) {
+                    throw "Chart reference cannot be blank."
+                }
+
+                $defaultRelease = ($chartRef -replace '[^a-zA-Z0-9-]', '-')
+                if ($defaultRelease.Length -gt 40) { $defaultRelease = $defaultRelease.Substring(0,40) }
+                $defaultRelease = $defaultRelease.Trim('-').ToLower()
+                if ([string]::IsNullOrWhiteSpace($defaultRelease)) { $defaultRelease = "app" }
+
+                $releaseName = (Read-Host "Release name [$defaultRelease]").Trim()
+                if ([string]::IsNullOrWhiteSpace($releaseName)) { $releaseName = $defaultRelease }
+
+                $namespace = (Read-Host "Namespace [default]").Trim()
+                if ([string]::IsNullOrWhiteSpace($namespace)) { $namespace = "default" }
+
+                $exposeLb = (Read-Host "Expose service through MetalLB? (y/N)").Trim().ToLower()
+                $enableIngress = (Read-Host "Enable Ingress (ingress-nginx)? (y/N)").Trim().ToLower()
+
+                $valuesFile = (Read-Host "Values file path (optional)").Trim()
+                $extraSet   = (Read-Host "Optional --set values (comma-separated, e.g. service.type=LoadBalancer,replicaCount=2)").Trim()
+
+                $autoSetParts = New-Object System.Collections.Generic.List[string]
+                if ($exposeLb -eq "y" -or $exposeLb -eq "yes") {
+                    $autoSetParts.Add("service.type=LoadBalancer")
+                }
+                if ($enableIngress -eq "y" -or $enableIngress -eq "yes") {
+                    $autoSetParts.Add("ingress.enabled=true")
+                }
+
+                if ($autoSetParts.Count -gt 0) {
+                    $autoSet = ($autoSetParts -join ",")
+                    if ([string]::IsNullOrWhiteSpace($extraSet)) {
+                        $extraSet = $autoSet
+                    }
+                    else {
+                        $extraSet = "$extraSet,$autoSet"
+                    }
+
+                    Write-Host "" 
+                    Write-Host "Auto exposure values added: $autoSet" -ForegroundColor DarkGray
+                }
+
+                $helmArgs = @(
+                    "upgrade", "--install", $releaseName, $chartRef,
+                    "--namespace", $namespace, "--create-namespace"
+                )
+
+                if (-not [string]::IsNullOrWhiteSpace($valuesFile)) {
+                    if (-not (Test-Path $valuesFile)) {
+                        throw "Values file not found: $valuesFile"
+                    }
+                    $helmArgs += @("-f", $valuesFile)
+                }
+
+                if (-not [string]::IsNullOrWhiteSpace($extraSet)) {
+                    $helmArgs += @("--set", $extraSet)
+                }
+
+                Write-Host "" 
+                Write-Host "Installing/updating Helm release..." -ForegroundColor Cyan
+                Write-Host "helm $($helmArgs -join ' ')" -ForegroundColor DarkGray
+
+                & helm @helmArgs
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Helm install/update failed."
+                }
+
+                Write-Host "" 
+                Write-Host "Release status:" -ForegroundColor Cyan
+                helm status $releaseName -n $namespace
+
+                Write-Host "" 
+                Write-Host "Namespace resources:" -ForegroundColor Cyan
+                kubectl --kubeconfig $kubeconfig get pods -n $namespace
+                kubectl --kubeconfig $kubeconfig get svc -n $namespace
+
+                Write-Host "" 
+                Write-Host "Ingress resources (namespace):" -ForegroundColor Cyan
+                kubectl --kubeconfig $kubeconfig get ingress -n $namespace
+
+                Write-Host "" 
+                Write-Host "Exposure check tips:" -ForegroundColor Yellow
+                Write-Host "- For LoadBalancer services, wait for EXTERNAL-IP: kubectl --kubeconfig $kubeconfig get svc -n $namespace" -ForegroundColor Yellow
+                Write-Host "- For ingress, confirm host/path and resolve DNS/hosts to ingress IP." -ForegroundColor Yellow
+                Write-Host "- Some charts use chart-specific values; if service/ingress is not exposed, re-run option [15] with the chart's documented values." -ForegroundColor Yellow
+            }
+        }
+
         "0" { $back = $true }
 
         default {
             Set-Status -Text "Invalid selection" -Color "Red"
-            Pause-Menu
+            Wait-Menu
         }
     }
 

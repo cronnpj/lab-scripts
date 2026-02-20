@@ -12,6 +12,7 @@ Defaults:
   W1  = 192.168.1.5
   W2  = 192.168.1.6
   VIP = 192.168.1.200
+  Pool Range = 192.168.1.200-192.168.1.220
 
 Usage:
   .\bootstrap.ps1
@@ -27,6 +28,7 @@ Key flags:
   -AddonsOnly       Only do add-ons (assumes kubeconfig exists and cluster is reachable)
   -InstallMetalLB   Install/repair MetalLB + VIP pool
   -InstallIngress   Install ingress-nginx (Helm)
+  -ReinstallIngress Force uninstall/reinstall ingress-nginx when combined with -InstallIngress
   -InstallNginx     Alias for -InstallIngress (menu compatibility)
   -InstallApp       Deploy sample app + ingress
   -InstallPortainer Install Portainer CE (Helm + Ingress)
@@ -45,6 +47,7 @@ param(
   [string]  $ControlPlaneIP = "192.168.1.3",
   [string[]]$WorkerIPs      = @("192.168.1.5","192.168.1.6"),
   [string]  $VipIP          = "192.168.1.200",
+  [string]  $VipPoolRange   = "192.168.1.200-192.168.1.220",
 
   [int]$TimeoutTalosApiSeconds = 420,
   [int]$TimeoutK8sApiSeconds   = 600,
@@ -65,6 +68,7 @@ param(
   [switch]$InstallMetalLB,
   [Alias('InstallNginx')]
   [switch]$InstallIngress,
+  [switch]$ReinstallIngress,
   [switch]$InstallApp,
   [Alias('InstallDashboard')]
   [switch]$InstallPortainer,
@@ -426,7 +430,7 @@ while ($true) {
 
 
   # Apply VIP pool + L2Advertisement
-  Write-Host "- Applying IPAddressPool/L2Advertisement (VIP: $VipIP)..." -ForegroundColor Gray
+  Write-Host "- Applying IPAddressPool/L2Advertisement (Range: $VipPoolRange)..." -ForegroundColor Gray
 
   $poolYaml = @"
 apiVersion: metallb.io/v1beta1
@@ -436,7 +440,7 @@ metadata:
   namespace: metallb-system
 spec:
   addresses:
-    - $VipIP/32
+    - $VipPoolRange
 ---
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement
@@ -465,8 +469,27 @@ function Install-IngressNginx {
 
   $env:KUBECONFIG = $Kubeconfig
 
+  $releaseExists = $false
+  $statusOut = & helm status ingress-nginx -n ingress-nginx 2>$null
+  if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($statusOut | Out-String))) {
+    $releaseExists = $true
+  }
+
+  if ($releaseExists -and -not $ReinstallIngress) {
+    Write-Host "- ingress-nginx already installed. Skipping reinstall (idempotent mode)." -ForegroundColor DarkYellow
+    Write-Host "- Use -ReinstallIngress to force a reinstall." -ForegroundColor DarkGray
+    Kube -- rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=240s | Out-Null
+    return
+  }
+
   helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx | Out-Null
   helm repo update | Out-Null
+
+  if ($releaseExists -and $ReinstallIngress) {
+    Write-Host "- Reinstall requested. Uninstalling existing ingress-nginx release first..." -ForegroundColor Yellow
+    & helm uninstall ingress-nginx -n ingress-nginx 2>$null | Out-Null
+    Start-Sleep -Seconds 3
+  }
 
   helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx `
     --namespace ingress-nginx --create-namespace `
@@ -761,6 +784,11 @@ Write-Host "ClusterName:    $ClusterName"
 Write-Host "ControlPlaneIP: $ControlPlaneIP"
 Write-Host "Workers:        $($WorkerIPs -join ', ')"
 Write-Host "VIP (MetalLB):  $VipIP"
+Write-Host "Pool Range:     $VipPoolRange"
+if ($InstallIngress) {
+  $ingMode = if ($ReinstallIngress) { "reinstall" } else { "ensure (skip if already installed)" }
+  Write-Host "Ingress mode:   $ingMode"
+}
 Write-Host ""
 
 $ResolvedPortainerHost = $null
