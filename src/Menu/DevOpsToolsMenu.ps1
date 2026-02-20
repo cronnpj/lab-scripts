@@ -173,7 +173,7 @@ function Repair-RepoState {
 
     if (Test-RepoDirty -RepoPath $RepoPath) {
         if ($AutoResetIfDirty) { Reset-RepoToOrigin -RepoPath $RepoPath -Branch $Branch }
-        else { throw "Repo has local changes. Run option [19] to reset, or stash/commit your changes." }
+        else { throw "Repo has local changes. Run option [18] to reset, or stash/commit your changes." }
     }
 }
 
@@ -606,12 +606,11 @@ function Show-DevOpsMenu {
     Write-Host "  [15] Install / Update app via Helm (interactive)"
     Write-Host ""
     Write-Host "  Lab Repository - Advanced Operations"
-    Write-Host "  [16] Install Kubernetes Cluster (interactive prompts)"
-    Write-Host "  [17] Wipe + Rebuild cluster (student reset mode)"
-    Write-Host "  [18] Nuke local generated files (kubeconfig + student-overrides)"
-    Write-Host "  [19] Repo lab-safe reset (discard local changes)"
-    Write-Host "  [20] Add new worker node to existing cluster"
-    Write-Host "  [21] Reset CITA Web Demo only (delete namespace cita-web)"
+    Write-Host "  [16] Wipe + Rebuild cluster (student reset mode)"
+    Write-Host "  [17] Nuke local generated files (kubeconfig + student-overrides)"
+    Write-Host "  [18] Repo lab-safe reset (discard local changes)"
+    Write-Host "  [19] Add new worker node to existing cluster"
+    Write-Host "  [20] Reset CITA Web Demo only (delete namespace cita-web)"
     Write-Host ""
     Write-Host "  [0]  Back"
     Write-Host ""
@@ -723,6 +722,29 @@ do {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -AutoResetIfDirty:$true
                 if (-not (Test-Cmd kubectl)) { throw "kubectl not found. Install it from option [3]." }
 
+                $defaultControlPlaneIp = "192.168.1.3"
+                $defaultWorkerIps = @("192.168.1.5","192.168.1.6")
+                $defaultWorkersText = ($defaultWorkerIps -join ",")
+
+                Write-Host ""
+                Write-Host "Cluster node IP configuration:" -ForegroundColor Cyan
+
+                $controlPlaneIp = (Read-Host "Control-plane IP [$defaultControlPlaneIp]").Trim()
+                if ([string]::IsNullOrWhiteSpace($controlPlaneIp)) { $controlPlaneIp = $defaultControlPlaneIp }
+
+                $workersInput = (Read-Host "Worker IPs (comma-separated) [$defaultWorkersText]").Trim()
+                $workerIps = @()
+                if ([string]::IsNullOrWhiteSpace($workersInput)) {
+                    $workerIps = @($defaultWorkerIps)
+                }
+                else {
+                    $workerIps = @($workersInput -split "\\s*,\\s*" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                }
+
+                if ($workerIps.Count -lt 1) {
+                    throw "At least one worker IP is required."
+                }
+
                 $kubeconfig = Resolve-KubeconfigPath -RepoPath $script:RepoPath
                 $clusterExists = $false
 
@@ -774,7 +796,7 @@ do {
                     throw "Invalid ingress selection: $ingressChoice"
                 }
 
-                $bootstrapArgs = @("-InstallMetalLB")
+                $bootstrapArgs = @("-ControlPlaneIP", $controlPlaneIp, "-WorkerIPs") + $workerIps + @("-InstallMetalLB")
                 if ($ingressChoice -eq "E" -or $ingressChoice -eq "R") {
                     $bootstrapArgs += "-InstallIngress"
                 }
@@ -1137,20 +1159,13 @@ do {
         }
 
         "16" {
-            Invoke-ActionSafe -SuccessText "Kubernetes + MetalLB + Ingress install executed (interactive, no sample app)" -Action {
-                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -AutoResetIfDirty:$true
-                Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-Interactive","-InstallMetalLB","-InstallIngress")
-            }
-        }
-
-        "17" {
             Invoke-ActionSafe -SuccessText "Wipe + rebuild executed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -AutoResetIfDirty:$true
                 Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-WipeAndRebuild","-Interactive")
             }
         }
 
-        "18" {
+        "17" {
             Invoke-ActionSafe -SuccessText "Local generated files removed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -AutoResetIfDirty:$true
 
@@ -1165,7 +1180,7 @@ do {
             }
         }
 
-        "19" {
+        "18" {
             Invoke-ActionSafe -SuccessText "Repo reset to origin completed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -AutoResetIfDirty:$true
                 if (-not (Test-Path (Join-Path $script:RepoPath ".git"))) { throw "Repo not found: $($script:RepoPath)" }
@@ -1173,7 +1188,7 @@ do {
             }
         }
 
-        "20" {
+        "19" {
             Invoke-ActionSafe -SuccessText "Worker add operation completed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 if (-not (Test-Cmd talosctl)) { throw "talosctl not found. Install it from option [2]." }
@@ -1183,7 +1198,7 @@ do {
 
                 $workerCfg = Resolve-WorkerConfigPath -RepoPath $script:RepoPath
                 if (-not (Test-Path $workerCfg)) {
-                    throw "worker.yaml not found at: $workerCfg`nRun option [9] or [16] first to generate Talos configs."
+                    throw "worker.yaml not found at: $workerCfg`nRun option [9] first to generate Talos configs."
                 }
 
                 Write-Host "Checking worker reachability: $workerIp" -ForegroundColor Gray
@@ -1218,7 +1233,7 @@ do {
             }
         }
 
-        "21" {
+        "20" {
             Invoke-ActionSafe -SuccessText "CITA web demo reset completed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 Remove-CitaWebDemo -RepoPath $script:RepoPath

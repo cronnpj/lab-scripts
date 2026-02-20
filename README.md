@@ -23,6 +23,8 @@ This repository contains a collection of PowerShell modules and scripts used to 
 - Improved Git sync reliability with explicit fetch/checkout/pull exit-code validation and clearer remediation messages.
 - Tightened readiness checks to require a valid `.git` repository and reachable kubeconfig where needed.
 - Polished menu UX by fixing option ordering, reducing redundant pauses, and aligning web demo apply behavior.
+- Updated DevOps option [9] to prompt for control-plane and worker IPs while preserving smart full-build vs add-ons-only behavior.
+- Removed DevOps option [16] and renumbered Advanced Operations options to keep numbering contiguous.
 
 ## Prerequisites
 
@@ -60,6 +62,21 @@ Or run a task directly, for example to install roles:
 ```powershell
 .\src\Tasks\Install-Roles.ps1
 ```
+
+## DevOps Menu Map (Options 9-20)
+
+- [9] Install core platform (interactive CP/worker IP prompts + adaptive full-build/add-ons path)
+- [10] Repair / Reinstall MetalLB (IP pool/range)
+- [11] Install / Reinstall Portainer Admin UI (Ingress route)
+- [12] Deploy / Update CITA Web Demo
+- [13] Scale CITA Web Demo
+- [14] Scale any deployed app (interactive selector)
+- [15] Install / Update app via Helm (interactive)
+- [16] Wipe + Rebuild cluster (student reset mode)
+- [17] Nuke local generated files (kubeconfig + student-overrides)
+- [18] Repo lab-safe reset (discard local changes)
+- [19] Add new worker node to existing cluster
+- [20] Reset CITA Web Demo only (delete namespace cita-web)
 
 ## Contributing
 
