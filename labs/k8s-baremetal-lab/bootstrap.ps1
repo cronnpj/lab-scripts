@@ -224,7 +224,18 @@ function Talos-Apply([string]$NodeIP,[string]$FilePath) {
       Fail-WithWipeInstructions $txt
     }
     if ($txt -match "tls: certificate required") {
-      throw "apply-config got 'tls: certificate required' on ${NodeIP}. Node may not be in maintenance API state. Re-check Talos stage + IP."
+      throw @"
+apply-config got 'tls: certificate required' on ${NodeIP}.
+Node is not in Talos maintenance API state for insecure apply.
+
+Recovery steps:
+1) Power off Talos VMs.
+2) Wipe/delete Talos VM disks (do not keep existing Talos state).
+3) Boot fresh Talos nodes and verify control-plane IP is reachable on port 50000.
+4) Re-run bootstrap (option [9]).
+
+If you intentionally kept node state, use a secure talosconfig workflow instead of insecure apply.
+"@
     }
     throw "apply-config failed for ${NodeIP}:`n$txt"
   }
@@ -236,6 +247,16 @@ function Talos-Bootstrap {
 
   if ($LASTEXITCODE -ne 0) {
     $txt = ($out | Out-String)
+
+    if ($txt -match "not yet valid") {
+      Write-Host "Bootstrap hit certificate not-yet-valid window; waiting 15s and retrying once..." -ForegroundColor Yellow
+      Start-Sleep -Seconds 15
+      $outRetry = & talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP 2>&1
+      if ($LASTEXITCODE -eq 0) {
+        return
+      }
+      $txt = ($outRetry | Out-String)
+    }
 
     if ($txt -match "x509:" -or $txt -match "unknown authority" -or $txt -match "failed to verify certificate" -or $txt -match "expired certificate") {
       Fail-WithWipeInstructions $txt
@@ -263,6 +284,17 @@ function Talos-Kubeconfig {
 
   if ($LASTEXITCODE -ne 0) {
     $txt = ($out | Out-String)
+
+    if ($txt -match "not yet valid") {
+      Write-Host "kubeconfig hit certificate not-yet-valid window; waiting 15s and retrying once..." -ForegroundColor Yellow
+      Start-Sleep -Seconds 15
+      $outRetry = & talosctl kubeconfig $Kubeconfig --nodes $ControlPlaneIP --endpoints $ControlPlaneIP --force 2>&1
+      if ($LASTEXITCODE -eq 0) {
+        return
+      }
+      $txt = ($outRetry | Out-String)
+    }
+
     if ($txt -match "x509:" -or $txt -match "unknown authority" -or $txt -match "failed to verify certificate" -or $txt -match "expired certificate") {
       Fail-WithWipeInstructions $txt
     }
