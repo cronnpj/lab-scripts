@@ -16,6 +16,14 @@ PowerShell scripts and helpers for provisioning and managing lab environments.
 
 This repository contains a collection of PowerShell modules and scripts used to set up, configure, and maintain lab servers and clients. Typical tasks include installing roles, joining machines to a domain, renaming computers, configuring static IPs, and taking system snapshots.
 
+## Recent Updates (v2026.02.20)
+
+- Hardened DevOps repo prep flow in [src/Menu/DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1) with pre/post repair checks and safer sync behavior.
+- Switched repo reset controls to explicit boolean parameters (`AutoResetIfDirty`) with conservative defaults.
+- Improved Git sync reliability with explicit fetch/checkout/pull exit-code validation and clearer remediation messages.
+- Tightened readiness checks to require a valid `.git` repository and reachable kubeconfig where needed.
+- Polished menu UX by fixing option ordering, reducing redundant pauses, and aligning web demo apply behavior.
+
 ## Prerequisites
 
 - Windows PowerShell (tested on Windows PowerShell / PowerShell Core)
@@ -25,6 +33,7 @@ This repository contains a collection of PowerShell modules and scripts used to 
 ## Repository Layout
 
 - File: [src/VERSION.txt](src/VERSION.txt)
+- File: [CHANGELOG.md](CHANGELOG.md)
 - File: [src/config/labtools.json](src/config/labtools.json)
 - Files: [src/Lib/Logging.psm1](src/Lib/Logging.psm1), [src/Lib/Validation.psm1](src/Lib/Validation.psm1)
 - Menus: [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1), [src/Menu/DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1), [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1), [src/Menu/ServerToolsMenu.ps1](src/Menu/ServerToolsMenu.ps1), [src/Menu/TroubleshootingMenu.ps1](src/Menu/TroubleshootingMenu.ps1)
