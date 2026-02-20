@@ -19,6 +19,7 @@ Usage:
   .\bootstrap.ps1 -Interactive
   .\bootstrap.ps1 -AddonsOnly -InstallMetalLB
   .\bootstrap.ps1 -PortainerOnly -InstallPortainer
+  .\bootstrap.ps1 -PortainerOnly -InstallPortainer -PortainerLoadBalancer
   .\bootstrap.ps1 -PortainerOnly -InstallPortainer -PortainerDomain doom.local
   .\bootstrap.ps1 -WipeAndRebuild -Interactive
 
@@ -32,6 +33,7 @@ Key flags:
   -InstallNginx     Alias for -InstallIngress (menu compatibility)
   -InstallApp       Deploy sample app + ingress
   -InstallPortainer Install Portainer CE (Helm + Ingress)
+  -PortainerLoadBalancer Publish Portainer as LoadBalancer service (VIP/IP mode)
   -PortainerDomain  Base domain for Portainer host (e.g., doom.local -> portainer.doom.local)
   -PortainerOnly    Only Portainer install (assumes ingress + VIP already working)
 
@@ -72,6 +74,7 @@ param(
   [switch]$InstallApp,
   [Alias('InstallDashboard')]
   [switch]$InstallPortainer,
+  [switch]$PortainerLoadBalancer,
   [Alias('DashboardDomain')]
   [string]$PortainerDomain = ""
 )
@@ -599,7 +602,10 @@ function Validate-VIPHttp {
 }
 
 function Install-Portainer {
-  param([string]$PortainerHost = "")
+  param(
+    [string]$PortainerHost = "",
+    [switch]$UseLoadBalancer
+  )
 
   Show-Header "Installing Portainer CE (Helm + Ingress)" "Yellow"
 
@@ -610,7 +616,11 @@ function Install-Portainer {
   helm repo update | Out-Null
 
   $useIngressHost = -not [string]::IsNullOrWhiteSpace($PortainerHost)
-  $serviceType = if ($useIngressHost) { "ClusterIP" } else { "NodePort" }
+  if ($useIngressHost -and $UseLoadBalancer) {
+    throw "Portainer mode conflict: specify either ingress host mode or LoadBalancer mode, not both."
+  }
+
+  $serviceType = if ($useIngressHost) { "ClusterIP" } elseif ($UseLoadBalancer) { "LoadBalancer" } else { "NodePort" }
 
   Write-Host "- Installing/upgrading Portainer release (lab mode: persistence disabled, service: $serviceType)..." -ForegroundColor Gray
   $prevEap = $ErrorActionPreference
@@ -726,6 +736,43 @@ function Install-Portainer {
   }
 
   $backendProtocol = if ($portainerSvcPort -eq 9443) { "HTTPS" } else { "HTTP" }
+
+  if ($UseLoadBalancer) {
+    $scheme = if ($portainerSvcPort -eq 9443) { "https" } else { "http" }
+    $externalAddress = ""
+    $deadline = (Get-Date).AddMinutes(3)
+
+    while ((Get-Date) -lt $deadline) {
+      $ip = (& kubectl --kubeconfig $Kubeconfig -n portainer get svc portainer -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>$null | Out-String).Trim()
+      $hostname = ""
+      if ([string]::IsNullOrWhiteSpace($ip)) {
+        $hostname = (& kubectl --kubeconfig $Kubeconfig -n portainer get svc portainer -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>$null | Out-String).Trim()
+      }
+
+      if (-not [string]::IsNullOrWhiteSpace($ip)) {
+        $externalAddress = $ip
+        break
+      }
+      if (-not [string]::IsNullOrWhiteSpace($hostname)) {
+        $externalAddress = $hostname
+        break
+      }
+
+      Start-Sleep -Seconds 5
+    }
+
+    Write-Host ""
+    Write-Host "Portainer install complete (LoadBalancer IP mode)" -ForegroundColor Green
+    if (-not [string]::IsNullOrWhiteSpace($externalAddress)) {
+      Write-Host "Portainer LoadBalancer: $externalAddress" -ForegroundColor Cyan
+      Write-Host "Primary URL: ${scheme}://${externalAddress}:$portainerSvcPort" -ForegroundColor Cyan
+    }
+    else {
+      Write-Host "Portainer external IP not assigned yet (timeout reached)." -ForegroundColor Yellow
+      Write-Host "Check: kubectl --kubeconfig $Kubeconfig -n portainer get svc portainer" -ForegroundColor Yellow
+    }
+    return
+  }
 
   if (-not $useIngressHost) {
     $portObj = $null
@@ -846,8 +893,15 @@ Write-Host ""
 
 $ResolvedPortainerHost = $null
 if ($PortainerOnly -or $InstallPortainer) {
+  if ($PortainerLoadBalancer -and -not [string]::IsNullOrWhiteSpace($PortainerDomain)) {
+    throw "Portainer mode conflict: PortainerLoadBalancer cannot be used with PortainerDomain."
+  }
+
   $ResolvedPortainerHost = Resolve-PortainerHost -VipIP $VipIP -ConfiguredDomain $PortainerDomain
-  if ([string]::IsNullOrWhiteSpace($ResolvedPortainerHost)) {
+  if ($PortainerLoadBalancer) {
+    Write-Host "Portainer mode: IP (LoadBalancer VIP)" -ForegroundColor DarkGray
+  }
+  elseif ([string]::IsNullOrWhiteSpace($ResolvedPortainerHost)) {
     Write-Host "Portainer mode: IP (NodePort)" -ForegroundColor DarkGray
   } else {
     Write-Host "Portainer host: $ResolvedPortainerHost" -ForegroundColor DarkGray
@@ -859,7 +913,7 @@ if ($PortainerOnly) {
   Show-Header "Portainer-only mode" "DarkYellow"
   if (-not (Test-Path $Kubeconfig)) { throw "kubeconfig not found at: $Kubeconfig (run bootstrap first)" }
   Ensure-CoreDNSReady
-  Install-Portainer -PortainerHost $ResolvedPortainerHost
+  Install-Portainer -PortainerHost $ResolvedPortainerHost -UseLoadBalancer:$PortainerLoadBalancer
   Write-Host ""
   Write-Host "Done." -ForegroundColor Green
   return
@@ -875,7 +929,7 @@ if ($AddonsOnly) {
   if ($InstallMetalLB) { Install-MetalLB }
   if ($InstallIngress) { Install-IngressNginx }
   if ($InstallApp)     { Install-AppAndIngress }
-  if ($InstallPortainer) { Install-Portainer -PortainerHost $ResolvedPortainerHost }
+  if ($InstallPortainer) { Install-Portainer -PortainerHost $ResolvedPortainerHost -UseLoadBalancer:$PortainerLoadBalancer }
 
   Validate-VIPHttp
 
@@ -945,7 +999,7 @@ if (-not $SkipAddons) {
   if ($InstallMetalLB) { Install-MetalLB }
   if ($InstallIngress) { Install-IngressNginx }
   if ($InstallApp)     { Install-AppAndIngress }
-  if ($InstallPortainer) { Install-Portainer -PortainerHost $ResolvedPortainerHost }
+  if ($InstallPortainer) { Install-Portainer -PortainerHost $ResolvedPortainerHost -UseLoadBalancer:$PortainerLoadBalancer }
 } else {
   Show-Header "Skipping add-ons (SkipAddons set)" "DarkYellow"
 }

@@ -599,7 +599,7 @@ function Show-DevOpsMenu {
     Write-Host "  Lab Repository - Install Operations"
     Write-Host "  [9]  Install core platform (Cluster + MetalLB + Ingress)"
     Write-Host "  [10] Repair / Reinstall MetalLB (IP pool/range)"
-    Write-Host "  [11] Install / Reinstall Portainer Admin UI (Ingress or IP mode)"
+    Write-Host "  [11] Install / Reinstall Portainer Admin UI (Ingress, NodePort IP, or LoadBalancer IP)"
     Write-Host "  [12] Deploy / Update CITA Web Demo (namespace + ConfigMap + LoadBalancer)"
     Write-Host "  [13] Scale CITA Web Demo (2/4/5/custom replicas)"
     Write-Host "  [14] Scale any deployed app (interactive selector)"
@@ -848,10 +848,11 @@ do {
                 Write-Host "Portainer publish mode:" -ForegroundColor Cyan
                 Write-Host "  [I] Ingress host mode (domain/hosts entry)"
                 Write-Host "  [P] IP-only mode (NodePort, no DNS/hosts required)"
+                Write-Host "  [L] IP-only mode (LoadBalancer VIP via MetalLB)"
 
-                $portainerMode = (Read-Host "Select mode [I/P] (default I)").Trim().ToUpper()
+                $portainerMode = (Read-Host "Select mode [I/P/L] (default I)").Trim().ToUpper()
                 if ([string]::IsNullOrWhiteSpace($portainerMode)) { $portainerMode = "I" }
-                if ($portainerMode -notin @("I","P")) {
+                if ($portainerMode -notin @("I","P","L")) {
                     throw "Invalid Portainer mode selection: $portainerMode"
                 }
 
@@ -860,6 +861,9 @@ do {
                     $baseDomain = (Read-Host "Enter Portainer base domain [lab.local]").Trim()
                     if ([string]::IsNullOrWhiteSpace($baseDomain)) { $baseDomain = "lab.local" }
                     $invokeArgs += @("-InstallIngress","-PortainerDomain",$baseDomain)
+                }
+                elseif ($portainerMode -eq "L") {
+                    $invokeArgs += "-PortainerLoadBalancer"
                 }
 
                 try {
@@ -874,8 +878,11 @@ do {
                     if ($portainerMode -eq "I") {
                         Write-Host "Most common cause: ingress not installed/healthy or cluster not ready." -ForegroundColor Yellow
                     }
-                    else {
+                    elseif ($portainerMode -eq "P") {
                         Write-Host "Most common cause: cluster/service not ready yet." -ForegroundColor Yellow
+                    }
+                    else {
+                        Write-Host "Most common cause: MetalLB VIP pending or service not ready yet." -ForegroundColor Yellow
                     }
                     Write-Host "Next steps:" -ForegroundColor Yellow
                     if ($portainerMode -eq "I") {
@@ -883,9 +890,13 @@ do {
                         Write-Host "  2) Verify ingress controller: kubectl --kubeconfig $kubeconfig -n ingress-nginx get svc ingress-nginx-controller" -ForegroundColor Yellow
                         Write-Host "  3) Retry option [11]" -ForegroundColor Yellow
                     }
-                    else {
+                    elseif ($portainerMode -eq "P") {
                         Write-Host "  1) Verify Portainer pods/services: kubectl --kubeconfig $kubeconfig -n portainer get pods,svc" -ForegroundColor Yellow
                         Write-Host "  2) Retry option [11] in IP mode" -ForegroundColor Yellow
+                    }
+                    else {
+                        Write-Host "  1) Verify MetalLB + Portainer service: kubectl --kubeconfig $kubeconfig -n metallb-system get pods; kubectl --kubeconfig $kubeconfig -n portainer get svc portainer" -ForegroundColor Yellow
+                        Write-Host "  2) Retry option [11] in LoadBalancer mode" -ForegroundColor Yellow
                     }
                     throw
                 }

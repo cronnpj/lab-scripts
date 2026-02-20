@@ -25,6 +25,7 @@ This repository contains a collection of PowerShell modules and scripts used to 
 - Polished menu UX by fixing option ordering, reducing redundant pauses, and aligning web demo apply behavior.
 - Updated DevOps option [9] to prompt for control-plane and worker IPs while preserving smart full-build vs add-ons-only behavior.
 - Removed DevOps option [16] and renumbered Advanced Operations options to keep numbering contiguous.
+- Added DevOps option [11] mode selection for Portainer publish paths: Ingress host, NodePort IP, or LoadBalancer VIP.
 
 ## Prerequisites
 
@@ -67,7 +68,7 @@ Or run a task directly, for example to install roles:
 
 - [9] Install core platform (interactive CP/worker IP prompts + adaptive full-build/add-ons path)
 - [10] Repair / Reinstall MetalLB (IP pool/range)
-- [11] Install / Reinstall Portainer Admin UI (Ingress route)
+- [11] Install / Reinstall Portainer Admin UI (Ingress host, NodePort IP, or LoadBalancer VIP)
 - [12] Deploy / Update CITA Web Demo
 - [13] Scale CITA Web Demo
 - [14] Scale any deployed app (interactive selector)
@@ -77,6 +78,23 @@ Or run a task directly, for example to install roles:
 - [18] Repo lab-safe reset (discard local changes)
 - [19] Add new worker node to existing cluster
 - [20] Reset CITA Web Demo only (delete namespace cita-web)
+
+### Option 11 Quick Tests (Portainer)
+
+- Ingress host mode (`I`)
+	- Use when DNS or hosts mapping is available.
+	- Expected URL: `http://portainer.<your-domain>`
+	- Verify objects: `kubectl --kubeconfig C:\CITA\LabTools\labs\k8s-baremetal-lab\kubeconfig -n portainer get pods,svc,ingress`
+
+- NodePort IP mode (`P`)
+	- Use when you want no DNS/hosts dependency.
+	- Find NodePort: `kubectl --kubeconfig C:\CITA\LabTools\labs\k8s-baremetal-lab\kubeconfig -n portainer get svc portainer`
+	- Expected URL format: `https://<control-plane-or-worker-ip>:<nodeport>`
+
+- LoadBalancer VIP mode (`L`)
+	- Uses MetalLB to assign a VIP to Portainer service.
+	- Get assigned VIP: `kubectl --kubeconfig C:\CITA\LabTools\labs\k8s-baremetal-lab\kubeconfig -n portainer get svc portainer -o wide`
+	- Expected URL format: `https://<portainer-vip>:9443`
 
 ## Contributing
 

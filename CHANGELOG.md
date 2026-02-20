@@ -12,6 +12,7 @@ All notable changes to this repository are documented in this file.
 - Improved menu UX with corrected option ordering, reduced redundant pauses, and clearer error/remediation messaging.
 - Updated option [9] to prompt for control-plane and worker IPs while keeping adaptive full-build/add-ons workflow.
 - Removed option [16] and renumbered Advanced Operations menu entries to maintain contiguous numbering.
+- Expanded option [11] Portainer publishing to support Ingress host mode, NodePort IP mode, and LoadBalancer VIP mode.
 
 ### Documentation and Versioning
 - Added a README recent-updates section for v2026.02.20.
