@@ -52,6 +52,9 @@ function Clone-Or-Pull([string]$Path) {
     if (-not (Test-Path $Path)) {
         Write-Host "Cloning repo to $Path ..."
         git clone $RepoUrl $Path | Out-Host
+        if ($LASTEXITCODE -ne 0) {
+            throw "Git clone failed for '$Path'."
+        }
         return
     }
 
@@ -64,12 +67,31 @@ function Clone-Or-Pull([string]$Path) {
 
         Write-Host "Cloning repo to $Path ..."
         git clone $RepoUrl $Path | Out-Host
+        if ($LASTEXITCODE -ne 0) {
+            throw "Git clone failed for '$Path'."
+        }
         return
+    }
+
+    $localChanges = git -C $Path status --porcelain 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to inspect git status in '$Path'."
+    }
+    if ($localChanges -and $localChanges.Count -gt 0) {
+        Write-Host "Local changes detected in $Path:" -ForegroundColor Yellow
+        $localChanges | Out-Host
+        throw "Update blocked: local uncommitted changes exist. Commit, stash, or discard changes, then run update again."
     }
 
     Write-Host "Pulling latest changes in $Path ..."
     git -C $Path fetch --all | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        throw "Git fetch failed in '$Path'."
+    }
     git -C $Path pull | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        throw "Git pull failed in '$Path'."
+    }
 }
 
 function Deploy-FilesFromRepo([string]$RepoRoot) {
