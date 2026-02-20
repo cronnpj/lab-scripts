@@ -78,7 +78,7 @@ function Clone-Or-Pull([string]$Path) {
         throw "Failed to inspect git status in '$Path'."
     }
     if ($localChanges -and $localChanges.Count -gt 0) {
-        Write-Host "Local changes detected in $Path:" -ForegroundColor Yellow
+        Write-Host "Local changes detected in ${Path}:" -ForegroundColor Yellow
         $localChanges | Out-Host
         throw "Update blocked: local uncommitted changes exist. Commit, stash, or discard changes, then run update again."
     }
