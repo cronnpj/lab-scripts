@@ -599,7 +599,7 @@ function Show-DevOpsMenu {
     Write-Host "  Lab Repository - Install Operations"
     Write-Host "  [9]  Install core platform (Cluster + MetalLB + Ingress)"
     Write-Host "  [10] Repair / Reinstall MetalLB (IP pool/range)"
-    Write-Host "  [11] Install / Reinstall Portainer Admin UI (Ingress route)"
+    Write-Host "  [11] Install / Reinstall Portainer Admin UI (Ingress or IP mode)"
     Write-Host "  [12] Deploy / Update CITA Web Demo (namespace + ConfigMap + LoadBalancer)"
     Write-Host "  [13] Scale CITA Web Demo (2/4/5/custom replicas)"
     Write-Host "  [14] Scale any deployed app (interactive selector)"
@@ -840,27 +840,53 @@ do {
         }
 
         "11" {
-            Invoke-ActionSafe -SuccessText "Portainer installed (Ingress route)" -Action {
+            Invoke-ActionSafe -SuccessText "Portainer install completed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
 
-                $baseDomain = (Read-Host "Enter Portainer base domain [lab.local]").Trim()
-                if ([string]::IsNullOrWhiteSpace($baseDomain)) { $baseDomain = "lab.local" }
+                Write-Host ""
+                Write-Host "Portainer publish mode:" -ForegroundColor Cyan
+                Write-Host "  [I] Ingress host mode (domain/hosts entry)"
+                Write-Host "  [P] IP-only mode (NodePort, no DNS/hosts required)"
+
+                $portainerMode = (Read-Host "Select mode [I/P] (default I)").Trim().ToUpper()
+                if ([string]::IsNullOrWhiteSpace($portainerMode)) { $portainerMode = "I" }
+                if ($portainerMode -notin @("I","P")) {
+                    throw "Invalid Portainer mode selection: $portainerMode"
+                }
+
+                $invokeArgs = @("-AddonsOnly","-InstallPortainer")
+                if ($portainerMode -eq "I") {
+                    $baseDomain = (Read-Host "Enter Portainer base domain [lab.local]").Trim()
+                    if ([string]::IsNullOrWhiteSpace($baseDomain)) { $baseDomain = "lab.local" }
+                    $invokeArgs += @("-InstallIngress","-PortainerDomain",$baseDomain)
+                }
 
                 try {
                     Invoke-RepoTarget `
                         -RepoPath $script:RepoPath `
                         -TargetRelativePath $script:Target `
-                        -Arguments @("-AddonsOnly","-InstallIngress","-InstallPortainer","-PortainerDomain",$baseDomain)
+                        -Arguments $invokeArgs
                 }
                 catch {
                     Write-Host "" 
                     Write-Host "Portainer install failed." -ForegroundColor Red
-                    Write-Host "Most common cause: ingress not installed/healthy or cluster not ready." -ForegroundColor Yellow
+                    if ($portainerMode -eq "I") {
+                        Write-Host "Most common cause: ingress not installed/healthy or cluster not ready." -ForegroundColor Yellow
+                    }
+                    else {
+                        Write-Host "Most common cause: cluster/service not ready yet." -ForegroundColor Yellow
+                    }
                     Write-Host "Next steps:" -ForegroundColor Yellow
-                    Write-Host "  1) Run option [9] and choose ingress = Ensure or Reinstall" -ForegroundColor Yellow
-                    Write-Host "  2) Verify ingress controller: kubectl --kubeconfig $kubeconfig -n ingress-nginx get svc ingress-nginx-controller" -ForegroundColor Yellow
-                    Write-Host "  3) Retry option [11]" -ForegroundColor Yellow
+                    if ($portainerMode -eq "I") {
+                        Write-Host "  1) Run option [9] and choose ingress = Ensure or Reinstall" -ForegroundColor Yellow
+                        Write-Host "  2) Verify ingress controller: kubectl --kubeconfig $kubeconfig -n ingress-nginx get svc ingress-nginx-controller" -ForegroundColor Yellow
+                        Write-Host "  3) Retry option [11]" -ForegroundColor Yellow
+                    }
+                    else {
+                        Write-Host "  1) Verify Portainer pods/services: kubectl --kubeconfig $kubeconfig -n portainer get pods,svc" -ForegroundColor Yellow
+                        Write-Host "  2) Retry option [11] in IP mode" -ForegroundColor Yellow
+                    }
                     throw
                 }
             }
