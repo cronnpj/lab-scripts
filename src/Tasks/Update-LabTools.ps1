@@ -49,17 +49,16 @@ function Is-GitRepo([string]$Path) {
 }
 
 function Repair-KnownLabDrift([string]$Path) {
-    $knownTrackedPath = "labs/k8s-baremetal-lab/01-talos/student-overrides/README.md"
+    $knownTrackedPaths = @(
+        "labs/k8s-baremetal-lab/01-talos/student-overrides/README.md"
+    )
 
-    $restoreOut = git -C $Path restore --worktree --staged --source=HEAD -- $knownTrackedPath 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        if (-not [string]::IsNullOrWhiteSpace(($restoreOut | Out-String).Trim())) {
-            Write-Host "Repaired known lab-generated drift: $knownTrackedPath" -ForegroundColor DarkGray
+    foreach ($knownTrackedPath in $knownTrackedPaths) {
+        git -C $Path restore --worktree --staged --source=HEAD -- $knownTrackedPath 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            git -C $Path checkout -- $knownTrackedPath 2>$null | Out-Null
         }
-        return
     }
-
-    git -C $Path checkout -- $knownTrackedPath 2>$null | Out-Null
 }
 
 function Clone-Or-Pull([string]$Path) {
@@ -89,11 +88,11 @@ function Clone-Or-Pull([string]$Path) {
 
     Repair-KnownLabDrift -Path $Path
 
-    $localChanges = git -C $Path status --porcelain 2>$null
+    $localChanges = @(git -C $Path status --porcelain 2>$null)
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to inspect git status in '$Path'."
     }
-    if ($localChanges -and $localChanges.Count -gt 0) {
+    if ($localChanges.Count -gt 0) {
         Write-Host "Local changes detected in ${Path}:" -ForegroundColor Yellow
         $localChanges | Out-Host
         throw "Update blocked: local uncommitted changes exist. Commit, stash, or discard changes, then run update again."
@@ -159,6 +158,8 @@ function Deploy-FilesFromRepo([string]$RepoRoot) {
 # RUN
 # =========
 try {
+    $script:updateFailed = $false
+
     Assert-IsAdmin
     Ensure-Git
     Ensure-Folders
@@ -191,12 +192,16 @@ try {
     Write-Host "You can now re-launch the menu shortcut."
 }
 catch {
+    $script:updateFailed = $true
+
     Write-Host ""
     Write-Host "UPDATE FAILED:" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
     Write-Host ""
     Write-Host "Details:"
     Write-Host ($_ | Out-String)
+
+    throw
 }
 finally {
     Pause-Menu
