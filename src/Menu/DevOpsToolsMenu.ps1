@@ -657,35 +657,11 @@ do {
     switch ($choice) {
 
         # === Install / Update Tools ===
-        "17" {
-            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
-            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
+        "1" {
+            Invoke-SubmenuSafe -SuccessText "Returned from Install / Update Tools submenu" -Action {
+                if (-not (Test-Path $script:InstallUpdateMenuPath)) {
                     throw "Install submenu not found: $($script:InstallUpdateMenuPath)"
                 }
-
-        "18" {
-            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
-            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
-            Wait-Menu
-        }
-
-        "19" {
-            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
-            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
-            Wait-Menu
-        }
-
-        "20" {
-            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
-            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
-            Wait-Menu
-        }
-
-        "21" {
-            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
-            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
-            Wait-Menu
-        }
 
                 & $script:InstallUpdateMenuPath
             }
@@ -747,6 +723,36 @@ do {
 
                 & $script:LabInstallOpsMenuPath
             }
+        }
+
+        "17" {
+            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
+            Wait-Menu
+        }
+
+        "18" {
+            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
+            Wait-Menu
+        }
+
+        "19" {
+            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
+            Wait-Menu
+        }
+
+        "20" {
+            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
+            Wait-Menu
+        }
+
+        "21" {
+            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
+            Wait-Menu
         }
 
         "91" {
