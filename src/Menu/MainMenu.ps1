@@ -79,7 +79,7 @@ function Show-MainMenu {
     Write-Host "  [3] Member Server Tools"
     Write-Host "  [4] Windows Client Tools"
     Write-Host "  [5] Troubleshooting & Validation"
-    Write-Host "  [6] Devops & Automation"
+    Write-Host "  [6] DevOps & Automation"
     Write-Host "  [7] Maintenance & Updates"
     Write-Host "  [0] Exit"
     Write-Host ""
