@@ -67,6 +67,32 @@ function Invoke-ActionSafe {
     }
 }
 
+function Invoke-SubmenuSafe {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][scriptblock]$Action,
+        [Parameter(Mandatory)][string]$SuccessText
+    )
+
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Stop"
+
+    try {
+        & $Action
+        Set-Status -Text $SuccessText -Color "Green"
+    }
+    catch {
+        Set-Status -Text "Action failed" -Color "Red"
+        Write-Host ""
+        Write-Host "Error: Action failed." -ForegroundColor Red
+        Write-Host $_.Exception.ToString()
+        Wait-Menu
+    }
+    finally {
+        $ErrorActionPreference = $prev
+    }
+}
+
 # =========================
 # winget
 # =========================
@@ -584,6 +610,7 @@ $script:RepoPath = Resolve-DevOpsRepoPath -TargetRelativePath $script:Target
 $script:InstallUpdateMenuPath = Join-Path $PSScriptRoot "DevOpsInstallUpdateMenu.ps1"
 $script:QuickChecksMenuPath = Join-Path $PSScriptRoot "DevOpsQuickChecksMenu.ps1"
 $script:LabInstallOpsMenuPath = Join-Path $PSScriptRoot "DevOpsLabInstallOpsMenu.ps1"
+$script:LabAdvancedOpsMenuPath = Join-Path $PSScriptRoot "DevOpsLabAdvancedOpsMenu.ps1"
 
 $script:lastStatusText  = "Ready"
 $script:lastStatusColor = "DarkGray"
@@ -606,12 +633,7 @@ function Show-DevOpsMenu {
     Write-Host "  [9]  Open Lab Repository - Install Operations submenu"
     Write-Host ""
     Write-Host "  Lab Repository - Advanced Operations" -ForegroundColor Cyan
-    Write-Host "  [16] Wipe + Rebuild cluster (student reset mode)"
-    Write-Host "  [17] Nuke local generated files (kubeconfig + student-overrides)"
-    Write-Host "  [18] Repo lab-safe reset (discard local changes)"
-    Write-Host "  [19] Add new worker node to existing cluster"
-    Write-Host "  [20] Reset CITA Web Demo only (delete namespace cita-web)"
-    Write-Host "  [21] Open kubectl prompt (new window, repo kubeconfig)"
+    Write-Host "  [16] Open Lab Repository - Advanced Operations submenu"
     Write-Host ""
     Write-Host "  [0]  Back"
     Write-Host ""
@@ -635,11 +657,35 @@ do {
     switch ($choice) {
 
         # === Install / Update Tools ===
-        "1" {
-            Invoke-ActionSafe -SuccessText "Returned from Install / Update Tools submenu" -Action {
-                if (-not (Test-Path $script:InstallUpdateMenuPath)) {
+        "17" {
+            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
                     throw "Install submenu not found: $($script:InstallUpdateMenuPath)"
                 }
+
+        "18" {
+            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
+            Wait-Menu
+        }
+
+        "19" {
+            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
+            Wait-Menu
+        }
+
+        "20" {
+            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
+            Wait-Menu
+        }
+
+        "21" {
+            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
+            Wait-Menu
+        }
 
                 & $script:InstallUpdateMenuPath
             }
@@ -671,7 +717,7 @@ do {
 
         # === Quick Checks / Utilities ===
         "6" {
-            Invoke-ActionSafe -SuccessText "Returned from Quick Checks / Utilities submenu" -Action {
+            Invoke-SubmenuSafe -SuccessText "Returned from Quick Checks / Utilities submenu" -Action {
                 if (-not (Test-Path $script:QuickChecksMenuPath)) {
                     throw "Quick checks submenu not found: $($script:QuickChecksMenuPath)"
                 }
@@ -694,7 +740,7 @@ do {
 
         # === Lab Repository - Basic Operations ===
         "9" {
-            Invoke-ActionSafe -SuccessText "Returned from Lab Install Operations submenu" -Action {
+            Invoke-SubmenuSafe -SuccessText "Returned from Lab Install Operations submenu" -Action {
                 if (-not (Test-Path $script:LabInstallOpsMenuPath)) {
                     throw "Lab install operations submenu not found: $($script:LabInstallOpsMenuPath)"
                 }
@@ -1182,13 +1228,23 @@ do {
         }
 
         "16" {
+            Invoke-SubmenuSafe -SuccessText "Returned from Lab Advanced Operations submenu" -Action {
+                if (-not (Test-Path $script:LabAdvancedOpsMenuPath)) {
+                    throw "Lab advanced operations submenu not found: $($script:LabAdvancedOpsMenuPath)"
+                }
+
+                & $script:LabAdvancedOpsMenuPath
+            }
+        }
+
+        "161" {
             Invoke-ActionSafe -SuccessText "Wipe + rebuild executed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -AutoResetIfDirty:$true
                 Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-WipeAndRebuild","-Interactive")
             }
         }
 
-        "17" {
+        "162" {
             Invoke-ActionSafe -SuccessText "Local generated files removed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -AutoResetIfDirty:$true
 
@@ -1203,7 +1259,7 @@ do {
             }
         }
 
-        "18" {
+        "163" {
             Invoke-ActionSafe -SuccessText "Repo reset to origin completed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -AutoResetIfDirty:$true
                 if (-not (Test-Path (Join-Path $script:RepoPath ".git"))) { throw "Repo not found: $($script:RepoPath)" }
@@ -1211,7 +1267,7 @@ do {
             }
         }
 
-        "19" {
+        "164" {
             Invoke-ActionSafe -SuccessText "Worker add operation completed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 if (-not (Test-Cmd talosctl)) { throw "talosctl not found. Install it from option [2]." }
@@ -1256,14 +1312,14 @@ do {
             }
         }
 
-        "20" {
+        "165" {
             Invoke-ActionSafe -SuccessText "CITA web demo reset completed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 Remove-CitaWebDemo -RepoPath $script:RepoPath
             }
         }
 
-        "21" {
+        "166" {
             Invoke-ActionSafe -SuccessText "Opened kubectl prompt" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -SkipSync:$true -AllowDirty:$true
                 $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
@@ -1296,7 +1352,7 @@ Write-Host 'Type exit to close this window.' -ForegroundColor DarkGray
         }
     }
 
-    if ([string]::IsNullOrWhiteSpace($RunOption) -and -not [string]::IsNullOrWhiteSpace($choice) -and ($choice -in @("91","92","93","94","95","96","97"))) {
+    if ([string]::IsNullOrWhiteSpace($RunOption) -and -not [string]::IsNullOrWhiteSpace($choice) -and ($choice -in @("91","92","93","94","95","96","97","161","162","163","164","165","166"))) {
         $back = $true
     }
 
