@@ -589,19 +589,19 @@ function Show-DevOpsMenu {
 
     Show-AppHeader -Breadcrumb "Main > DevOps / CLI Tools"
 
-    Write-Host "  Install / Update Tools"
+    Write-Host "  Install / Update Tools" -ForegroundColor Cyan
     Write-Host "  [1]  Upgrade all Winget packages"
     Write-Host "  [2]  Install talosctl"
     Write-Host "  [3]  Install kubectl"
     Write-Host "  [4]  Install helm"
     Write-Host "  [5]  Install DevOps bundle (talosctl + kubectl + helm)"
     Write-Host ""
-    Write-Host "  Quick Checks / Utilities"
+    Write-Host "  Quick Checks / Utilities" -ForegroundColor Cyan
     Write-Host "  [6]  Show installed versions (git/kubectl/talosctl/helm)"
     Write-Host "  [7]  kubectl get nodes/pods (uses repo kubeconfig if present)"
     Write-Host "  [8]  Open repo folder in File Explorer"
     Write-Host ""
-    Write-Host "  Lab Repository - Install Operations"
+    Write-Host "  Lab Repository - Install Operations" -ForegroundColor Cyan
     Write-Host "  [9]  Install core platform (Cluster + MetalLB + Ingress)"
     Write-Host "  [10] Repair / Reinstall MetalLB (IP pool/range)"
     Write-Host "  [11] Install / Reinstall Portainer Admin UI (Ingress, NodePort IP, or LoadBalancer IP)"
@@ -610,7 +610,7 @@ function Show-DevOpsMenu {
     Write-Host "  [14] Scale any deployed app (interactive selector)"
     Write-Host "  [15] Install / Update app via Helm (interactive)"
     Write-Host ""
-    Write-Host "  Lab Repository - Advanced Operations"
+    Write-Host "  Lab Repository - Advanced Operations" -ForegroundColor Cyan
     Write-Host "  [16] Wipe + Rebuild cluster (student reset mode)"
     Write-Host "  [17] Nuke local generated files (kubeconfig + student-overrides)"
     Write-Host "  [18] Repo lab-safe reset (discard local changes)"

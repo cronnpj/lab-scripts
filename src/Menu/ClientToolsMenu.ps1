@@ -73,32 +73,32 @@ function Show-ClientMenu {
 
     Show-AppHeader -Breadcrumb "Main > Windows Client Tools"
 
-    Write-Host "Identity / Enrollment"
+    Write-Host "Identity / Enrollment" -ForegroundColor Cyan
     Write-Host "  [1]  Join existing domain"
     Write-Host "  [2]  Show Join Status (Domain + Entra ID / Hybrid)"
     Write-Host "  [3]  Open Work/School Accounts (Enrollment)"
     Write-Host "  [4]  Force Intune Sync (best-effort)"
     Write-Host ""
 
-    Write-Host "Policy / Management"
+    Write-Host "Policy / Management" -ForegroundColor Cyan
     Write-Host "  [5]  Force Group Policy Update (gpupdate /force)"
     Write-Host "  [6]  Show GPO Results (gpresult /r)"
     Write-Host "  [7]  Export GPO Report to Desktop (HTML)"
     Write-Host ""
 
-    Write-Host "Networking"
+    Write-Host "Networking" -ForegroundColor Cyan
     Write-Host "  [8]  Show IP Configuration (ipconfig /all)"
     Write-Host "  [9]  Flush DNS Cache"
     Write-Host "  [10] Renew DHCP Lease (release/renew)"
     Write-Host "  [11] Quick Connectivity Tests (GW/DNS/Internet)"
     Write-Host ""
 
-    Write-Host "Client Actions"
+    Write-Host "Client Actions" -ForegroundColor Cyan
     Write-Host "  [12] Rename computer"
     Write-Host "  [13] Set timezone to Eastern + resync clock"
     Write-Host ""
 
-    Write-Host "Client Maintenance"
+    Write-Host "Client Maintenance" -ForegroundColor Cyan
     Write-Host "  [14] Restart Windows Update Services"
     Write-Host "  [15] System File Check (SFC)"
     Write-Host ""
