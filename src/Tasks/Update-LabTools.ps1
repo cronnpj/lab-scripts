@@ -61,6 +61,25 @@ function Repair-KnownLabDrift([string]$Path) {
     }
 }
 
+function Test-IsAllowedStudentDemoChange([string]$PorcelainLine) {
+    if ([string]::IsNullOrWhiteSpace($PorcelainLine)) { return $true }
+
+    $line = $PorcelainLine.Trim()
+    $allowedPrefix = "labs/k8s-baremetal-lab/05-web-demo/"
+
+    if ($line -match "->\s*(.+)$") {
+        $renamedTarget = $Matches[1].Trim()
+        return $renamedTarget.Replace('\\','/') -like "$allowedPrefix*"
+    }
+
+    if ($line -match "^[ MARCUD\?]{2}\s+(.+)$") {
+        $path = $Matches[1].Trim().Replace('\\','/')
+        return $path -like "$allowedPrefix*"
+    }
+
+    return $false
+}
+
 function Clone-Or-Pull([string]$Path) {
     if (-not (Test-Path $Path)) {
         Write-Host "Cloning repo to $Path ..."
@@ -92,10 +111,24 @@ function Clone-Or-Pull([string]$Path) {
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to inspect git status in '$Path'."
     }
+    $pullWithAutostash = $false
     if ($localChanges.Count -gt 0) {
-        Write-Host "Local changes detected in ${Path}:" -ForegroundColor Yellow
-        $localChanges | Out-Host
-        throw "Update blocked: local uncommitted changes exist. Commit, stash, or discard changes, then run update again."
+        $allAllowedStudentChanges = $true
+        foreach ($line in $localChanges) {
+            if (-not (Test-IsAllowedStudentDemoChange -PorcelainLine $line)) {
+                $allAllowedStudentChanges = $false
+                break
+            }
+        }
+
+        if (-not $allAllowedStudentChanges) {
+            Write-Host "Local changes detected in ${Path}:" -ForegroundColor Yellow
+            $localChanges | Out-Host
+            throw "Update blocked: local uncommitted changes exist. Commit, stash, or discard changes, then run update again."
+        }
+
+        Write-Host "Student demo file changes detected. Proceeding with update using autostash." -ForegroundColor Yellow
+        $pullWithAutostash = $true
     }
 
     Write-Host "Pulling latest changes in $Path ..."
@@ -103,7 +136,12 @@ function Clone-Or-Pull([string]$Path) {
     if ($LASTEXITCODE -ne 0) {
         throw "Git fetch failed in '$Path'."
     }
-    git -C $Path pull | Out-Host
+    if ($pullWithAutostash) {
+        git -C $Path pull --rebase --autostash | Out-Host
+    }
+    else {
+        git -C $Path pull | Out-Host
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "Git pull failed in '$Path'."
     }
