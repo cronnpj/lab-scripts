@@ -64,7 +64,7 @@ function Repair-KnownLabDrift([string]$Path) {
 function Test-IsAllowedStudentDemoChange([string]$PorcelainLine) {
     if ([string]::IsNullOrWhiteSpace($PorcelainLine)) { return $true }
 
-    $line = $PorcelainLine.Trim()
+    $line = $PorcelainLine.TrimEnd()
     $allowedPrefix = "labs/k8s-baremetal-lab/05-web-demo/"
 
     if ($line -match "->\s*(.+)$") {
@@ -72,8 +72,8 @@ function Test-IsAllowedStudentDemoChange([string]$PorcelainLine) {
         return $renamedTarget.Replace('\\','/') -like "$allowedPrefix*"
     }
 
-    if ($line -match "^[ MARCUD\?]{2}\s+(.+)$") {
-        $path = $Matches[1].Trim().Replace('\\','/')
+    if ($line.Length -ge 4) {
+        $path = $line.Substring(3).Trim().Replace('\\','/')
         return $path -like "$allowedPrefix*"
     }
 
