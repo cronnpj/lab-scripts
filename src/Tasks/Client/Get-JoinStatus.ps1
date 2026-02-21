@@ -6,7 +6,7 @@ Import-Module (Join-Path $PSScriptRoot "..\..\Lib\Validation.psm1") -Force
 
 Initialize-LabLog
 
-function Pause-Menu {
+function Wait-MenuContinue {
     Write-Host ""
     Read-Host "Press Enter to continue"
 }
@@ -80,4 +80,4 @@ Safe-Run "dsregcmd /status" {
 
 Write-Host ""
 Write-Host ("Log: {0}" -f (Get-LabLogPath))
-Pause-Menu
+Wait-MenuContinue

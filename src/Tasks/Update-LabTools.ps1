@@ -15,7 +15,7 @@ $DestPath = "C:\CITA\LabTools"        # runtime path (win11 may be a repo)
 $SrcRel   = "src"                     # deployable folder in repo-cache model
 $LabsRel  = "labs"                    # merged lab content
 
-function Pause-Menu {
+function Wait-MenuContinue {
     Write-Host ""
     Read-Host "Press Enter to continue"
 }
@@ -242,5 +242,5 @@ catch {
     throw
 }
 finally {
-    Pause-Menu
+    Wait-MenuContinue
 }

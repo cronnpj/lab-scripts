@@ -6,7 +6,7 @@ Import-Module (Join-Path $PSScriptRoot "..\Lib\Validation.psm1") -Force
 Initialize-LabLog
 Assert-IsAdmin
 
-function Pause-Menu {
+function Wait-MenuContinue {
     Write-Host ""
     Read-Host "Press Enter to continue" | Out-Null
 }
@@ -51,4 +51,4 @@ Write-Host ""
 Write-Host ("Current timezone: {0} ({1})" -f $updatedTimezone.DisplayName, $updatedTimezone.Id)
 Write-Host ("Log: {0}" -f (Get-LabLogPath))
 
-Pause-Menu
+Wait-MenuContinue

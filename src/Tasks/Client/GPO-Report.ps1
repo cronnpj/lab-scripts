@@ -6,7 +6,7 @@ Import-Module (Join-Path $PSScriptRoot "..\..\Lib\Validation.psm1") -Force
 
 Initialize-LabLog
 
-function Pause-Menu {
+function Wait-MenuContinue {
     Write-Host ""
     Read-Host "Press Enter to continue"
 }
@@ -21,7 +21,7 @@ try {
     if (-not $cs.PartOfDomain) {
         Write-Host "This machine is not domain joined."
         Write-LabLog "GPO-Report: Aborted - not domain joined" "WARN"
-        Pause-Menu
+        Wait-MenuContinue
         return
     }
 
@@ -42,4 +42,4 @@ catch {
     Write-LabLog ("GPO-Report: Failed - {0}" -f $_.Exception.Message) "ERROR"
 }
 
-Pause-Menu
+Wait-MenuContinue

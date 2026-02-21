@@ -7,7 +7,7 @@ Import-Module (Join-Path $PSScriptRoot "..\Lib\Validation.psm1") -Force
 Initialize-LabLog
 Assert-IsAdmin
 
-function Pause-Menu {
+function Wait-MenuContinue {
     Write-Host ""
     Read-Host "Press Enter to continue"
 }
@@ -53,7 +53,7 @@ if (Is-DomainControllerByRole) {
     Write-Host "This machine appears to be a Domain Controller."
     Write-Host "Domain join is not applicable here. Aborting."
     Write-LabLog "JoinDomain: Aborted - machine is a DC" "WARN"
-    Pause-Menu
+    Wait-MenuContinue
     return
 }
 
@@ -62,7 +62,7 @@ if (Is-ADDSRoleInstalled) {
     Write-Host "AD DS role is installed on this machine."
     Write-Host "This tool is intended for Windows clients and member servers (not DC candidates). Aborting."
     Write-LabLog "JoinDomain: Aborted - AD DS role installed" "WARN"
-    Pause-Menu
+    Wait-MenuContinue
     return
 }
 
@@ -71,7 +71,7 @@ if (Is-DomainJoined) {
     Write-Host "This machine is already domain joined: $cur"
     Write-Host "No action taken."
     Write-LabLog "JoinDomain: No action - already domain joined ($cur)"
-    Pause-Menu
+    Wait-MenuContinue
     return
 }
 
@@ -84,7 +84,7 @@ $domain = Read-Host "Enter domain name (example: cronnpj.local)"
 if ([string]::IsNullOrWhiteSpace($domain)) {
     Write-Host "Cancelled."
     Write-LabLog "JoinDomain: Cancelled - no domain provided"
-    Pause-Menu
+    Wait-MenuContinue
     return
 }
 $domain = $domain.Trim()
@@ -107,7 +107,7 @@ $confirm = Read-Host "Proceed with domain join? (Y/N)"
 if ($confirm.Trim().ToUpper() -ne "Y") {
     Write-Host "Cancelled."
     Write-LabLog "JoinDomain: Cancelled by user"
-    Pause-Menu
+    Wait-MenuContinue
     return
 }
 
@@ -130,5 +130,5 @@ if ($reboot.Trim().ToUpper() -eq "Y") {
 } else {
     Write-Host "Please reboot before continuing."
     Write-LabLog "JoinDomain: Reboot deferred by user" "WARN"
-    Pause-Menu
+    Wait-MenuContinue
 }

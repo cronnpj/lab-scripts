@@ -4,14 +4,14 @@ $ErrorActionPreference = "SilentlyContinue"
 # Shared UI
 Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force
 
-function Pause-Menu {
+function Wait-MenuContinue {
     Write-Host ""
     Read-Host "Press Enter to continue" | Out-Null
 }
 
 function Show-DCMenu {
     param(
-        [string]$StatusText = "Ready",
+        [string]$StatusText = "[Ready] Ready",
         [string]$StatusColor = "DarkGray"
     )
 
@@ -25,8 +25,7 @@ function Show-DCMenu {
     Write-Host "  [0] Back"
     Write-Host ""
 
-    Write-Host "Status: " -NoNewline
-    Write-Host $StatusText -ForegroundColor $StatusColor
+    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
     Write-Host "Keys: 1-4 Select  |  0 Back"
     Write-Host ""
@@ -40,12 +39,12 @@ function Invoke-RoleInstall {
     )
 
     try {
-        $script:lastStatusText  = "Running role install ($Mode)..."
-        $script:lastStatusColor = "Gray"
+        $script:lastStatusText  = "[Running] Running role install ($Mode)..."
+        $script:lastStatusColor = "Cyan"
 
         & $rolesScript -Mode $Mode -ErrorAction Stop
 
-        $script:lastStatusText  = "Role install completed ($Mode)"
+        $script:lastStatusText  = "[Ready] Role install completed ($Mode)"
         $script:lastStatusColor = "Green"
     }
     catch {
@@ -53,18 +52,18 @@ function Invoke-RoleInstall {
         Write-Host "Error: Role installation failed." -ForegroundColor Red
         Write-Host ("Details: {0}" -f $_.Exception.Message)
 
-        $script:lastStatusText  = "Role install failed ($Mode)"
+        $script:lastStatusText  = "[Error] Role install failed ($Mode)"
         $script:lastStatusColor = "Red"
     }
     finally {
-        Pause-Menu
+        Wait-MenuContinue
     }
 }
 
 $rolesScript = Join-Path $PSScriptRoot "..\Tasks\Install-Roles.ps1"
 
 $back = $false
-$script:lastStatusText  = "Ready"
+$script:lastStatusText  = "[Ready] Ready"
 $script:lastStatusColor = "DarkGray"
 
 do {
@@ -78,7 +77,7 @@ do {
         "4" { Invoke-RoleInstall -Mode CORE_DC }  # kept your fixed option
         "0" { $back = $true }
         default {
-            $script:lastStatusText  = "Invalid selection"
+            $script:lastStatusText  = "[Warning] Invalid selection"
             $script:lastStatusColor = "Yellow"
             Start-Sleep 1
         }

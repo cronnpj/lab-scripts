@@ -7,7 +7,7 @@ Import-Module (Join-Path $PSScriptRoot "..\Lib\Validation.psm1") -Force
 Initialize-LabLog
 Assert-IsAdmin
 
-function Pause-Menu {
+function Wait-MenuContinue {
     Write-Host ""
     Read-Host "Press Enter to continue"
 }
@@ -111,7 +111,7 @@ $confirm = Read-Host "Apply these settings? (Y/N)"
 if ($confirm.Trim().ToUpper() -ne "Y") {
     Write-LabLog "StaticIP: User cancelled"
     Write-Host "Cancelled."
-    Pause-Menu
+    Wait-MenuContinue
     return
 }
 
@@ -122,7 +122,7 @@ if (Test-IPv4InUse -ip $ip) {
     Write-Host "WARNING: $ip responded to ping. It may already be in use."
     Write-Host "Pick a different IP to avoid a duplicate-address conflict."
     Write-LabLog "StaticIP: Aborted - IP appears in use ($ip)" "WARN"
-    Pause-Menu
+    Wait-MenuContinue
     return
 }
 
@@ -164,4 +164,4 @@ Write-Host "Static IP configuration applied."
 Write-Host ("Log: {0}" -f (Get-LabLogPath))
 Write-Host ""
 ipconfig /all
-Pause-Menu
+Wait-MenuContinue

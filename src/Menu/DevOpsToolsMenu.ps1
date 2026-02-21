@@ -52,11 +52,12 @@ function Invoke-ActionSafe {
     $ErrorActionPreference = "Stop"
 
     try {
+        Set-Status -Text "[Running] Executing action..." -Color "Cyan"
         & $Action
-        Set-Status -Text $SuccessText -Color "Green"
+        Set-Status -Text "[Ready] $SuccessText" -Color "Green"
     }
     catch {
-        Set-Status -Text "Action failed" -Color "Red"
+        Set-Status -Text "[Error] Action failed" -Color "Red"
         Write-Host ""
         Write-Host "Error: Action failed." -ForegroundColor Red
         Write-Host $_.Exception.ToString()
@@ -78,11 +79,12 @@ function Invoke-SubmenuSafe {
     $ErrorActionPreference = "Stop"
 
     try {
+        Set-Status -Text "[Running] Opening submenu..." -Color "Cyan"
         & $Action
-        Set-Status -Text $SuccessText -Color "Green"
+        Set-Status -Text "[Ready] $SuccessText" -Color "Green"
     }
     catch {
-        Set-Status -Text "Action failed" -Color "Red"
+        Set-Status -Text "[Error] Action failed" -Color "Red"
         Write-Host ""
         Write-Host "Error: Action failed." -ForegroundColor Red
         Write-Host $_.Exception.ToString()
@@ -612,8 +614,42 @@ $script:QuickChecksMenuPath = Join-Path $PSScriptRoot "DevOpsQuickChecksMenu.ps1
 $script:LabInstallOpsMenuPath = Join-Path $PSScriptRoot "DevOpsLabInstallOpsMenu.ps1"
 $script:LabAdvancedOpsMenuPath = Join-Path $PSScriptRoot "DevOpsLabAdvancedOpsMenu.ps1"
 
-$script:lastStatusText  = "Ready"
+$script:lastStatusText  = "[Ready] Ready"
 $script:lastStatusColor = "DarkGray"
+
+function Show-CurrentContext {
+    param([Parameter(Mandatory)][string]$RepoPath)
+
+    $repoText = if (Test-Path -Path $RepoPath -PathType Container) { $RepoPath } else { "Missing" }
+    $repoColor = if ($repoText -eq "Missing") { "Yellow" } else { "Gray" }
+
+    $kubeconfigPath = Resolve-KubeconfigPath -RepoPath $RepoPath
+    $kubeText = if (Test-Path $kubeconfigPath) { $kubeconfigPath } else { "Not found" }
+    $kubeColor = if ($kubeText -eq "Not found") { "Yellow" } else { "Gray" }
+
+    $clusterText = "Unknown"
+    $clusterColor = "DarkYellow"
+    if ((Test-Cmd kubectl) -and (Test-Path $kubeconfigPath)) {
+        $nodesRaw = & kubectl --kubeconfig $kubeconfigPath --request-timeout=3s get nodes -o name 2>$null
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($nodesRaw | Out-String).Trim())) {
+            $clusterText = "Reachable"
+            $clusterColor = "Green"
+        }
+        else {
+            $clusterText = "Not reachable"
+            $clusterColor = "Yellow"
+        }
+    }
+
+    Write-Host "Context: " -NoNewline
+    Write-Host "Repo: " -NoNewline
+    Write-Host $repoText -ForegroundColor $repoColor -NoNewline
+    Write-Host " | Kubeconfig: " -NoNewline
+    Write-Host $kubeText -ForegroundColor $kubeColor -NoNewline
+    Write-Host " | Cluster: " -NoNewline
+    Write-Host $clusterText -ForegroundColor $clusterColor
+    Write-Host ""
+}
 
 function Show-DevOpsMenu {
     param(
@@ -622,24 +658,28 @@ function Show-DevOpsMenu {
     )
 
     Show-AppHeader -Breadcrumb "Main > DevOps / CLI Tools"
+    Show-CurrentContext -RepoPath $script:RepoPath
 
     Write-Host "  Install / Update Tools" -ForegroundColor Cyan
     Write-Host "  [1]  Open Install / Update Tools submenu"
+    Write-Host "       Install or upgrade required CLI tools." -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  Quick Checks / Utilities" -ForegroundColor Cyan
     Write-Host "  [6]  Open Quick Checks / Utilities submenu"
+    Write-Host "       Verify tool versions and quick cluster health." -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  Lab Repository - Install Operations" -ForegroundColor Cyan
     Write-Host "  [9]  Open Lab Repository - Install Operations submenu"
+    Write-Host "       Deploy and manage lab platform apps/workloads." -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  Lab Repository - Advanced Operations" -ForegroundColor Cyan
     Write-Host "  [16] Open Lab Repository - Advanced Operations submenu"
+    Write-Host "       Reset, worker-node operations, and advanced maintenance." -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  [0]  Back"
     Write-Host ""
 
-    Write-Host "Status: " -NoNewline
-    Write-Host $StatusText -ForegroundColor $StatusColor
+    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
     Write-Host ""
 }
 
@@ -668,25 +708,25 @@ do {
         }
 
         "2" {
-            Set-Status -Text "Use option [1] Install / Update Tools submenu" -Color "Yellow"
+            Set-Status -Text "[Warning] Use option [1] Install / Update Tools submenu" -Color "Yellow"
             Write-Host "This top-level option has moved. Use option [1] to open Install / Update Tools submenu." -ForegroundColor Yellow
             Wait-Menu
         }
 
         "3" {
-            Set-Status -Text "Use option [1] Install / Update Tools submenu" -Color "Yellow"
+            Set-Status -Text "[Warning] Use option [1] Install / Update Tools submenu" -Color "Yellow"
             Write-Host "This top-level option has moved. Use option [1] to open Install / Update Tools submenu." -ForegroundColor Yellow
             Wait-Menu
         }
 
         "4" {
-            Set-Status -Text "Use option [1] Install / Update Tools submenu" -Color "Yellow"
+            Set-Status -Text "[Warning] Use option [1] Install / Update Tools submenu" -Color "Yellow"
             Write-Host "This top-level option has moved. Use option [1] to open Install / Update Tools submenu." -ForegroundColor Yellow
             Wait-Menu
         }
 
         "5" {
-            Set-Status -Text "Use option [1] Install / Update Tools submenu" -Color "Yellow"
+            Set-Status -Text "[Warning] Use option [1] Install / Update Tools submenu" -Color "Yellow"
             Write-Host "This top-level option has moved. Use option [1] to open Install / Update Tools submenu." -ForegroundColor Yellow
             Wait-Menu
         }
@@ -703,13 +743,13 @@ do {
         }
 
         "7" {
-            Set-Status -Text "Use option [6] Quick Checks / Utilities submenu" -Color "Yellow"
+            Set-Status -Text "[Warning] Use option [6] Quick Checks / Utilities submenu" -Color "Yellow"
             Write-Host "This top-level option has moved. Use option [6] to open Quick Checks / Utilities submenu." -ForegroundColor Yellow
             Wait-Menu
         }
 
         "8" {
-            Set-Status -Text "Use option [6] Quick Checks / Utilities submenu" -Color "Yellow"
+            Set-Status -Text "[Warning] Use option [6] Quick Checks / Utilities submenu" -Color "Yellow"
             Write-Host "This top-level option has moved. Use option [6] to open Quick Checks / Utilities submenu." -ForegroundColor Yellow
             Wait-Menu
         }
@@ -726,31 +766,31 @@ do {
         }
 
         "17" {
-            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Set-Status -Text "[Warning] Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
             Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
             Wait-Menu
         }
 
         "18" {
-            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Set-Status -Text "[Warning] Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
             Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
             Wait-Menu
         }
 
         "19" {
-            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Set-Status -Text "[Warning] Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
             Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
             Wait-Menu
         }
 
         "20" {
-            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Set-Status -Text "[Warning] Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
             Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
             Wait-Menu
         }
 
         "21" {
-            Set-Status -Text "Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
+            Set-Status -Text "[Warning] Use option [16] Lab Advanced Operations submenu" -Color "Yellow"
             Write-Host "This top-level option has moved. Use option [16] to open Lab Advanced Operations submenu." -ForegroundColor Yellow
             Wait-Menu
         }
@@ -1353,7 +1393,7 @@ Write-Host 'Type exit to close this window.' -ForegroundColor DarkGray
         "0" { $back = $true }
 
         default {
-            Set-Status -Text "Invalid selection" -Color "Red"
+            Set-Status -Text "[Warning] Invalid selection" -Color "Yellow"
             Wait-Menu
         }
     }

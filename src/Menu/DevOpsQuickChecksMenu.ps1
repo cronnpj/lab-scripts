@@ -26,12 +26,14 @@ function Invoke-ActionSafe {
     $ErrorActionPreference = "Stop"
 
     try {
+        $script:lastStatusText  = "[Running] Executing action..."
+        $script:lastStatusColor = "Cyan"
         & $Action
-        $script:lastStatusText  = $SuccessText
+        $script:lastStatusText  = "[Ready] $SuccessText"
         $script:lastStatusColor = "Green"
     }
     catch {
-        $script:lastStatusText  = "Action failed"
+        $script:lastStatusText  = "[Error] Action failed"
         $script:lastStatusColor = "Red"
         Write-Host ""
         Write-Host "Error: Action failed." -ForegroundColor Red
@@ -155,23 +157,60 @@ function Show-DevOpsQuickChecksMenu {
     )
 
     Show-AppHeader -Breadcrumb "Main > DevOps / CLI Tools > Quick Checks / Utilities"
+    Show-CurrentContext -RepoPath $script:RepoPath
 
     Write-Host "  Quick Checks / Utilities" -ForegroundColor Cyan
     Write-Host "  [1] Show installed versions (git/kubectl/talosctl/helm)"
+    Write-Host "      Confirm required CLI tools and versions." -ForegroundColor DarkGray
     Write-Host "  [2] kubectl get nodes/pods (uses repo kubeconfig if present)"
+    Write-Host "      Snapshot cluster health across core resources." -ForegroundColor DarkGray
     Write-Host "  [3] Open repo folder in File Explorer"
+    Write-Host "      Open local lab repo location for quick edits." -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
 
-    Write-Host "Status: " -NoNewline
-    Write-Host $StatusText -ForegroundColor $StatusColor
+    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
     Write-Host ""
 }
 
-$script:lastStatusText  = "Ready"
+$script:lastStatusText  = "[Ready] Ready"
 $script:lastStatusColor = "DarkGray"
 $script:RepoPath = Resolve-DevOpsRepoPath -TargetRelativePath $script:Target
+
+function Show-CurrentContext {
+    param([Parameter(Mandatory)][string]$RepoPath)
+
+    $repoText = if (Test-Path -Path $RepoPath -PathType Container) { $RepoPath } else { "Missing" }
+    $repoColor = if ($repoText -eq "Missing") { "Yellow" } else { "Gray" }
+
+    $kubeconfigPath = Resolve-KubeconfigPath -RepoPath $RepoPath
+    $kubeText = if (Test-Path $kubeconfigPath) { $kubeconfigPath } else { "Not found" }
+    $kubeColor = if ($kubeText -eq "Not found") { "Yellow" } else { "Gray" }
+
+    $clusterText = "Unknown"
+    $clusterColor = "DarkYellow"
+    if ((Test-Cmd kubectl) -and (Test-Path $kubeconfigPath)) {
+        $nodesRaw = & kubectl --kubeconfig $kubeconfigPath --request-timeout=3s get nodes -o name 2>$null
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($nodesRaw | Out-String).Trim())) {
+            $clusterText = "Reachable"
+            $clusterColor = "Green"
+        }
+        else {
+            $clusterText = "Not reachable"
+            $clusterColor = "Yellow"
+        }
+    }
+
+    Write-Host "Context: " -NoNewline
+    Write-Host "Repo: " -NoNewline
+    Write-Host $repoText -ForegroundColor $repoColor -NoNewline
+    Write-Host " | Kubeconfig: " -NoNewline
+    Write-Host $kubeText -ForegroundColor $kubeColor -NoNewline
+    Write-Host " | Cluster: " -NoNewline
+    Write-Host $clusterText -ForegroundColor $clusterColor
+    Write-Host ""
+}
 
 $back = $false
 while (-not $back) {
@@ -219,7 +258,7 @@ while (-not $back) {
         }
         "0" { $back = $true }
         default {
-            $script:lastStatusText  = "Invalid selection"
+            $script:lastStatusText  = "[Warning] Invalid selection"
             $script:lastStatusColor = "Yellow"
             Start-Sleep -Seconds 1
         }

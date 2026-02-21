@@ -61,11 +61,11 @@ function Get-UpdateStatus {
 function Get-StatusLine {
     $status = Get-UpdateStatus
     switch ($status) {
-        "UPDATE_AVAILABLE" { return @{ Text = "UPDATE AVAILABLE - Run Maintenance and Updates"; Color = "Yellow" } }
-        "UP_TO_DATE"       { return @{ Text = "Up to date"; Color = "Green" } }
-        "NO_GIT"           { return @{ Text = "Git not installed"; Color = "DarkGray" } }
-        "NO_REPO"          { return @{ Text = "Update check unavailable (repo not detected)"; Color = "DarkGray" } }
-        default            { return @{ Text = "Update check unavailable"; Color = "DarkGray" } }
+        "UPDATE_AVAILABLE" { return @{ Text = "[Warning] UPDATE AVAILABLE - Run Maintenance and Updates"; Color = "Yellow" } }
+        "UP_TO_DATE"       { return @{ Text = "[Ready] Up to date"; Color = "Green" } }
+        "NO_GIT"           { return @{ Text = "[Ready] Git not installed"; Color = "DarkGray" } }
+        "NO_REPO"          { return @{ Text = "[Ready] Update check unavailable (repo not detected)"; Color = "DarkGray" } }
+        default             { return @{ Text = "[Ready] Update check unavailable"; Color = "DarkGray" } }
     }
 }
 
@@ -84,8 +84,7 @@ function Show-MainMenu {
     Write-Host "  [0] Exit"
     Write-Host ""
 
-    Write-Host "Status: " -NoNewline
-    Write-Host $statusObj.Text -ForegroundColor $statusObj.Color
+    Write-StatusLine -StatusText $statusObj.Text -StatusColor $statusObj.Color
 
     Write-Host "Keys: 1-7 Select  |  0 Exit"
     Write-Host ""

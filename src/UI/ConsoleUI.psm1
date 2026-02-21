@@ -124,4 +124,27 @@ function Show-AppHeader {
     Write-Host ""
 }
 
-Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader
+function Write-StatusLine {
+    param(
+        [Parameter(Mandatory=$true)][string]$StatusText,
+        [string]$StatusColor = "DarkGray"
+    )
+
+    $badgePattern = '^\[(Ready|Running|Warning|Error)\]\s*'
+    $hasBadge = [System.Text.RegularExpressions.Regex]::IsMatch($StatusText, $badgePattern)
+
+    if (-not $hasBadge) {
+        $badge = switch ($StatusColor) {
+            "Cyan" { "[Running]" }
+            "Yellow" { "[Warning]" }
+            "Red" { "[Error]" }
+            default { "[Ready]" }
+        }
+        $StatusText = "$badge $StatusText"
+    }
+
+    Write-Host "Status: " -NoNewline
+    Write-Host $StatusText -ForegroundColor $StatusColor
+}
+
+Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine

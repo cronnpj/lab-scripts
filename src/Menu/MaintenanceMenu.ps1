@@ -4,7 +4,7 @@ $ErrorActionPreference = "SilentlyContinue"
 # Shared UI
 Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force
 
-function Pause-Menu {
+function Read-MenuContinue {
     Write-Host ""
     Read-Host "Press Enter to continue" | Out-Null
 }
@@ -16,35 +16,37 @@ function Invoke-TaskSafe {
     )
 
     if (-not (Test-Path $Path)) {
-        $script:lastStatusText  = "Task not found"
+        $script:lastStatusText  = "[Error] Task not found"
         $script:lastStatusColor = "Red"
         Write-Host ""
         Write-Host "Error: Task script not found:" -ForegroundColor Red
         Write-Host $Path
-        Pause-Menu
+        Read-MenuContinue
         return
     }
 
     try {
+        $script:lastStatusText  = "[Running] Running task..."
+        $script:lastStatusColor = "Cyan"
         & $Path
-        $script:lastStatusText  = $SuccessText
+        $script:lastStatusText  = "[Ready] $SuccessText"
         $script:lastStatusColor = "Green"
     }
     catch {
-        $script:lastStatusText  = "Task failed"
+        $script:lastStatusText  = "[Error] Task failed"
         $script:lastStatusColor = "Red"
         Write-Host ""
         Write-Host "Error: Task failed." -ForegroundColor Red
         Write-Host $_.Exception.Message
     }
     finally {
-        Pause-Menu
+        Read-MenuContinue
     }
 }
 
 function Show-MaintenanceMenu {
     param(
-        [string]$StatusText = "Ready",
+        [string]$StatusText = "[Ready] Ready",
         [string]$StatusColor = "DarkGray"
     )
 
@@ -55,8 +57,7 @@ function Show-MaintenanceMenu {
     Write-Host "  [0] Back"
     Write-Host ""
 
-    Write-Host "Status: " -NoNewline
-    Write-Host $StatusText -ForegroundColor $StatusColor
+    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
     Write-Host "Keys: 1 Select  |  0 Back"
     Write-Host ""
@@ -65,7 +66,7 @@ function Show-MaintenanceMenu {
 $updateScript = Join-Path $PSScriptRoot "..\Tasks\Update-LabTools.ps1"
 
 $back = $false
-$script:lastStatusText  = "Ready"
+$script:lastStatusText  = "[Ready] Ready"
 $script:lastStatusColor = "DarkGray"
 
 do {
@@ -76,7 +77,7 @@ do {
         "1" { Invoke-TaskSafe -Path $updateScript -SuccessText "Update completed" }
         "0" { $back = $true }
         default {
-            $script:lastStatusText  = "Invalid selection"
+            $script:lastStatusText  = "[Warning] Invalid selection"
             $script:lastStatusColor = "Yellow"
             Start-Sleep 1
         }

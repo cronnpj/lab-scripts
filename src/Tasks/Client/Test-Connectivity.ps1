@@ -6,7 +6,7 @@ Import-Module (Join-Path $PSScriptRoot "..\..\Lib\Validation.psm1") -Force
 
 Initialize-LabLog
 
-function Pause-Menu {
+function Wait-MenuContinue {
     Write-Host ""
     Read-Host "Press Enter to continue"
 }
@@ -59,4 +59,4 @@ catch {
     Write-LabLog ("Connectivity: Failed - {0}" -f $_.Exception.Message) "ERROR"
 }
 
-Pause-Menu
+Wait-MenuContinue

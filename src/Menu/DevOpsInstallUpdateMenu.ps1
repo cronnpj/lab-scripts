@@ -6,6 +6,8 @@ $ErrorActionPreference = "Continue"
 
 Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force -ErrorAction Stop
 
+$script:RepoTarget = "labs\k8s-baremetal-lab\bootstrap.ps1"
+
 function Wait-Menu {
     Write-Host ""
     Read-Host "Press Enter to continue" | Out-Null
@@ -58,12 +60,14 @@ function Invoke-ActionSafe {
     $ErrorActionPreference = "Stop"
 
     try {
+        $script:lastStatusText  = "[Running] Executing action..."
+        $script:lastStatusColor = "Cyan"
         & $Action
-        $script:lastStatusText  = $SuccessText
+        $script:lastStatusText  = "[Ready] $SuccessText"
         $script:lastStatusColor = "Green"
     }
     catch {
-        $script:lastStatusText  = "Action failed"
+        $script:lastStatusText  = "[Error] Action failed"
         $script:lastStatusColor = "Red"
         Write-Host ""
         Write-Host "Error: Action failed." -ForegroundColor Red
@@ -75,6 +79,78 @@ function Invoke-ActionSafe {
     }
 }
 
+function Test-Cmd {
+    param([Parameter(Mandatory)][string]$Name)
+    return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+function Resolve-DevOpsRepoPath {
+    param([Parameter(Mandatory)][string]$TargetRelativePath)
+
+    $preferredRoot = "C:\CITA_StudentRepos\lab-scripts"
+    $runtimeRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+    $candidates = @($preferredRoot, $runtimeRoot)
+
+    foreach ($candidate in $candidates) {
+        if (-not (Test-Path $candidate)) { continue }
+        $target = Join-Path $candidate $TargetRelativePath
+        if (Test-Path $target) { return $candidate }
+    }
+
+    return $preferredRoot
+}
+
+function Resolve-KubeconfigPath {
+    param([Parameter(Mandatory)][string]$RepoPath)
+
+    $candidates = @(
+        (Join-Path $RepoPath "labs\k8s-baremetal-lab\kubeconfig"),
+        (Join-Path $RepoPath "kubeconfig"),
+        "C:\CITA\LabTools\labs\k8s-baremetal-lab\kubeconfig",
+        "C:\CITA\LabTools\kubeconfig"
+    )
+
+    foreach ($path in $candidates) {
+        if (Test-Path $path) { return $path }
+    }
+
+    return $candidates[0]
+}
+
+function Show-CurrentContext {
+    param([Parameter(Mandatory)][string]$RepoPath)
+
+    $repoText = if (Test-Path -Path $RepoPath -PathType Container) { $RepoPath } else { "Missing" }
+    $repoColor = if ($repoText -eq "Missing") { "Yellow" } else { "Gray" }
+
+    $kubeconfigPath = Resolve-KubeconfigPath -RepoPath $RepoPath
+    $kubeText = if (Test-Path $kubeconfigPath) { $kubeconfigPath } else { "Not found" }
+    $kubeColor = if ($kubeText -eq "Not found") { "Yellow" } else { "Gray" }
+
+    $clusterText = "Unknown"
+    $clusterColor = "DarkYellow"
+    if ((Test-Cmd kubectl) -and (Test-Path $kubeconfigPath)) {
+        $nodesRaw = & kubectl --kubeconfig $kubeconfigPath --request-timeout=3s get nodes -o name 2>$null
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($nodesRaw | Out-String).Trim())) {
+            $clusterText = "Reachable"
+            $clusterColor = "Green"
+        }
+        else {
+            $clusterText = "Not reachable"
+            $clusterColor = "Yellow"
+        }
+    }
+
+    Write-Host "Context: " -NoNewline
+    Write-Host "Repo: " -NoNewline
+    Write-Host $repoText -ForegroundColor $repoColor -NoNewline
+    Write-Host " | Kubeconfig: " -NoNewline
+    Write-Host $kubeText -ForegroundColor $kubeColor -NoNewline
+    Write-Host " | Cluster: " -NoNewline
+    Write-Host $clusterText -ForegroundColor $clusterColor
+    Write-Host ""
+}
+
 function Show-DevOpsInstallUpdateMenu {
     param(
         [string]$StatusText  = "Ready",
@@ -82,24 +158,30 @@ function Show-DevOpsInstallUpdateMenu {
     )
 
     Show-AppHeader -Breadcrumb "Main > DevOps / CLI Tools > Install / Update Tools"
+    Show-CurrentContext -RepoPath $script:RepoPath
 
     Write-Host "  Install / Update Tools" -ForegroundColor Cyan
     Write-Host "  [1] Upgrade all Winget packages"
+    Write-Host "      Update installed tool packages from Winget sources." -ForegroundColor DarkGray
     Write-Host "  [2] Install talosctl"
+    Write-Host "      Install Talos CLI for cluster/node operations." -ForegroundColor DarkGray
     Write-Host "  [3] Install kubectl"
+    Write-Host "      Install Kubernetes CLI used throughout labs." -ForegroundColor DarkGray
     Write-Host "  [4] Install helm"
+    Write-Host "      Install Helm package manager for Kubernetes apps." -ForegroundColor DarkGray
     Write-Host "  [5] Install DevOps bundle (talosctl + kubectl + helm)"
+    Write-Host "      Install all core DevOps CLI tools in one step." -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
 
-    Write-Host "Status: " -NoNewline
-    Write-Host $StatusText -ForegroundColor $StatusColor
+    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
     Write-Host ""
 }
 
-$script:lastStatusText  = "Ready"
+$script:lastStatusText  = "[Ready] Ready"
 $script:lastStatusColor = "DarkGray"
+$script:RepoPath = Resolve-DevOpsRepoPath -TargetRelativePath $script:RepoTarget
 
 $back = $false
 while (-not $back) {
@@ -141,7 +223,7 @@ while (-not $back) {
         }
         "0" { $back = $true }
         default {
-            $script:lastStatusText  = "Invalid selection"
+            $script:lastStatusText  = "[Warning] Invalid selection"
             $script:lastStatusColor = "Yellow"
             Start-Sleep -Seconds 1
         }
