@@ -404,17 +404,22 @@ function Initialize-RepoPrereqs {
         [Parameter(Mandatory)][string]$Branch,
         [bool]$AutoResetIfDirty = $false,
         [bool]$SkipSync = $false,
+        [bool]$AllowDirty = $false,
         [string]$HintOption = "[9]"
     )
 
     Install-GitIfMissing
-    Repair-RepoState -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch -AutoResetIfDirty:$AutoResetIfDirty
+    if (-not $AllowDirty) {
+        Repair-RepoState -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch -AutoResetIfDirty:$AutoResetIfDirty
+    }
 
     if ((-not $SkipSync) -or (-not (Test-Path $RepoPath)) -or (-not (Test-Path (Join-Path $RepoPath ".git")))) {
         Sync-RepoContent -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch
     }
 
-    Repair-RepoState -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch -AutoResetIfDirty:$AutoResetIfDirty
+    if (-not $AllowDirty) {
+        Repair-RepoState -RepoUrl $RepoUrl -RepoPath $RepoPath -Branch $Branch -AutoResetIfDirty:$AutoResetIfDirty
+    }
 
     Assert-RepoReady -RepoPath $RepoPath -HintOption $HintOption
 }
@@ -905,7 +910,7 @@ do {
 
         "12" {
             Invoke-ActionSafe -SuccessText "CITA web demo deployed / updated" -Action {
-                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -SkipSync:$true -AllowDirty:$true
                 $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
 
                 $assets = New-CitaWebDemoAssets -RepoPath $script:RepoPath
