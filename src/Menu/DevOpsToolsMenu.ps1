@@ -1,6 +1,10 @@
 # C:\CITA\LabTools\src\Menu\DevOpsToolsMenu.ps1
 # DevOps / CLI Tools Menu (cleaned + consistent)
 
+param(
+    [string]$RunOption
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Continue"
 
@@ -577,6 +581,9 @@ $script:RepoUrl  = "https://github.com/cronnpj/lab-scripts.git"
 $script:Branch   = "main"
 $script:Target   = "labs\k8s-baremetal-lab\bootstrap.ps1"
 $script:RepoPath = Resolve-DevOpsRepoPath -TargetRelativePath $script:Target
+$script:InstallUpdateMenuPath = Join-Path $PSScriptRoot "DevOpsInstallUpdateMenu.ps1"
+$script:QuickChecksMenuPath = Join-Path $PSScriptRoot "DevOpsQuickChecksMenu.ps1"
+$script:LabInstallOpsMenuPath = Join-Path $PSScriptRoot "DevOpsLabInstallOpsMenu.ps1"
 
 $script:lastStatusText  = "Ready"
 $script:lastStatusColor = "DarkGray"
@@ -590,25 +597,13 @@ function Show-DevOpsMenu {
     Show-AppHeader -Breadcrumb "Main > DevOps / CLI Tools"
 
     Write-Host "  Install / Update Tools" -ForegroundColor Cyan
-    Write-Host "  [1]  Upgrade all Winget packages"
-    Write-Host "  [2]  Install talosctl"
-    Write-Host "  [3]  Install kubectl"
-    Write-Host "  [4]  Install helm"
-    Write-Host "  [5]  Install DevOps bundle (talosctl + kubectl + helm)"
+    Write-Host "  [1]  Open Install / Update Tools submenu"
     Write-Host ""
     Write-Host "  Quick Checks / Utilities" -ForegroundColor Cyan
-    Write-Host "  [6]  Show installed versions (git/kubectl/talosctl/helm)"
-    Write-Host "  [7]  kubectl get nodes/pods (uses repo kubeconfig if present)"
-    Write-Host "  [8]  Open repo folder in File Explorer"
+    Write-Host "  [6]  Open Quick Checks / Utilities submenu"
     Write-Host ""
     Write-Host "  Lab Repository - Install Operations" -ForegroundColor Cyan
-    Write-Host "  [9]  Install core platform (Cluster + MetalLB + Ingress)"
-    Write-Host "  [10] Repair / Reinstall MetalLB (IP pool/range)"
-    Write-Host "  [11] Install / Reinstall Portainer Admin UI (Ingress, NodePort IP, or LoadBalancer IP)"
-    Write-Host "  [12] Deploy / Update CITA Web Demo (namespace + ConfigMap + LoadBalancer)"
-    Write-Host "  [13] Scale CITA Web Demo (2/4/5/custom replicas)"
-    Write-Host "  [14] Scale any deployed app (interactive selector)"
-    Write-Host "  [15] Install / Update app via Helm (interactive)"
+    Write-Host "  [9]  Open Lab Repository - Install Operations submenu"
     Write-Host ""
     Write-Host "  Lab Repository - Advanced Operations" -ForegroundColor Cyan
     Write-Host "  [16] Wipe + Rebuild cluster (student reset mode)"
@@ -616,6 +611,7 @@ function Show-DevOpsMenu {
     Write-Host "  [18] Repo lab-safe reset (discard local changes)"
     Write-Host "  [19] Add new worker node to existing cluster"
     Write-Host "  [20] Reset CITA Web Demo only (delete namespace cita-web)"
+    Write-Host "  [21] Open kubectl prompt (new window, repo kubeconfig)"
     Write-Host ""
     Write-Host "  [0]  Back"
     Write-Host ""
@@ -628,101 +624,86 @@ function Show-DevOpsMenu {
 $back = $false
 do {
     Show-DevOpsMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor
-    $choice = Read-Host "Select an option"
+    if (-not [string]::IsNullOrWhiteSpace($RunOption)) {
+        $choice = $RunOption
+        $RunOption = ""
+    }
+    else {
+        $choice = Read-Host "Select an option"
+    }
 
     switch ($choice) {
 
         # === Install / Update Tools ===
         "1" {
-            Invoke-ActionSafe -SuccessText "Winget upgrade completed" -Action {
-                Assert-Admin
-                winget upgrade --all --accept-package-agreements --accept-source-agreements
+            Invoke-ActionSafe -SuccessText "Returned from Install / Update Tools submenu" -Action {
+                if (-not (Test-Path $script:InstallUpdateMenuPath)) {
+                    throw "Install submenu not found: $($script:InstallUpdateMenuPath)"
+                }
+
+                & $script:InstallUpdateMenuPath
             }
         }
 
         "2" {
-            Invoke-ActionSafe -SuccessText "talosctl install completed (or already installed)" -Action {
-                Assert-Admin
-                Install-WingetPackage -Id "Sidero.talosctl"
-            }
+            Set-Status -Text "Use option [1] Install / Update Tools submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [1] to open Install / Update Tools submenu." -ForegroundColor Yellow
+            Wait-Menu
         }
 
         "3" {
-            Invoke-ActionSafe -SuccessText "kubectl install completed (or already installed)" -Action {
-                Assert-Admin
-                Install-WingetPackage -Id "Kubernetes.kubectl"
-            }
+            Set-Status -Text "Use option [1] Install / Update Tools submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [1] to open Install / Update Tools submenu." -ForegroundColor Yellow
+            Wait-Menu
         }
 
         "4" {
-            Invoke-ActionSafe -SuccessText "helm install completed (or already installed)" -Action {
-                Assert-Admin
-                Install-WingetPackage -Id "Helm.Helm"
-            }
+            Set-Status -Text "Use option [1] Install / Update Tools submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [1] to open Install / Update Tools submenu." -ForegroundColor Yellow
+            Wait-Menu
         }
 
         "5" {
-            Invoke-ActionSafe -SuccessText "DevOps bundle installed" -Action {
-                Assert-Admin
-                Install-WingetPackage -Id "Sidero.talosctl"
-                Install-WingetPackage -Id "Kubernetes.kubectl"
-                Install-WingetPackage -Id "Helm.Helm"
-            }
+            Set-Status -Text "Use option [1] Install / Update Tools submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [1] to open Install / Update Tools submenu." -ForegroundColor Yellow
+            Wait-Menu
         }
 
         # === Quick Checks / Utilities ===
         "6" {
-            Invoke-ActionSafe -SuccessText "Versions displayed" -Action {
-                $prev = $ErrorActionPreference
-                $ErrorActionPreference = "Continue"
-                try {
-                    Show-Versions
+            Invoke-ActionSafe -SuccessText "Returned from Quick Checks / Utilities submenu" -Action {
+                if (-not (Test-Path $script:QuickChecksMenuPath)) {
+                    throw "Quick checks submenu not found: $($script:QuickChecksMenuPath)"
                 }
-                finally {
-                    $ErrorActionPreference = $prev
-                }
+
+                & $script:QuickChecksMenuPath
             }
         }
 
         "7" {
-            Invoke-ActionSafe -SuccessText "kubectl checks completed" -Action {
-                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
-                $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
-
-                Write-Host "Using kubeconfig: $kubeconfig" -ForegroundColor Gray
-
-                Write-Host ""
-                Write-Host "=== Section 1: Nodes ===" -ForegroundColor Cyan
-                kubectl --kubeconfig $kubeconfig get nodes -o wide
-
-                Write-Host ""
-                Write-Host "=== Section 2: Pods (all namespaces) ===" -ForegroundColor Cyan
-                kubectl --kubeconfig $kubeconfig get pods -A
-
-                Write-Host ""
-                Write-Host "=== Section 3: Services (all namespaces) ===" -ForegroundColor Cyan
-                kubectl --kubeconfig $kubeconfig get svc -A
-
-                Write-Host ""
-                Write-Host "=== Section 4: Ingress (all namespaces) ===" -ForegroundColor Cyan
-                kubectl --kubeconfig $kubeconfig get ingress -A
-
-                Write-Host ""
-                Write-Host "=== Section 5: ingress-nginx controller service ===" -ForegroundColor Cyan
-                kubectl --kubeconfig $kubeconfig -n ingress-nginx get svc ingress-nginx-controller -o wide
-            }
+            Set-Status -Text "Use option [6] Quick Checks / Utilities submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [6] to open Quick Checks / Utilities submenu." -ForegroundColor Yellow
+            Wait-Menu
         }
 
         "8" {
-            Invoke-ActionSafe -SuccessText "Opened repo folder" -Action {
-                $skip = (Test-Path -Path $script:RepoPath -PathType Container)
-                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -SkipSync:$skip
-                Start-Process explorer.exe $script:RepoPath
-            }
+            Set-Status -Text "Use option [6] Quick Checks / Utilities submenu" -Color "Yellow"
+            Write-Host "This top-level option has moved. Use option [6] to open Quick Checks / Utilities submenu." -ForegroundColor Yellow
+            Wait-Menu
         }
 
         # === Lab Repository - Basic Operations ===
         "9" {
+            Invoke-ActionSafe -SuccessText "Returned from Lab Install Operations submenu" -Action {
+                if (-not (Test-Path $script:LabInstallOpsMenuPath)) {
+                    throw "Lab install operations submenu not found: $($script:LabInstallOpsMenuPath)"
+                }
+
+                & $script:LabInstallOpsMenuPath
+            }
+        }
+
+        "91" {
             Invoke-ActionSafe -SuccessText "Option 9 platform workflow completed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -AutoResetIfDirty:$true
                 if (-not (Test-Cmd kubectl)) { throw "kubectl not found. Install it from option [3]." }
@@ -833,7 +814,7 @@ do {
             }
         }
 
-        "10" {
+        "92" {
             Invoke-ActionSafe -SuccessText "MetalLB installed / VIP pool applied" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
 
@@ -844,7 +825,7 @@ do {
             }
         }
 
-        "11" {
+        "93" {
             Invoke-ActionSafe -SuccessText "Portainer install completed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
@@ -908,7 +889,7 @@ do {
             }
         }
 
-        "12" {
+        "94" {
             Invoke-ActionSafe -SuccessText "CITA web demo deployed / updated" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -SkipSync:$true -AllowDirty:$true
                 $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
@@ -988,7 +969,7 @@ do {
             }
         }
 
-        "13" {
+        "95" {
             Invoke-ActionSafe -SuccessText "CITA web demo scaled" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
@@ -1026,7 +1007,7 @@ do {
             }
         }
 
-        "14" {
+        "96" {
             Invoke-ActionSafe -SuccessText "Selected deployment scaled" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
@@ -1078,7 +1059,7 @@ do {
             }
         }
 
-        "15" {
+        "97" {
             Invoke-ActionSafe -SuccessText "Helm app install / update completed" -Action {
                 if (-not (Test-Cmd helm)) { throw "helm not found. Install it from option [4]." }
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
@@ -1282,12 +1263,41 @@ do {
             }
         }
 
+        "21" {
+            Invoke-ActionSafe -SuccessText "Opened kubectl prompt" -Action {
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -SkipSync:$true -AllowDirty:$true
+                $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
+
+                $escapedKubeconfig = $kubeconfig.Replace("'", "''")
+                $promptCommand = @"
+$env:KUBECONFIG = '$escapedKubeconfig'
+Clear-Host
+Write-Host 'Kubernetes shell ready.' -ForegroundColor Green
+Write-Host 'KUBECONFIG: $escapedKubeconfig' -ForegroundColor Gray
+Write-Host 'Try: kubectl get nodes -o wide' -ForegroundColor Cyan
+Write-Host 'Type exit to close this window.' -ForegroundColor DarkGray
+"@
+
+                Start-Process powershell.exe -ArgumentList @(
+                    "-NoLogo",
+                    "-NoExit",
+                    "-NoProfile",
+                    "-ExecutionPolicy", "Bypass",
+                    "-Command", $promptCommand
+                )
+            }
+        }
+
         "0" { $back = $true }
 
         default {
             Set-Status -Text "Invalid selection" -Color "Red"
             Wait-Menu
         }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($RunOption) -and -not [string]::IsNullOrWhiteSpace($choice) -and ($choice -in @("91","92","93","94","95","96","97"))) {
+        $back = $true
     }
 
 } while (-not $back)
