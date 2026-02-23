@@ -192,6 +192,24 @@ function Deploy-FilesFromRepo([string]$RepoRoot) {
     Write-Host "Backup saved at: $backupPath"
 }
 
+function Invoke-PostUpdateTerminalBackground {
+    $applyScript = Join-Path $DestPath "Tasks\Apply-TerminalBackground.ps1"
+
+    if (-not (Test-Path $applyScript)) {
+        Write-Host "Post-update: terminal background task not found, skipping." -ForegroundColor DarkYellow
+        return
+    }
+
+    try {
+        Write-Host "Post-update: applying Windows Terminal background from repo config..."
+        & $applyScript
+    }
+    catch {
+        Write-Host "Post-update: terminal background apply failed (non-blocking)." -ForegroundColor DarkYellow
+        Write-Host $_.Exception.Message -ForegroundColor DarkYellow
+    }
+}
+
 # =========
 # RUN
 # =========
@@ -213,10 +231,12 @@ try {
         Write-Host "Repo-cache detected. Using repo-cache + deploy model."
         Clone-Or-Pull $RepoPath
         Deploy-FilesFromRepo $RepoPath
+        Invoke-PostUpdateTerminalBackground
     }
     elseif ($destIsRepo) {
         Write-Host "Runtime folder is a git repo. Pulling updates in-place: $DestPath"
         Clone-Or-Pull $DestPath
+        Invoke-PostUpdateTerminalBackground
         Write-Host ""
         Write-Host "Update complete (in-place repo pull)."
     }
@@ -224,6 +244,7 @@ try {
         Write-Host "No repo detected yet. Creating repo-cache and deploying."
         Clone-Or-Pull $RepoPath
         Deploy-FilesFromRepo $RepoPath
+        Invoke-PostUpdateTerminalBackground
     }
 
     Write-Host ""

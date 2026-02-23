@@ -33,6 +33,8 @@ This repository contains a collection of PowerShell modules and scripts used to 
 - Added deployable MISC asset folders: [src/MISC/README.md](src/MISC/README.md) and [src/MISC/vmPing/README.md](src/MISC/vmPing/README.md).
 - Added Windows Client Tools option [16] to launch vmPing from `src/MISC/vmPing/vmPing.exe`.
 - Added shortcut task: [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) and Maintenance option [2] to create/repair Desktop and Start Menu shortcuts.
+- Added repo-managed Windows Terminal background task: [src/Tasks/Apply-TerminalBackground.ps1](src/Tasks/Apply-TerminalBackground.ps1) using [src/config/terminal-background.json](src/config/terminal-background.json).
+- Update task [src/Tasks/Update-LabTools.ps1](src/Tasks/Update-LabTools.ps1) now attempts a non-blocking post-update apply of the repo-managed Terminal background.
 
 ## Prerequisites
 
@@ -75,6 +77,12 @@ Create or repair shortcuts (Desktop + Start Menu):
 
 ```powershell
 .\src\Tasks\Create-Shortcuts.ps1
+```
+
+Apply Windows Terminal background from repo config:
+
+```powershell
+.\src\Tasks\Apply-TerminalBackground.ps1
 ```
 
 Or run a task directly, for example to install roles:

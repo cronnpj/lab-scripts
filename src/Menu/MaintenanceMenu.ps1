@@ -54,18 +54,20 @@ function Show-MaintenanceMenu {
 
     Write-Host "  [1] Update Lab Tools from GitHub"
     Write-Host "  [2] Create / Repair Lab Tools shortcuts"
+    Write-Host "  [3] Apply Windows Terminal background (repo config)"
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-Host "Keys: 1-2 Select  |  0 Back"
+    Write-Host "Keys: 1-3 Select  |  0 Back"
     Write-Host ""
 }
 
 $updateScript = Join-Path $PSScriptRoot "..\Tasks\Update-LabTools.ps1"
 $shortcutScript = Join-Path $PSScriptRoot "..\Tasks\Create-Shortcuts.ps1"
+$terminalBackgroundScript = Join-Path $PSScriptRoot "..\Tasks\Apply-TerminalBackground.ps1"
 
 $back = $false
 $script:lastStatusText  = "[Ready] Ready"
@@ -78,6 +80,7 @@ do {
     switch ($choice) {
         "1" { Invoke-TaskSafe -Path $updateScript -SuccessText "Update completed" }
         "2" { Invoke-TaskSafe -Path $shortcutScript -SuccessText "Shortcuts created/updated" }
+        "3" { Invoke-TaskSafe -Path $terminalBackgroundScript -SuccessText "Terminal background applied" }
         "0" { $back = $true }
         default {
             $script:lastStatusText  = "[Warning] Invalid selection"
