@@ -79,6 +79,8 @@ Create or repair shortcuts (Desktop + Start Menu):
 .\src\Tasks\Create-Shortcuts.ps1
 ```
 
+This repairs both shortcut names (`CITA Lab Tools.lnk` and legacy `CITA Server Setup.lnk`) in current-user and all-users Desktop/Start Menu locations (all-users may require running as Administrator).
+
 Apply Windows Terminal background from repo config:
 
 ```powershell

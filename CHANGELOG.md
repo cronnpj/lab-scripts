@@ -8,6 +8,7 @@ All notable changes to this repository are documented in this file.
 - Added [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1) to start Lab Tools in Windows Terminal (`wt.exe`) when available, with PowerShell fallback.
 - Added Windows Client Tools option [16] in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) to launch vmPing from the local MISC path.
 - Added [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) and Maintenance option [2] to create/repair current-user Desktop and Start Menu shortcuts.
+- Expanded [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) to also repair legacy shortcut name (`CITA Server Setup.lnk`) and attempt all-users Desktop/Start Menu locations.
 - Added [src/Tasks/Apply-TerminalBackground.ps1](src/Tasks/Apply-TerminalBackground.ps1) and Maintenance option [3] to apply Windows Terminal background settings from [src/config/terminal-background.json](src/config/terminal-background.json).
 - Updated [src/Tasks/Update-LabTools.ps1](src/Tasks/Update-LabTools.ps1) to auto-run the Terminal background apply step after successful updates (non-blocking if it fails).
 

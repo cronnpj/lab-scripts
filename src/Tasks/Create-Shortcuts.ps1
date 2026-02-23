@@ -32,17 +32,45 @@ function New-LabShortcut {
     $shortcut.Save()
 }
 
-$shortcutName = "CITA Lab Tools.lnk"
-$desktopPath = [Environment]::GetFolderPath("Desktop")
-$startMenuPrograms = Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs"
-
-$desktopShortcut = Join-Path $desktopPath $shortcutName
-$startMenuShortcut = Join-Path $startMenuPrograms $shortcutName
 $workingDir = $srcRoot
+$shortcutNames = @(
+    "CITA Lab Tools.lnk",
+    "CITA Server Setup.lnk"
+)
 
-New-LabShortcut -ShortcutPath $desktopShortcut -LauncherPath $launcherPath -WorkingDirectory $workingDir
-New-LabShortcut -ShortcutPath $startMenuShortcut -LauncherPath $launcherPath -WorkingDirectory $workingDir
+$locations = @(
+    [pscustomobject]@{ Label = "CurrentUser Desktop"; Path = [Environment]::GetFolderPath("Desktop") },
+    [pscustomobject]@{ Label = "CurrentUser StartMenu"; Path = (Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs") },
+    [pscustomobject]@{ Label = "AllUsers Desktop"; Path = [Environment]::GetFolderPath("CommonDesktopDirectory") },
+    [pscustomobject]@{ Label = "AllUsers StartMenu"; Path = (Join-Path $env:ProgramData "Microsoft\Windows\Start Menu\Programs") }
+)
 
-Write-Host "Shortcuts created/updated:" -ForegroundColor Green
-Write-Host " - $desktopShortcut"
-Write-Host " - $startMenuShortcut"
+$created = @()
+$failed = @()
+
+foreach ($location in $locations) {
+    if (-not $location.Path) { continue }
+
+    foreach ($shortcutName in $shortcutNames) {
+        $shortcutPath = Join-Path $location.Path $shortcutName
+
+        try {
+            New-LabShortcut -ShortcutPath $shortcutPath -LauncherPath $launcherPath -WorkingDirectory $workingDir
+            $created += "[$($location.Label)] $shortcutPath"
+        }
+        catch {
+            $failed += "[$($location.Label)] $shortcutPath :: $($_.Exception.Message)"
+        }
+    }
+}
+
+if ($created.Count -gt 0) {
+    Write-Host "Shortcuts created/updated:" -ForegroundColor Green
+    $created | ForEach-Object { Write-Host " - $_" }
+}
+
+if ($failed.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Some shortcut writes failed (likely permissions on all-users locations):" -ForegroundColor DarkYellow
+    $failed | ForEach-Object { Write-Host " - $_" -ForegroundColor DarkYellow }
+}
