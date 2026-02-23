@@ -1,5 +1,8 @@
 {
   "toolName": "CITA Lab Tools",
   "roles": ["AD-Domain-Services", "DNS", "DHCP"],
-  "logPath": "C:\\LabLogs\\labtools.log"
+  "logPath": "C:\\LabLogs\\labtools.log",
+  "shortcuts": {
+    "createPublicDesktopShortcuts": false
+  }
 }

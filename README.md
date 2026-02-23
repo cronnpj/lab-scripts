@@ -79,7 +79,7 @@ Create or repair shortcuts (Desktop + Start Menu):
 .\src\Tasks\Create-Shortcuts.ps1
 ```
 
-This repairs both shortcut names (`CITA Lab Tools.lnk` and legacy `CITA Server Setup.lnk`) in current-user and all-users Desktop/Start Menu locations (all-users may require running as Administrator).
+This repairs both shortcut names (`CITA Lab Tools.lnk` and legacy `CITA Server Setup.lnk`) in current-user Desktop/Start Menu and all-users Start Menu. Public Desktop creation is controlled by `src/config/labtools.json` -> `shortcuts.createPublicDesktopShortcuts` (default `false`).
 
 Apply Windows Terminal background from repo config:
 
