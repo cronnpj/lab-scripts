@@ -107,12 +107,16 @@ function Show-ClientMenu {
     Write-Host "  [15] System File Check (SFC)"
     Write-Host ""
 
+    Write-Host "MISC Utilities" -ForegroundColor Cyan
+    Write-Host "  [16] Launch vmPing (MISC)"
+    Write-Host ""
+
     Write-Host "  [0] Back"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-Host "Keys: 1-15 Select  |  0 Back"
+    Write-Host "Keys: 1-16 Select  |  0 Back"
     Write-Host ""
 }
 
@@ -124,6 +128,7 @@ $timezoneScript     = Join-Path $PSScriptRoot "..\Tasks\Set-EasternTimeAndResync
 $joinStatusScript   = Join-Path $PSScriptRoot "..\Tasks\Client\Get-JoinStatus.ps1"
 $gpoReportScript    = Join-Path $PSScriptRoot "..\Tasks\Client\GPO-Report.ps1"
 $testConnScript     = Join-Path $PSScriptRoot "..\Tasks\Client\Test-Connectivity.ps1"
+$vmPingPath         = Join-Path $PSScriptRoot "..\MISC\vmPing\vmPing.exe"
 
 $back = $false
 $script:lastStatusText  = "[Ready] Ready"
@@ -181,6 +186,17 @@ do {
             } -SuccessText "Windows Update services restarted"
         }
         "15" { Invoke-ActionSafe -Action { Clear-Host; sfc /scannow } -SuccessText "SFC completed (or started)" }
+
+        # MISC Utilities
+        "16" {
+            Invoke-ActionSafe -Action {
+                if (-not (Test-Path $vmPingPath)) {
+                    throw "vmPing.exe not found at '$vmPingPath'. Place vmPing.exe in src\\MISC\\vmPing\\ and try again."
+                }
+
+                Start-Process -FilePath $vmPingPath
+            } -SuccessText "vmPing launched"
+        }
 
         "0"  { $back = $true }
         default {

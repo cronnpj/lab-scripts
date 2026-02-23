@@ -27,6 +27,13 @@ This repository contains a collection of PowerShell modules and scripts used to 
 - Removed DevOps option [16] and renumbered Advanced Operations options to keep numbering contiguous.
 - Added DevOps option [11] mode selection for Portainer publish paths: Ingress host, NodePort IP, or LoadBalancer VIP.
 
+## New Additions (2026-02-22)
+
+- Added a dedicated launcher: [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1), which prefers Windows Terminal (`wt.exe`) and falls back to PowerShell when needed.
+- Added deployable MISC asset folders: [src/MISC/README.md](src/MISC/README.md) and [src/MISC/vmPing/README.md](src/MISC/vmPing/README.md).
+- Added Windows Client Tools option [16] to launch vmPing from `src/MISC/vmPing/vmPing.exe`.
+- Added shortcut task: [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) and Maintenance option [2] to create/repair Desktop and Start Menu shortcuts.
+
 ## Prerequisites
 
 - Windows PowerShell (tested on Windows PowerShell / PowerShell Core)
@@ -56,6 +63,18 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 
 ```powershell
 .\src\Menu\MainMenu.ps1
+```
+
+Or launch with Windows Terminal preference:
+
+```powershell
+.\src\Launch-LabTools.ps1
+```
+
+Create or repair shortcuts (Desktop + Start Menu):
+
+```powershell
+.\src\Tasks\Create-Shortcuts.ps1
 ```
 
 Or run a task directly, for example to install roles:

@@ -2,6 +2,17 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.02.22 - 2026-02-22
+
+### Menu and Launch Experience
+- Added [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1) to start Lab Tools in Windows Terminal (`wt.exe`) when available, with PowerShell fallback.
+- Added Windows Client Tools option [16] in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) to launch vmPing from the local MISC path.
+- Added [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) and Maintenance option [2] to create/repair current-user Desktop and Start Menu shortcuts.
+
+### MISC Asset Structure
+- Added [src/MISC/README.md](src/MISC/README.md) as a deployable location for executables, images, and other growth assets.
+- Added [src/MISC/vmPing/README.md](src/MISC/vmPing/README.md) with vmPing placement guidance (`vmPing.exe`).
+
 ## v2026.02.20 - 2026-02-20
 
 ### DevOps Menu Hardening
