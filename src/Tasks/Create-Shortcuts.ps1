@@ -13,7 +13,8 @@ function New-LabShortcut {
     param(
         [Parameter(Mandatory=$true)][string]$ShortcutPath,
         [Parameter(Mandatory=$true)][string]$LauncherPath,
-        [Parameter(Mandatory=$true)][string]$WorkingDirectory
+        [Parameter(Mandatory=$true)][string]$WorkingDirectory,
+        [Parameter(Mandatory=$true)][string]$IconLocation
     )
 
     $shortcutDir = Split-Path -Parent $ShortcutPath
@@ -29,18 +30,30 @@ function New-LabShortcut {
     $shortcut.WorkingDirectory = $WorkingDirectory
     $shortcut.WindowStyle = 1
     $shortcut.Description = "Launch CITA Lab Tools (Windows Terminal preferred)"
-    $shortcut.IconLocation = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe,0"
+    $shortcut.IconLocation = $IconLocation
     $shortcut.Save()
 }
 
 $workingDir = $srcRoot
 $createPublicDesktopShortcuts = $false
+$defaultIconLocation = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe,0"
+$shortcutIconLocation = $defaultIconLocation
 
 if (Test-Path $configPath) {
     try {
         $config = Get-Content -Path $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
         if ($null -ne $config.shortcuts -and $null -ne $config.shortcuts.createPublicDesktopShortcuts) {
             $createPublicDesktopShortcuts = [bool]$config.shortcuts.createPublicDesktopShortcuts
+        }
+
+        if ($null -ne $config.shortcuts -and -not [string]::IsNullOrWhiteSpace([string]$config.shortcuts.iconRelativePath)) {
+            $configuredIconPath = Join-Path $srcRoot ([string]$config.shortcuts.iconRelativePath)
+            if (Test-Path $configuredIconPath) {
+                $shortcutIconLocation = $configuredIconPath
+            }
+            else {
+                Write-Host "Warning: Shortcut icon not found at configured path; using default icon. $configuredIconPath" -ForegroundColor DarkYellow
+            }
         }
     }
     catch {
@@ -112,7 +125,7 @@ foreach ($location in $locations) {
         $shortcutPath = Join-Path $location.Path $shortcutName
 
         try {
-            New-LabShortcut -ShortcutPath $shortcutPath -LauncherPath $launcherPath -WorkingDirectory $workingDir
+            New-LabShortcut -ShortcutPath $shortcutPath -LauncherPath $launcherPath -WorkingDirectory $workingDir -IconLocation $shortcutIconLocation
             $created += "[$($location.Label)] $shortcutPath"
         }
         catch {
@@ -128,6 +141,7 @@ if ($created.Count -gt 0) {
 
 Write-Host ""
 Write-Host "Public desktop shortcuts enabled: $createPublicDesktopShortcuts" -ForegroundColor Cyan
+Write-Host "Shortcut icon: $shortcutIconLocation" -ForegroundColor Cyan
 
 if ($removed.Count -gt 0) {
     Write-Host ""
