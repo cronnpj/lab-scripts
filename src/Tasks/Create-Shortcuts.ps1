@@ -49,7 +49,10 @@ if (Test-Path $configPath) {
 }
 
 $shortcutNames = @(
-    "CITA Lab Tools.lnk",
+    "CITA Lab Tools.lnk"
+)
+
+$legacyShortcutNames = @(
     "CITA Server Setup.lnk"
 )
 
@@ -69,7 +72,7 @@ $removed = @()
 
 $commonDesktopPath = [Environment]::GetFolderPath("CommonDesktopDirectory")
 if ($commonDesktopPath -and -not $createPublicDesktopShortcuts) {
-    foreach ($shortcutName in $shortcutNames) {
+    foreach ($shortcutName in ($shortcutNames + $legacyShortcutNames)) {
         $publicShortcutPath = Join-Path $commonDesktopPath $shortcutName
 
         if (-not (Test-Path $publicShortcutPath)) { continue }
@@ -80,6 +83,24 @@ if ($commonDesktopPath -and -not $createPublicDesktopShortcuts) {
         }
         catch {
             $failed += "[AllUsers Desktop] $publicShortcutPath :: $($_.Exception.Message)"
+        }
+    }
+}
+
+foreach ($location in $locations) {
+    if (-not $location.Path) { continue }
+
+    foreach ($legacyShortcutName in $legacyShortcutNames) {
+        $legacyShortcutPath = Join-Path $location.Path $legacyShortcutName
+
+        if (-not (Test-Path $legacyShortcutPath)) { continue }
+
+        try {
+            Remove-Item -Path $legacyShortcutPath -Force
+            $removed += "[$($location.Label)] $legacyShortcutPath"
+        }
+        catch {
+            $failed += "[$($location.Label)] $legacyShortcutPath :: $($_.Exception.Message)"
         }
     }
 }
