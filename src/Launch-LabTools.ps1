@@ -15,7 +15,6 @@ if ($wt) {
             "--",
             "powershell.exe",
             "-NoLogo",
-            "-NoExit",
             "-ExecutionPolicy", "Bypass",
             "-File", $mainMenuPath
         )
