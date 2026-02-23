@@ -9,6 +9,12 @@ if (-not (Test-Path $launcherPath)) {
     throw "Launcher not found: $launcherPath"
 }
 
+function Test-IsElevated {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
 function New-LabShortcut {
     param(
         [Parameter(Mandatory=$true)][string]$ShortcutPath,
@@ -38,6 +44,7 @@ $workingDir = $srcRoot
 $createPublicDesktopShortcuts = $false
 $defaultIconLocation = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe,0"
 $shortcutIconLocation = $defaultIconLocation
+$isElevated = Test-IsElevated
 
 if (Test-Path $configPath) {
     try {
@@ -71,12 +78,21 @@ $legacyShortcutNames = @(
 
 $locations = @(
     [pscustomobject]@{ Label = "CurrentUser Desktop"; Path = [Environment]::GetFolderPath("Desktop") },
-    [pscustomobject]@{ Label = "CurrentUser StartMenu"; Path = (Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs") },
-    [pscustomobject]@{ Label = "AllUsers StartMenu"; Path = (Join-Path $env:ProgramData "Microsoft\Windows\Start Menu\Programs") }
+    [pscustomobject]@{ Label = "CurrentUser StartMenu"; Path = (Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs") }
 )
 
-if ($createPublicDesktopShortcuts) {
+if ($isElevated) {
+    $locations += [pscustomobject]@{ Label = "AllUsers StartMenu"; Path = (Join-Path $env:ProgramData "Microsoft\Windows\Start Menu\Programs") }
+}
+else {
+    Write-Host "Not elevated: skipping all-users Start Menu shortcut writes." -ForegroundColor DarkYellow
+}
+
+if ($createPublicDesktopShortcuts -and $isElevated) {
     $locations += [pscustomobject]@{ Label = "AllUsers Desktop"; Path = [Environment]::GetFolderPath("CommonDesktopDirectory") }
+}
+elseif ($createPublicDesktopShortcuts -and -not $isElevated) {
+    Write-Host "Not elevated: skipping all-users Desktop shortcut writes." -ForegroundColor DarkYellow
 }
 
 $created = @()
@@ -84,7 +100,7 @@ $failed = @()
 $removed = @()
 
 $commonDesktopPath = [Environment]::GetFolderPath("CommonDesktopDirectory")
-if ($commonDesktopPath -and -not $createPublicDesktopShortcuts) {
+if ($commonDesktopPath -and -not $createPublicDesktopShortcuts -and $isElevated) {
     foreach ($shortcutName in ($shortcutNames + $legacyShortcutNames)) {
         $publicShortcutPath = Join-Path $commonDesktopPath $shortcutName
 
@@ -98,6 +114,9 @@ if ($commonDesktopPath -and -not $createPublicDesktopShortcuts) {
             $failed += "[AllUsers Desktop] $publicShortcutPath :: $($_.Exception.Message)"
         }
     }
+}
+elseif ($commonDesktopPath -and -not $createPublicDesktopShortcuts -and -not $isElevated) {
+    Write-Host "Not elevated: skipping public desktop cleanup." -ForegroundColor DarkYellow
 }
 
 foreach ($location in $locations) {

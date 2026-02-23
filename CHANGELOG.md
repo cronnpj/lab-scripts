@@ -2,6 +2,16 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.02.23.1 - 2026-02-23
+
+### Shortcut and UX Refinements
+- Updated [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) to create only `CITA Lab Tools.lnk`.
+- Added legacy cleanup behavior to remove `CITA Server Setup.lnk` from managed shortcut locations when present.
+- Added shortcut icon configuration in [src/config/labtools.json](src/config/labtools.json) via `shortcuts.iconRelativePath`, with fallback to the default PowerShell icon.
+- Added [src/MISC/Icons/README.md](src/MISC/Icons/README.md) and a default icon folder for custom shortcut icon placement.
+- Reduced noisy expected warnings by skipping all-users Desktop/Start Menu writes and public desktop cleanup when not running elevated.
+- Kept public desktop shortcut behavior configurable via `shortcuts.createPublicDesktopShortcuts` (default `false`).
+
 ## v2026.02.22 - 2026-02-22
 
 ### Menu and Launch Experience
