@@ -80,7 +80,7 @@ function Write-TimezoneDateLine {
     $inner = $Width - 4
 
     $labelTZ = "TZ: "
-    $labelDate = "    Date: "
+    $labelDate = "      Date: "
 
     $textLen = $labelTZ.Length + $timeZoneStr.Length + $labelDate.Length + $currentDate.Length
     $pad = " " * [Math]::Max(0, $inner - $textLen)
