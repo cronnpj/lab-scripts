@@ -94,6 +94,63 @@ function Write-TimezoneDateLine {
     Write-Host " |" -ForegroundColor Gray
 }
 
+function Get-PrimaryNetworkInfo {
+    try {
+        $config = Get-NetIPConfiguration -ErrorAction Stop |
+            Where-Object {
+                $_.IPv4Address -and
+                $_.NetAdapter -and
+                $_.NetAdapter.Status -eq 'Up'
+            } |
+            Select-Object -First 1
+
+        if (-not $config) {
+            return @{ IPAddress = 'N/A'; Mode = 'Unknown' }
+        }
+
+        $ipAddress = $config.IPv4Address.IPAddress
+        if ([string]::IsNullOrWhiteSpace($ipAddress)) {
+            $ipAddress = 'N/A'
+        }
+
+        $mode = if ($config.NetIPv4Interface.Dhcp -eq 'Enabled') { 'DHCP' } else { 'Static' }
+        return @{ IPAddress = $ipAddress; Mode = $mode }
+    }
+    catch {
+        return @{ IPAddress = 'N/A'; Mode = 'Unknown' }
+    }
+}
+
+function Write-NetworkLine {
+    param(
+        [Parameter(Mandatory=$true)][string]$IPAddress,
+        [Parameter(Mandatory=$true)][string]$Mode,
+        [int]$Width = 64
+    )
+
+    $inner = $Width - 4
+
+    $labelIP = "IP: "
+    $labelMode = "    Mode: "
+
+    $textLen = $labelIP.Length + $IPAddress.Length + $labelMode.Length + $Mode.Length
+    if ($textLen -gt $inner) {
+        $maxIp = [Math]::Max(0, $inner - ($labelIP.Length + $labelMode.Length + $Mode.Length))
+        if ($IPAddress.Length -gt $maxIp) { $IPAddress = $IPAddress.Substring(0, $maxIp) }
+    }
+
+    $textLen = $labelIP.Length + $IPAddress.Length + $labelMode.Length + $Mode.Length
+    $pad = " " * [Math]::Max(0, ($inner - $textLen))
+
+    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host $labelIP -NoNewline -ForegroundColor Gray
+    Write-Host $IPAddress -NoNewline -ForegroundColor Cyan
+    Write-Host $labelMode -NoNewline -ForegroundColor Gray
+    Write-Host $Mode -NoNewline -ForegroundColor Cyan
+    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Gray
+}
+
 function Show-AppHeader {
     param(
         [Parameter(Mandatory=$true)][string]$Breadcrumb,
@@ -105,6 +162,7 @@ function Show-AppHeader {
     $version  = Get-AppVersion
     $hostName = $env:COMPUTERNAME
     $userName = $env:USERNAME
+    $networkInfo = Get-PrimaryNetworkInfo
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor DarkGray
     Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $Width "Cyan"
@@ -112,6 +170,9 @@ function Show-AppHeader {
 
     # Host/User line with cyan values
     Write-HostUserLine -HostName $hostName -UserName $userName -Width $Width
+
+    # Primary network line with cyan values
+    Write-NetworkLine -IPAddress $networkInfo.IPAddress -Mode $networkInfo.Mode -Width $Width
 
     # Timezone/Date line with cyan values
     Write-TimezoneDateLine -Width $Width
@@ -148,3 +209,4 @@ function Write-StatusLine {
 }
 
 Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine
+
