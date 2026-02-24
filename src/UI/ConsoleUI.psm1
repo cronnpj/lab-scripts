@@ -96,25 +96,53 @@ function Write-TimezoneDateLine {
 
 function Get-PrimaryNetworkInfo {
     try {
-        $config = Get-NetIPConfiguration -ErrorAction Stop |
+        $candidates = @()
+
+        $interfaces = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() |
             Where-Object {
-                $_.IPv4Address -and
-                $_.NetAdapter -and
-                $_.NetAdapter.Status -eq 'Up'
-            } |
+                $_.OperationalStatus -eq [System.Net.NetworkInformation.OperationalStatus]::Up -and
+                $_.NetworkInterfaceType -ne [System.Net.NetworkInformation.NetworkInterfaceType]::Loopback -and
+                $_.NetworkInterfaceType -ne [System.Net.NetworkInformation.NetworkInterfaceType]::Tunnel
+            }
+
+        foreach ($interface in $interfaces) {
+            $ipProps = $interface.GetIPProperties()
+
+            $ipv4 = $ipProps.UnicastAddresses |
+                Where-Object {
+                    $_.Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork -and
+                    -not $_.Address.IPAddressToString.StartsWith('169.254.')
+                } |
+                Select-Object -First 1
+
+            if (-not $ipv4) { continue }
+
+            $ipv4Props = $ipProps.GetIPv4Properties()
+            $mode = 'Unknown'
+            if ($ipv4Props) {
+                $mode = if ($ipv4Props.IsDhcpEnabled) { 'DHCP' } else { 'Static' }
+            }
+
+            $hasGateway = ($ipProps.GatewayAddresses |
+                Where-Object { $_.Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork } |
+                Measure-Object).Count -gt 0
+
+            $candidates += [PSCustomObject]@{
+                IPAddress  = $ipv4.Address.IPAddressToString
+                Mode       = $mode
+                HasGateway = $hasGateway
+            }
+        }
+
+        $primary = $candidates |
+            Sort-Object -Property @{ Expression = { if ($_.HasGateway) { 0 } else { 1 } } } |
             Select-Object -First 1
 
-        if (-not $config) {
+        if (-not $primary) {
             return @{ IPAddress = 'N/A'; Mode = 'Unknown' }
         }
 
-        $ipAddress = $config.IPv4Address.IPAddress
-        if ([string]::IsNullOrWhiteSpace($ipAddress)) {
-            $ipAddress = 'N/A'
-        }
-
-        $mode = if ($config.NetIPv4Interface.Dhcp -eq 'Enabled') { 'DHCP' } else { 'Static' }
-        return @{ IPAddress = $ipAddress; Mode = $mode }
+        return @{ IPAddress = $primary.IPAddress; Mode = $primary.Mode }
     }
     catch {
         return @{ IPAddress = 'N/A'; Mode = 'Unknown' }
