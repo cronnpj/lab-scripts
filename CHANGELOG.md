@@ -2,6 +2,12 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.02.25.1 - 2026-02-25
+
+### Maintenance Update Flow Fix
+- Updated [src/Tasks/Update-LabTools.ps1](src/Tasks/Update-LabTools.ps1) to resolve post-update task scripts from the updater's local task folder first, with fallback to deployed `C:\CITA\LabTools\Tasks` paths.
+- Added explicit post-update script-path logging so option [1] output shows exactly which shortcut/background task script is executed.
+
 ## v2026.02.25 - 2026-02-25
 
 ### Maintenance Update Flow

@@ -193,15 +193,20 @@ function Deploy-FilesFromRepo([string]$RepoRoot) {
 }
 
 function Invoke-PostUpdateTerminalBackground {
-    $applyScript = Join-Path $DestPath "Tasks\Apply-TerminalBackground.ps1"
+    $candidates = @(
+        (Join-Path $PSScriptRoot "Apply-TerminalBackground.ps1"),
+        (Join-Path $DestPath "Tasks\Apply-TerminalBackground.ps1")
+    )
+    $applyScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 
-    if (-not (Test-Path $applyScript)) {
+    if (-not $applyScript) {
         Write-Host "Post-update: terminal background task not found, skipping." -ForegroundColor DarkYellow
         return
     }
 
     try {
         Write-Host "Post-update: applying Windows Terminal background from repo config..."
+        Write-Host "Post-update: using task script: $applyScript" -ForegroundColor DarkGray
         & $applyScript
     }
     catch {
@@ -211,15 +216,20 @@ function Invoke-PostUpdateTerminalBackground {
 }
 
 function Invoke-PostUpdateShortcuts {
-    $shortcutScript = Join-Path $DestPath "Tasks\Create-Shortcuts.ps1"
+    $candidates = @(
+        (Join-Path $PSScriptRoot "Create-Shortcuts.ps1"),
+        (Join-Path $DestPath "Tasks\Create-Shortcuts.ps1")
+    )
+    $shortcutScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 
-    if (-not (Test-Path $shortcutScript)) {
+    if (-not $shortcutScript) {
         Write-Host "Post-update: shortcut task not found, skipping." -ForegroundColor DarkYellow
         return
     }
 
     try {
         Write-Host "Post-update: creating/repairing Lab Tools shortcuts..."
+        Write-Host "Post-update: using task script: $shortcutScript" -ForegroundColor DarkGray
         & $shortcutScript
     }
     catch {
