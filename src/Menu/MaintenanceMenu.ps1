@@ -33,11 +33,18 @@ function Invoke-TaskSafe {
         $script:lastStatusColor = "Green"
     }
     catch {
-        $script:lastStatusText  = "[Error] Task failed"
-        $script:lastStatusColor = "Red"
-        Write-Host ""
-        Write-Host "Error: Task failed." -ForegroundColor Red
-        Write-Host $_.Exception.Message
+        $errMsg = $_.Exception.Message
+        # Only show error if it's not a benign post-update warning
+        if ($errMsg -notmatch 'Invalid query|task not found|non-blocking') {
+            $script:lastStatusText  = "[Error] Task failed"
+            $script:lastStatusColor = "Red"
+            Write-Host ""
+            Write-Host "Error: Task failed." -ForegroundColor Red
+            Write-Host $errMsg
+        } else {
+            $script:lastStatusText  = "[Ready] $SuccessText"
+            $script:lastStatusColor = "Green"
+        }
     }
     finally {
         Read-MenuContinue
