@@ -2,6 +2,12 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.02.25.2 - 2026-02-25
+
+### Maintenance Update Flow Fix
+- Updated [src/Tasks/Update-LabTools.ps1](src/Tasks/Update-LabTools.ps1) post-update task discovery to support both deployed-root (`...\Tasks`) and repo-root (`...\src\Tasks`) layouts.
+- This resolves option [1] cases where repo pull succeeded but shortcut/background steps were incorrectly skipped as "task not found".
+
 ## v2026.02.25.1 - 2026-02-25
 
 ### Maintenance Update Flow Fix

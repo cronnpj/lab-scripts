@@ -193,10 +193,20 @@ function Deploy-FilesFromRepo([string]$RepoRoot) {
 }
 
 function Invoke-PostUpdateTerminalBackground {
+    $destRootCandidates = @(
+        $DestPath,
+        (Join-Path $DestPath "src")
+    )
+
     $candidates = @(
         (Join-Path $PSScriptRoot "Apply-TerminalBackground.ps1"),
-        (Join-Path $DestPath "Tasks\Apply-TerminalBackground.ps1")
+        (Join-Path (Split-Path -Parent $PSScriptRoot) "Tasks\Apply-TerminalBackground.ps1")
     )
+
+    foreach ($root in $destRootCandidates) {
+        $candidates += (Join-Path $root "Tasks\Apply-TerminalBackground.ps1")
+    }
+
     $applyScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 
     if (-not $applyScript) {
@@ -216,10 +226,20 @@ function Invoke-PostUpdateTerminalBackground {
 }
 
 function Invoke-PostUpdateShortcuts {
+    $destRootCandidates = @(
+        $DestPath,
+        (Join-Path $DestPath "src")
+    )
+
     $candidates = @(
         (Join-Path $PSScriptRoot "Create-Shortcuts.ps1"),
-        (Join-Path $DestPath "Tasks\Create-Shortcuts.ps1")
+        (Join-Path (Split-Path -Parent $PSScriptRoot) "Tasks\Create-Shortcuts.ps1")
     )
+
+    foreach ($root in $destRootCandidates) {
+        $candidates += (Join-Path $root "Tasks\Create-Shortcuts.ps1")
+    }
+
     $shortcutScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 
     if (-not $shortcutScript) {
