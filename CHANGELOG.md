@@ -2,6 +2,13 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.02.25 - 2026-02-25
+
+### Maintenance Update Flow
+- Updated [src/Tasks/Update-LabTools.ps1](src/Tasks/Update-LabTools.ps1) so Maintenance option [1] now includes post-update shortcut repair by running `Create-Shortcuts.ps1` (non-blocking on failure).
+- Kept post-update Windows Terminal background apply behavior in [src/Tasks/Update-LabTools.ps1](src/Tasks/Update-LabTools.ps1), so option [1] now covers both prior options [2] and [3] checks/actions.
+- Updated Maintenance menu text in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to reflect that option [1] includes shortcut repair and terminal background apply.
+
 ## v2026.02.23.1 - 2026-02-23
 
 ### Shortcut and UX Refinements

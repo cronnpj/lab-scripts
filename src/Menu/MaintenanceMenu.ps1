@@ -52,7 +52,7 @@ function Show-MaintenanceMenu {
 
     Show-AppHeader -Breadcrumb "Main > Maintenance & Updates"
 
-    Write-Host "  [1] Update Lab Tools from GitHub"
+    Write-Host "  [1] Update Lab Tools from GitHub (+ shortcut repair + terminal background)"
     Write-Host "  [2] Create / Repair Lab Tools shortcuts"
     Write-Host "  [3] Apply Windows Terminal background (repo config)"
     Write-Host ""
@@ -78,7 +78,7 @@ do {
     $choice = Read-Host "Select an option"
 
     switch ($choice) {
-        "1" { Invoke-TaskSafe -Path $updateScript -SuccessText "Update completed" }
+        "1" { Invoke-TaskSafe -Path $updateScript -SuccessText "Update completed (includes shortcut repair + terminal background)" }
         "2" { Invoke-TaskSafe -Path $shortcutScript -SuccessText "Shortcuts created/updated" }
         "3" { Invoke-TaskSafe -Path $terminalBackgroundScript -SuccessText "Terminal background applied" }
         "0" { $back = $true }
