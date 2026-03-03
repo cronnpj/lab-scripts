@@ -314,9 +314,12 @@ catch {
     throw
 }
 finally {
-    # Suppress pause if running from menu (parent process is powershell.exe, not direct user shell)
+    # Suppress pause if running from menu (parent process is PowerShell, WindowsTerminal, or called from another script)
     $parentProc = (Get-CimInstance Win32_Process -Filter "ProcessId = $((Get-CimInstance Win32_Process -Filter 'ProcessId = $PID').ParentProcessId)").Name
-    $isMenu = $parentProc -like '*powershell*'
+    $isMenu = $false
+    if ($parentProc -match 'powershell|pwsh|code|terminal|menu') {
+        $isMenu = $true
+    }
     if (-not $isMenu) {
         Wait-MenuContinue
     }
