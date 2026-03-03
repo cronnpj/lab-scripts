@@ -2,6 +2,12 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.03.03.2 - 2026-03-03
+
+### Maintenance Menu Addition
+- Added a Win11Debloat pathway in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) as option [5] (`Run Win11Debloat (official upstream script)`).
+- Added [src/Tasks/Run-Win11Debloat.ps1](src/Tasks/Run-Win11Debloat.ps1), which opens the upstream project page on request and runs the official command from `https://debloat.raphi.re/` only after explicit user confirmation.
+
 ## v2026.03.03.1 - 2026-03-03
 
 ### Feedback and Menu UX Updates

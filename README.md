@@ -16,8 +16,10 @@ PowerShell scripts and helpers for provisioning and managing lab environments.
 
 This repository contains a collection of PowerShell modules and scripts used to set up, configure, and maintain lab servers and clients. Typical tasks include installing roles, joining machines to a domain, renaming computers, configuring static IPs, and taking system snapshots.
 
-## Recent Updates (v2026.03.03.1)
+## Recent Updates (v2026.03.03.2)
 
+- Added Maintenance option [5] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1): `Run Win11Debloat (official upstream script)`.
+- Added [src/Tasks/Run-Win11Debloat.ps1](src/Tasks/Run-Win11Debloat.ps1) to provide a guided/confirmed launch path for the upstream Win11Debloat script.
 - Added a student feedback/reporting entry in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) as option [4] (`Report a Problem / Submit Feedback`) that opens Microsoft Forms.
 - Kept [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) uncluttered by placing feedback/reporting under Maintenance & Updates instead of the main menu.
 - Updated Maintenance option [1] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to run update + shortcut repair + terminal background with a single menu pause at the end.
