@@ -63,13 +63,14 @@ function Show-MaintenanceMenu {
     Write-Host "  [1] Update Lab Tools from GitHub (+ shortcut repair + terminal background)"
     Write-Host "  [2] Create / Repair Lab Tools shortcuts"
     Write-Host "  [3] Apply Windows Terminal background (repo config)"
+    Write-Host "  [4] Report a Problem / Submit Feedback"
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-Host "Keys: 1-3 Select  |  0 Back"
+    Write-Host "Keys: 1-4 Select  |  0 Back"
     Write-Host ""
 }
 
@@ -95,6 +96,26 @@ do {
             }
         "2" { Invoke-TaskSafe -Path $shortcutScript -SuccessText "Shortcuts created/updated" }
         "3" { Invoke-TaskSafe -Path $terminalBackgroundScript -SuccessText "Terminal background applied" }
+        "4" {
+            try {
+                $script:lastStatusText  = "[Running] Opening feedback form..."
+                $script:lastStatusColor = "Cyan"
+                $formUrl = "https://forms.office.com/r/5pJZNxzxgq"
+                Start-Process $formUrl
+                $script:lastStatusText  = "[Ready] Feedback form opened"
+                $script:lastStatusColor = "Green"
+            }
+            catch {
+                $script:lastStatusText  = "[Error] Unable to open feedback form"
+                $script:lastStatusColor = "Red"
+                Write-Host ""
+                Write-Host "Error: Failed to open feedback form." -ForegroundColor Red
+                Write-Host $_.Exception.Message
+            }
+            finally {
+                Read-MenuContinue
+            }
+        }
         "0" { $back = $true }
         default {
             $script:lastStatusText  = "[Warning] Invalid selection"
