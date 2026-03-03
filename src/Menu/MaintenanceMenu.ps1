@@ -85,7 +85,13 @@ do {
     $choice = Read-Host "Select an option"
 
     switch ($choice) {
-        "1" { Invoke-TaskSafe -Path $updateScript -SuccessText "Update completed (includes shortcut repair + terminal background)" }
+            "1" {
+                Invoke-TaskSafe -Path $updateScript -SuccessText "Lab Tools updated from GitHub"
+                Invoke-TaskSafe -Path $shortcutScript -SuccessText "Shortcuts created/updated"
+                Invoke-TaskSafe -Path $terminalBackgroundScript -SuccessText "Terminal background applied"
+                $script:lastStatusText  = "[Ready] All maintenance tasks completed"
+                $script:lastStatusColor = "Green"
+            }
         "2" { Invoke-TaskSafe -Path $shortcutScript -SuccessText "Shortcuts created/updated" }
         "3" { Invoke-TaskSafe -Path $terminalBackgroundScript -SuccessText "Terminal background applied" }
         "0" { $back = $true }
