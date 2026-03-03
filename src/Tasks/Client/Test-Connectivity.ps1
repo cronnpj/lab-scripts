@@ -59,4 +59,16 @@ catch {
     Write-LabLog ("Connectivity: Failed - {0}" -f $_.Exception.Message) "ERROR"
 }
 
-Wait-MenuContinue
+try {
+    $parentProc = (Get-CimInstance Win32_Process -Filter "ProcessId = $((Get-CimInstance Win32_Process -Filter 'ProcessId = $PID').ParentProcessId)").Name
+    $isMenu = $false
+    if ($parentProc -match 'powershell|pwsh|code|terminal|menu') {
+        $isMenu = $true
+    }
+    if (-not $isMenu) {
+        Wait-MenuContinue
+    }
+} catch {
+    # If detection fails, default to pausing
+    Wait-MenuContinue
+}
