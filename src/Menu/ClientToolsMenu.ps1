@@ -79,46 +79,84 @@ function Show-ClientMenu {
 
     Show-AppHeader -Breadcrumb "Main > Windows Client Tools"
 
-    Write-Host "Identity / Enrollment" -ForegroundColor Cyan
-    Write-Host "  [1]  Join existing domain"
-    Write-Host "  [2]  Show Join Status (Domain + Entra ID / Hybrid)"
-    Write-Host "  [3]  Open Work/School Accounts (Enrollment)"
-    Write-Host "  [4]  Force Intune Sync (best-effort)"
+    Write-Host "  [1] Identity & Enrollment"
+    Write-Host "  [2] Policy & Management"
+    Write-Host "  [3] Network Tools"
+    Write-Host "  [4] System Actions"
+    Write-Host "  [5] Utilities"
     Write-Host ""
-
-    Write-Host "Policy / Management" -ForegroundColor Cyan
-    Write-Host "  [5]  Force Group Policy Update (gpupdate /force)"
-    Write-Host "  [6]  Show GPO Results (gpresult /r)"
-    Write-Host "  [7]  Export GPO Report to Desktop (HTML)"
-    Write-Host ""
-
-    Write-Host "Networking" -ForegroundColor Cyan
-    Write-Host "  [8]  Show IP Configuration (ipconfig /all)"
-    Write-Host "  [9]  Flush DNS Cache"
-    Write-Host "  [10] Renew DHCP Lease (release/renew)"
-    Write-Host "  [11] Quick Connectivity Tests (GW/DNS/Internet)"
-    Write-Host ""
-
-    Write-Host "Client Actions" -ForegroundColor Cyan
-    Write-Host "  [12] Rename computer"
-    Write-Host "  [13] Set timezone to Eastern + resync clock"
-    Write-Host ""
-
-    Write-Host "Client Maintenance" -ForegroundColor Cyan
-    Write-Host "  [14] Restart Windows Update Services"
-    Write-Host "  [15] System File Check (SFC)"
-    Write-Host ""
-
-    Write-Host "MISC Utilities" -ForegroundColor Cyan
-    Write-Host "  [16] Launch vmPing (MISC)"
-    Write-Host ""
-
     Write-Host "  [0] Back"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-Host "Keys: 1-16 Select  |  0 Back"
+    Write-Host "Keys: 1-5 Select  |  0 Back"
+    Write-Host ""
+}
+
+function Show-IdentityEnrollmentMenu {
+    Show-AppHeader -Breadcrumb "Main > Windows Client Tools > Identity & Enrollment"
+
+    Write-Host "  [1] Join existing domain"
+    Write-Host "  [2] Show Join Status (Domain + Entra ID / Hybrid)"
+    Write-Host "  [3] Open Work/School Accounts (Enrollment)"
+    Write-Host "  [4] Force Intune Sync (best-effort)"
+    Write-Host ""
+    Write-Host "  [0] Back"
+    Write-Host ""
+    Write-Host "Keys: 1-4 Select  |  0 Back"
+    Write-Host ""
+}
+
+function Show-PolicyManagementMenu {
+    Show-AppHeader -Breadcrumb "Main > Windows Client Tools > Policy & Management"
+
+    Write-Host "  [1] Force Group Policy Update (gpupdate /force)"
+    Write-Host "  [2] Show GPO Results (gpresult /r)"
+    Write-Host "  [3] Export GPO Report to Desktop (HTML)"
+    Write-Host ""
+    Write-Host "  [0] Back"
+    Write-Host ""
+    Write-Host "Keys: 1-3 Select  |  0 Back"
+    Write-Host ""
+}
+
+function Show-NetworkToolsMenu {
+    Show-AppHeader -Breadcrumb "Main > Windows Client Tools > Network Tools"
+
+    Write-Host "  [1] Show IP Configuration (ipconfig /all)"
+    Write-Host "  [2] Flush DNS Cache"
+    Write-Host "  [3] Renew DHCP Lease (release/renew)"
+    Write-Host "  [4] Quick Connectivity Tests (GW/DNS/Internet)"
+    Write-Host ""
+    Write-Host "  [0] Back"
+    Write-Host ""
+    Write-Host "Keys: 1-4 Select  |  0 Back"
+    Write-Host ""
+}
+
+function Show-SystemActionsMenu {
+    Show-AppHeader -Breadcrumb "Main > Windows Client Tools > System Actions"
+
+    Write-Host "  [1] Rename computer"
+    Write-Host "  [2] Set timezone to Eastern + resync clock"
+    Write-Host "  [3] Restart Windows Update Services"
+    Write-Host "  [4] System File Check (SFC)"
+    Write-Host ""
+    Write-Host "  [0] Back"
+    Write-Host ""
+    Write-Host "Keys: 1-4 Select  |  0 Back"
+    Write-Host ""
+}
+
+function Show-UtilitiesMenu {
+    Show-AppHeader -Breadcrumb "Main > Windows Client Tools > Utilities"
+
+    Write-Host "  [1] Launch vmPing (MISC)"
+    Write-Host ""
+    Write-Host "  [0] Back"
+    Write-Host ""
+    Write-Host "Keys: 1 Select  |  0 Back"
     Write-Host ""
 }
 
@@ -136,69 +174,147 @@ $back = $false
 $script:lastStatusText  = "[Ready] Ready"
 $script:lastStatusColor = "DarkGray"
 
+function Invoke-IdentityEnrollmentMenu {
+    $backSub = $false
+    do {
+        Show-IdentityEnrollmentMenu
+        $choice = Read-Host "Select an option"
+
+        switch ($choice) {
+            "1"  { Invoke-TaskSafe   -Path $joinDomainScript -SuccessText "Join domain completed" }
+            "2"  { Invoke-TaskSafe   -Path $joinStatusScript -SuccessText "Join status displayed" }
+            "3"  { Invoke-ActionSafe -Action { Start-Process "ms-settings:workplace" } -SuccessText "Opened Work/School Accounts" }
+            "4"  {
+                Invoke-ActionSafe -Action {
+                    Clear-Host
+                    Write-Host "Opening Work/School settings. Use Sync if available."
+                    Start-Process "ms-settings:workplace"
+                } -SuccessText "Opened enrollment settings"
+            }
+            "0"  { $backSub = $true }
+            default {
+                $script:lastStatusText  = "[Warning] Invalid selection"
+                $script:lastStatusColor = "Yellow"
+                Start-Sleep 1
+            }
+        }
+    } while (-not $backSub)
+}
+
+function Invoke-PolicyManagementMenu {
+    $backSub = $false
+    do {
+        Show-PolicyManagementMenu
+        $choice = Read-Host "Select an option"
+
+        switch ($choice) {
+            "1"  { Invoke-ActionSafe -Action { Clear-Host; gpupdate /force } -SuccessText "Group Policy update completed" }
+            "2"  { Invoke-ActionSafe -Action { Clear-Host; gpresult /r } -SuccessText "GPO results displayed" }
+            "3"  { Invoke-TaskSafe   -Path $gpoReportScript -SuccessText "GPO report exported" }
+            "0"  { $backSub = $true }
+            default {
+                $script:lastStatusText  = "[Warning] Invalid selection"
+                $script:lastStatusColor = "Yellow"
+                Start-Sleep 1
+            }
+        }
+    } while (-not $backSub)
+}
+
+function Invoke-NetworkToolsMenu {
+    $backSub = $false
+    do {
+        Show-NetworkToolsMenu
+        $choice = Read-Host "Select an option"
+
+        switch ($choice) {
+            "1"  { Invoke-ActionSafe -Action { Clear-Host; ipconfig /all } -SuccessText "IP configuration displayed" }
+            "2"  { Invoke-ActionSafe -Action { Clear-Host; ipconfig /flushdns; Write-Host "DNS cache flushed." } -SuccessText "DNS cache flushed" }
+            "3"  {
+                Invoke-ActionSafe -Action {
+                    Clear-Host
+                    Write-Host "Renewing DHCP lease (may not apply to static IP systems)..."
+                    ipconfig /release
+                    ipconfig /renew
+                    ipconfig /all
+                } -SuccessText "DHCP renew completed"
+            }
+            "4"  { Invoke-TaskSafe   -Path $testConnScript -SuccessText "Connectivity tests completed" -ShowPause:$false }
+            "0"  { $backSub = $true }
+            default {
+                $script:lastStatusText  = "[Warning] Invalid selection"
+                $script:lastStatusColor = "Yellow"
+                Start-Sleep 1
+            }
+        }
+    } while (-not $backSub)
+}
+
+function Invoke-SystemActionsMenu {
+    $backSub = $false
+    do {
+        Show-SystemActionsMenu
+        $choice = Read-Host "Select an option"
+
+        switch ($choice) {
+            "1"  { Invoke-TaskSafe   -Path $renameScript -SuccessText "Rename computer completed" }
+            "2"  { Invoke-TaskSafe   -Path $timezoneScript -SuccessText "Timezone set and clock resynced" }
+            "3"  {
+                Invoke-ActionSafe -Action {
+                    Clear-Host
+                    Write-Host "Restarting Windows Update services..."
+                    Restart-Service wuauserv -Force
+                    Restart-Service bits -Force
+                    Get-Service wuauserv, bits | Format-Table Status, Name, DisplayName -AutoSize | Out-Host
+                } -SuccessText "Windows Update services restarted"
+            }
+            "4"  { Invoke-ActionSafe -Action { Clear-Host; sfc /scannow } -SuccessText "SFC completed (or started)" }
+            "0"  { $backSub = $true }
+            default {
+                $script:lastStatusText  = "[Warning] Invalid selection"
+                $script:lastStatusColor = "Yellow"
+                Start-Sleep 1
+            }
+        }
+    } while (-not $backSub)
+}
+
+function Invoke-UtilitiesMenu {
+    $backSub = $false
+    do {
+        Show-UtilitiesMenu
+        $choice = Read-Host "Select an option"
+
+        switch ($choice) {
+            "1" {
+                Invoke-ActionSafe -Action {
+                    if (-not (Test-Path $vmPingPath)) {
+                        throw "vmPing.exe not found at '$vmPingPath'. Place vmPing.exe in src\\MISC\\vmPing\\ and try again."
+                    }
+
+                    Start-Process -FilePath $vmPingPath
+                } -SuccessText "vmPing launched"
+            }
+            "0"  { $backSub = $true }
+            default {
+                $script:lastStatusText  = "[Warning] Invalid selection"
+                $script:lastStatusColor = "Yellow"
+                Start-Sleep 1
+            }
+        }
+    } while (-not $backSub)
+}
+
 do {
     Show-ClientMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor
     $choice = Read-Host "Select an option"
 
     switch ($choice) {
-
-        # Identity / Enrollment
-        "1"  { Invoke-TaskSafe   -Path $joinDomainScript -SuccessText "Join domain completed" }
-        "2"  { Invoke-TaskSafe   -Path $joinStatusScript -SuccessText "Join status displayed" }
-        "3"  { Invoke-ActionSafe -Action { Start-Process "ms-settings:workplace" } -SuccessText "Opened Work/School Accounts" }
-        "4"  {
-            Invoke-ActionSafe -Action {
-                Clear-Host
-                Write-Host "Opening Work/School settings. Use Sync if available."
-                Start-Process "ms-settings:workplace"
-            } -SuccessText "Opened enrollment settings"
-        }
-
-        # Policy / Management
-        "5"  { Invoke-ActionSafe -Action { Clear-Host; gpupdate /force } -SuccessText "Group Policy update completed" }
-        "6"  { Invoke-ActionSafe -Action { Clear-Host; gpresult /r } -SuccessText "GPO results displayed" }
-        "7"  { Invoke-TaskSafe   -Path $gpoReportScript -SuccessText "GPO report exported" }
-
-        # Networking
-        "8"  { Invoke-ActionSafe -Action { Clear-Host; ipconfig /all } -SuccessText "IP configuration displayed" }
-        "9"  { Invoke-ActionSafe -Action { Clear-Host; ipconfig /flushdns; Write-Host "DNS cache flushed." } -SuccessText "DNS cache flushed" }
-        "10" {
-            Invoke-ActionSafe -Action {
-                Clear-Host
-                Write-Host "Renewing DHCP lease (may not apply to static IP systems)..."
-                ipconfig /release
-                ipconfig /renew
-                ipconfig /all
-            } -SuccessText "DHCP renew completed"
-        }
-        "11" { Invoke-TaskSafe   -Path $testConnScript -SuccessText "Connectivity tests completed" -ShowPause:$false }
-
-        # Client Actions
-        "12" { Invoke-TaskSafe   -Path $renameScript -SuccessText "Rename computer completed" }
-        "13" { Invoke-TaskSafe   -Path $timezoneScript -SuccessText "Timezone set and clock resynced" }
-
-        # Client Maintenance
-        "14" {
-            Invoke-ActionSafe -Action {
-                Clear-Host
-                Write-Host "Restarting Windows Update services..."
-                Restart-Service wuauserv -Force
-                Restart-Service bits -Force
-                Get-Service wuauserv, bits | Format-Table Status, Name, DisplayName -AutoSize | Out-Host
-            } -SuccessText "Windows Update services restarted"
-        }
-        "15" { Invoke-ActionSafe -Action { Clear-Host; sfc /scannow } -SuccessText "SFC completed (or started)" }
-
-        # MISC Utilities
-        "16" {
-            Invoke-ActionSafe -Action {
-                if (-not (Test-Path $vmPingPath)) {
-                    throw "vmPing.exe not found at '$vmPingPath'. Place vmPing.exe in src\\MISC\\vmPing\\ and try again."
-                }
-
-                Start-Process -FilePath $vmPingPath
-            } -SuccessText "vmPing launched"
-        }
+        "1"  { Invoke-IdentityEnrollmentMenu }
+        "2"  { Invoke-PolicyManagementMenu }
+        "3"  { Invoke-NetworkToolsMenu }
+        "4"  { Invoke-SystemActionsMenu }
+        "5"  { Invoke-UtilitiesMenu }
 
         "0"  { $back = $true }
         default {
