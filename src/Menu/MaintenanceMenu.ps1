@@ -12,7 +12,8 @@ function Read-MenuContinue {
 function Invoke-TaskSafe {
     param(
         [Parameter(Mandatory=$true)][string]$Path,
-        [Parameter(Mandatory=$true)][string]$SuccessText
+        [Parameter(Mandatory=$true)][string]$SuccessText,
+        [bool]$ShowPause = $true
     )
 
     if (-not (Test-Path $Path)) {
@@ -21,7 +22,7 @@ function Invoke-TaskSafe {
         Write-Host ""
         Write-Host "Error: Task script not found:" -ForegroundColor Red
         Write-Host $Path
-        Read-MenuContinue
+        if ($ShowPause) { Read-MenuContinue }
         return
     }
 
@@ -47,7 +48,7 @@ function Invoke-TaskSafe {
         }
     }
     finally {
-        Read-MenuContinue
+        if ($ShowPause) { Read-MenuContinue }
     }
 }
 
@@ -86,9 +87,9 @@ do {
 
     switch ($choice) {
             "1" {
-                Invoke-TaskSafe -Path $updateScript -SuccessText "Lab Tools updated from GitHub"
-                Invoke-TaskSafe -Path $shortcutScript -SuccessText "Shortcuts created/updated"
-                Invoke-TaskSafe -Path $terminalBackgroundScript -SuccessText "Terminal background applied"
+                Invoke-TaskSafe -Path $updateScript -SuccessText "Lab Tools updated from GitHub" -ShowPause:$false
+                Invoke-TaskSafe -Path $shortcutScript -SuccessText "Shortcuts created/updated" -ShowPause:$false
+                Invoke-TaskSafe -Path $terminalBackgroundScript -SuccessText "Terminal background applied" -ShowPause:$true
                 $script:lastStatusText  = "[Ready] All maintenance tasks completed"
                 $script:lastStatusColor = "Green"
             }

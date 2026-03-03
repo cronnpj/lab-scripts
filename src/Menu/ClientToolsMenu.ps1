@@ -12,7 +12,8 @@ function Wait-MenuContinue {
 function Invoke-TaskSafe {
     param(
         [Parameter(Mandatory=$true)][string]$Path,
-        [Parameter(Mandatory=$true)][string]$SuccessText
+        [Parameter(Mandatory=$true)][string]$SuccessText,
+        [bool]$ShowPause = $true
     )
 
     if (-not (Test-Path $Path)) {
@@ -21,7 +22,7 @@ function Invoke-TaskSafe {
         Write-Host ""
         Write-Host "Error: Task script not found:" -ForegroundColor Red
         Write-Host $Path
-        Wait-MenuContinue
+        if ($ShowPause) { Wait-MenuContinue }
         return
     }
 
@@ -40,14 +41,15 @@ function Invoke-TaskSafe {
         Write-Host $_.Exception.Message
     }
     finally {
-        Wait-MenuContinue
+        if ($ShowPause) { Wait-MenuContinue }
     }
 }
 
 function Invoke-ActionSafe {
     param(
         [Parameter(Mandatory=$true)][scriptblock]$Action,
-        [Parameter(Mandatory=$true)][string]$SuccessText
+        [Parameter(Mandatory=$true)][string]$SuccessText,
+        [bool]$ShowPause = $true
     )
 
     try {
@@ -65,7 +67,7 @@ function Invoke-ActionSafe {
         Write-Host $_.Exception.Message
     }
     finally {
-        Wait-MenuContinue
+        if ($ShowPause) { Wait-MenuContinue }
     }
 }
 
