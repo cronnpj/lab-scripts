@@ -2,6 +2,18 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.03.03.1 - 2026-03-03
+
+### Feedback and Menu UX Updates
+- Added a feedback/reporting pathway using Microsoft Forms (`https://forms.office.com/r/5pJZNxzxgq`) in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) as option [4] (`Report a Problem / Submit Feedback`).
+- Removed the feedback option from [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) to keep the main menu uncluttered.
+- Updated Maintenance menu key hints in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to reflect options [1]-[4].
+
+### Maintenance Task Flow and Pause Behavior
+- Updated option [1] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to run update + shortcut repair + terminal background in sequence with a single menu pause at the end.
+- Added optional pause control (`ShowPause`) in maintenance/client menu task helpers to reduce duplicate continue prompts during chained actions.
+- Adjusted connectivity-task prompt handling in [src/Tasks/Client/Test-Connectivity.ps1](src/Tasks/Client/Test-Connectivity.ps1) to better avoid duplicate `Press Enter to continue` prompts when launched from menu flows.
+
 ## v2026.02.25.2 - 2026-02-25
 
 ### Maintenance Update Flow Fix

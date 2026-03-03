@@ -64,6 +64,10 @@ function Get-RolesInstalled {
 }
 
 function Is-FeatureInstalled([string]$name) {
+    if (-not (Get-Command Get-WindowsFeature -ErrorAction SilentlyContinue)) {
+        return $false
+    }
+
     try {
         $f = Get-WindowsFeature -Name $name -ErrorAction Stop
         return [bool]$f.Installed

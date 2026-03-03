@@ -16,16 +16,12 @@ PowerShell scripts and helpers for provisioning and managing lab environments.
 
 This repository contains a collection of PowerShell modules and scripts used to set up, configure, and maintain lab servers and clients. Typical tasks include installing roles, joining machines to a domain, renaming computers, configuring static IPs, and taking system snapshots.
 
-## Recent Updates (v2026.02.20)
+## Recent Updates (v2026.03.03.1)
 
-- Hardened DevOps repo prep flow in [src/Menu/DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1) with pre/post repair checks and safer sync behavior.
-- Switched repo reset controls to explicit boolean parameters (`AutoResetIfDirty`) with conservative defaults.
-- Improved Git sync reliability with explicit fetch/checkout/pull exit-code validation and clearer remediation messages.
-- Tightened readiness checks to require a valid `.git` repository and reachable kubeconfig where needed.
-- Polished menu UX by fixing option ordering, reducing redundant pauses, and aligning web demo apply behavior.
-- Updated DevOps option [9] to prompt for control-plane and worker IPs while preserving smart full-build vs add-ons-only behavior.
-- Removed DevOps option [16] and renumbered Advanced Operations options to keep numbering contiguous.
-- Added DevOps option [11] mode selection for Portainer publish paths: Ingress host, NodePort IP, or LoadBalancer VIP.
+- Added a student feedback/reporting entry in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) as option [4] (`Report a Problem / Submit Feedback`) that opens Microsoft Forms.
+- Kept [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) uncluttered by placing feedback/reporting under Maintenance & Updates instead of the main menu.
+- Updated Maintenance option [1] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to run update + shortcut repair + terminal background with a single menu pause at the end.
+- Improved continue-prompt behavior in menu task helpers and [src/Tasks/Client/Test-Connectivity.ps1](src/Tasks/Client/Test-Connectivity.ps1) to reduce duplicate `Press Enter to continue` prompts in menu-driven flows.
 
 ## New Additions (2026-02-22)
 

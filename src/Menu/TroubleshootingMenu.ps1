@@ -52,7 +52,7 @@ function Show-TroubleshootingMenu {
 
     Show-AppHeader -Breadcrumb "Main > Troubleshooting & Validation"
 
-    Write-Host "  [1] Show install status"
+    Write-Host "  [1] Show server role install status"
     Write-Host "  [2] System snapshot"
     Write-Host ""
     Write-Host "  [0] Back"
