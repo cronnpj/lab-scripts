@@ -81,6 +81,9 @@ function Show-MainMenu {
     Write-Host "  [5] Troubleshooting & Validation"
     Write-Host "  [6] DevOps & Automation"
     Write-Host "  [7] Maintenance & Updates"
+    Write-Host ""
+    Write-Host "Feedback / Help" -ForegroundColor Cyan
+    Write-Host "  [8] Report a Problem / Submit Feedback"
     Write-Host "  [0] Exit"
     Write-Host ""
 
@@ -103,6 +106,12 @@ do {
         "5" { & (Join-Path $PSScriptRoot "TroubleshootingMenu.ps1") }
         "6" { & (Join-Path $PSScriptRoot "DevOpsToolsMenu.ps1") }
         "7" { & (Join-Path $PSScriptRoot "MaintenanceMenu.ps1") }
+        "8" {
+            $formUrl = "https://forms.office.com/r/5pJZNxzxgq"
+            Start-Process $formUrl
+            Write-Host "A browser window should open with the feedback form."
+            Start-Sleep -Seconds 2
+        }
         "0" { $exit = $true }
         default { Start-Sleep -Milliseconds 300 }
     }
