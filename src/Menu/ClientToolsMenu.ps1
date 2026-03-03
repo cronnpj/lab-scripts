@@ -171,7 +171,7 @@ do {
                 ipconfig /all
             } -SuccessText "DHCP renew completed"
         }
-        "11" { Invoke-TaskSafe   -Path $testConnScript -SuccessText "Connectivity tests completed" }
+        "11" { Invoke-TaskSafe   -Path $testConnScript -SuccessText "Connectivity tests completed" -ShowPause:$false }
 
         # Client Actions
         "12" { Invoke-TaskSafe   -Path $renameScript -SuccessText "Rename computer completed" }
