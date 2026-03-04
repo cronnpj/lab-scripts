@@ -179,6 +179,44 @@ function Write-NetworkLine {
     Write-Host " |" -ForegroundColor Gray
 }
 
+function Get-InternetStatus {
+    try {
+        $connectTask = [System.Net.Dns]::GetHostAddressesAsync('www.msftconnecttest.com')
+        $completed = $connectTask.Wait(1500)
+
+        if (-not $completed) {
+            return $false
+        }
+
+        $addresses = $connectTask.Result
+        return ($addresses -and $addresses.Count -gt 0)
+    }
+    catch {
+        return $false
+    }
+}
+
+function Write-InternetLine {
+    param(
+        [Parameter(Mandatory=$true)][bool]$IsConnected,
+        [int]$Width = 64
+    )
+
+    $inner = $Width - 4
+    $label = "Internet: "
+    $value = if ($IsConnected) { "✔" } else { "✖" }
+
+    $textLen = $label.Length + $value.Length
+    $pad = " " * [Math]::Max(0, ($inner - $textLen))
+    $valueColor = if ($IsConnected) { "Green" } else { "Red" }
+
+    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host $label -NoNewline -ForegroundColor Gray
+    Write-Host $value -NoNewline -ForegroundColor $valueColor
+    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Gray
+}
+
 function Show-AppHeader {
     param(
         [Parameter(Mandatory=$true)][string]$Breadcrumb,
@@ -191,6 +229,7 @@ function Show-AppHeader {
     $hostName = $env:COMPUTERNAME
     $userName = $env:USERNAME
     $networkInfo = Get-PrimaryNetworkInfo
+    $internetConnected = Get-InternetStatus
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor DarkGray
     Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $Width "Cyan"
@@ -201,6 +240,9 @@ function Show-AppHeader {
 
     # Primary network line with cyan values
     Write-NetworkLine -IPAddress $networkInfo.IPAddress -Mode $networkInfo.Mode -Width $Width
+
+    # Internet line with green/red value
+    Write-InternetLine -IsConnected $internetConnected -Width $Width
 
     # Timezone/Date line with cyan values
     Write-TimezoneDateLine -Width $Width
