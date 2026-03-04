@@ -204,7 +204,7 @@ function Write-InternetLine {
 
     $inner = $Width - 4
     $label = "Internet: "
-    $value = if ($IsConnected) { "✔" } else { "✖" }
+    $value = if ($IsConnected) { [char]0x2714 } else { [char]0x2716 }
 
     $textLen = $label.Length + $value.Length
     $pad = " " * [Math]::Max(0, ($inner - $textLen))
