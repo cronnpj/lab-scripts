@@ -1,6 +1,10 @@
 # C:\CITA\LabTools\src\Menu\DevOpsQuickChecksMenu.ps1
 # DevOps Quick Checks / Utilities Submenu
 
+param(
+    [string]$RunOption
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Continue"
 
@@ -215,7 +219,15 @@ function Show-CurrentContext {
 $back = $false
 while (-not $back) {
     Show-DevOpsQuickChecksMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor
-    $choice = Read-Host "Select an option"
+    $isAutomated = $false
+    if (-not [string]::IsNullOrWhiteSpace($RunOption)) {
+        $choice = $RunOption
+        $RunOption = ""
+        $isAutomated = $true
+    }
+    else {
+        $choice = Read-Host "Select an option"
+    }
 
     switch ($choice) {
         "1" {
@@ -262,6 +274,10 @@ while (-not $back) {
             $script:lastStatusColor = "Yellow"
             Start-Sleep -Seconds 1
         }
+    }
+
+    if ($isAutomated -and ($choice -in @("1","2","3"))) {
+        $back = $true
     }
 }
 

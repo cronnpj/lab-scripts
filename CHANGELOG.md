@@ -2,6 +2,24 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.03.04.1 - 2026-03-04
+
+### Header Status and Client Menu Guidance
+- Added an `Internet` status indicator in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to the app header with green/red checkmark state.
+- Updated [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) top-level Windows Client categories with short context descriptions and option counts to improve discoverability.
+- Styled Windows Client category description lines with `DarkGray` in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) for better visual hierarchy.
+
+### Global Search and Direct Action Execution
+- Added a single global search entry on the main menu in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) (`[S] Global Search`) with keyword matching across major tool areas.
+- Expanded global search catalog coverage to include granular Windows Client, Troubleshooting, and DevOps actions in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1).
+- Fixed single-result rendering in global search by normalizing match results as an array in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1).
+- Added direct action execution from search results (instead of only opening menus) by introducing `RunOption` pathways in:
+	- [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1)
+	- [src/Menu/TroubleshootingMenu.ps1](src/Menu/TroubleshootingMenu.ps1)
+	- [src/Menu/DevOpsInstallUpdateMenu.ps1](src/Menu/DevOpsInstallUpdateMenu.ps1)
+	- [src/Menu/DevOpsQuickChecksMenu.ps1](src/Menu/DevOpsQuickChecksMenu.ps1)
+- Added a pre-execution confirmation line (`Running: <Area> > <Item>`) in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) before launching a search-selected action.
+
 ## v2026.03.03.2 - 2026-03-03
 
 ### Maintenance Menu Addition

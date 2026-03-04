@@ -16,14 +16,14 @@ PowerShell scripts and helpers for provisioning and managing lab environments.
 
 This repository contains a collection of PowerShell modules and scripts used to set up, configure, and maintain lab servers and clients. Typical tasks include installing roles, joining machines to a domain, renaming computers, configuring static IPs, and taking system snapshots.
 
-## Recent Updates (v2026.03.03.2)
+## Recent Updates (v2026.03.04.1)
 
-- Added Maintenance option [5] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1): `Run Win11Debloat (official upstream script)`.
-- Added [src/Tasks/Run-Win11Debloat.ps1](src/Tasks/Run-Win11Debloat.ps1) to provide a guided/confirmed launch path for the upstream Win11Debloat script.
-- Added a student feedback/reporting entry in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) as option [4] (`Report a Problem / Submit Feedback`) that opens Microsoft Forms.
-- Kept [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) uncluttered by placing feedback/reporting under Maintenance & Updates instead of the main menu.
-- Updated Maintenance option [1] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to run update + shortcut repair + terminal background with a single menu pause at the end.
-- Improved continue-prompt behavior in menu task helpers and [src/Tasks/Client/Test-Connectivity.ps1](src/Tasks/Client/Test-Connectivity.ps1) to reduce duplicate `Press Enter to continue` prompts in menu-driven flows.
+- Added a new `Internet` header status in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) with green/red connectivity indicator.
+- Improved Windows Client navigation in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) by adding short context descriptions and option counts under each category.
+- Added a single global search entry (`[S] Global Search`) in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) with expanded keyword coverage across Windows Client, Troubleshooting, and DevOps actions.
+- Updated global search to support direct action execution (not just menu navigation) via `RunOption` mappings in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1).
+- Added direct-run support in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1), [src/Menu/TroubleshootingMenu.ps1](src/Menu/TroubleshootingMenu.ps1), [src/Menu/DevOpsInstallUpdateMenu.ps1](src/Menu/DevOpsInstallUpdateMenu.ps1), and [src/Menu/DevOpsQuickChecksMenu.ps1](src/Menu/DevOpsQuickChecksMenu.ps1).
+- Added a search execution confirmation line (`Running: <Area> > <Item>`) in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) before launching a selected result.
 
 ## New Additions (2026-02-22)
 

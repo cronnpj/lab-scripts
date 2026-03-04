@@ -1,4 +1,8 @@
 # C:\CITA\LabTools\src\Menu\ClientToolsMenu.ps1
+param(
+    [string]$RunOption
+)
+
 $ErrorActionPreference = "SilentlyContinue"
 
 # Shared UI
@@ -79,11 +83,16 @@ function Show-ClientMenu {
 
     Show-AppHeader -Breadcrumb "Main > Windows Client Tools"
 
-    Write-Host "  [1] Identity & Enrollment"
-    Write-Host "  [2] Policy & Management"
-    Write-Host "  [3] Network Tools"
-    Write-Host "  [4] System Actions"
-    Write-Host "  [5] Utilities"
+    Write-Host "  [1] Identity & Enrollment   (4 options)"
+    Write-Host "      Domain join, join status, work/school enrollment, Intune sync" -ForegroundColor DarkGray
+    Write-Host "  [2] Policy & Management    (3 options)"
+    Write-Host "      GP update, policy results, GPO report export" -ForegroundColor DarkGray
+    Write-Host "  [3] Network Tools          (4 options)"
+    Write-Host "      IP config, DNS flush, DHCP renew, connectivity checks" -ForegroundColor DarkGray
+    Write-Host "  [4] System Actions         (4 options)"
+    Write-Host "      Rename, timezone/clock sync, update services, SFC scan" -ForegroundColor DarkGray
+    Write-Host "  [5] Utilities              (1 option)"
+    Write-Host "      Launch vmPing" -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
@@ -303,6 +312,77 @@ function Invoke-UtilitiesMenu {
             }
         }
     } while (-not $backSub)
+}
+
+function Invoke-ClientRunOption {
+    param(
+        [Parameter(Mandatory=$true)][string]$Option
+    )
+
+    switch ($Option) {
+        "I1" { Invoke-TaskSafe   -Path $joinDomainScript -SuccessText "Join domain completed" }
+        "I2" { Invoke-TaskSafe   -Path $joinStatusScript -SuccessText "Join status displayed" }
+        "I3" { Invoke-ActionSafe -Action { Start-Process "ms-settings:workplace" } -SuccessText "Opened Work/School Accounts" }
+        "I4" {
+            Invoke-ActionSafe -Action {
+                Clear-Host
+                Write-Host "Opening Work/School settings. Use Sync if available."
+                Start-Process "ms-settings:workplace"
+            } -SuccessText "Opened enrollment settings"
+        }
+
+        "P1" { Invoke-ActionSafe -Action { Clear-Host; gpupdate /force } -SuccessText "Group Policy update completed" }
+        "P2" { Invoke-ActionSafe -Action { Clear-Host; gpresult /r } -SuccessText "GPO results displayed" }
+        "P3" { Invoke-TaskSafe   -Path $gpoReportScript -SuccessText "GPO report exported" }
+
+        "N1" { Invoke-ActionSafe -Action { Clear-Host; ipconfig /all } -SuccessText "IP configuration displayed" }
+        "N2" { Invoke-ActionSafe -Action { Clear-Host; ipconfig /flushdns; Write-Host "DNS cache flushed." } -SuccessText "DNS cache flushed" }
+        "N3" {
+            Invoke-ActionSafe -Action {
+                Clear-Host
+                Write-Host "Renewing DHCP lease (may not apply to static IP systems)..."
+                ipconfig /release
+                ipconfig /renew
+                ipconfig /all
+            } -SuccessText "DHCP renew completed"
+        }
+        "N4" { Invoke-TaskSafe -Path $testConnScript -SuccessText "Connectivity tests completed" }
+
+        "S1" { Invoke-TaskSafe -Path $renameScript -SuccessText "Rename computer completed" }
+        "S2" { Invoke-TaskSafe -Path $timezoneScript -SuccessText "Timezone set and clock resynced" }
+        "S3" {
+            Invoke-ActionSafe -Action {
+                Clear-Host
+                Write-Host "Restarting Windows Update services..."
+                Restart-Service wuauserv -Force
+                Restart-Service bits -Force
+                Get-Service wuauserv, bits | Format-Table Status, Name, DisplayName -AutoSize | Out-Host
+            } -SuccessText "Windows Update services restarted"
+        }
+        "S4" { Invoke-ActionSafe -Action { Clear-Host; sfc /scannow } -SuccessText "SFC completed (or started)" }
+
+        "U1" {
+            Invoke-ActionSafe -Action {
+                if (-not (Test-Path $vmPingPath)) {
+                    throw "vmPing.exe not found at '$vmPingPath'. Place vmPing.exe in src\\MISC\\vmPing\\ and try again."
+                }
+
+                Start-Process -FilePath $vmPingPath
+            } -SuccessText "vmPing launched"
+        }
+
+        default {
+            $script:lastStatusText  = "[Warning] Invalid search action"
+            $script:lastStatusColor = "Yellow"
+            Wait-MenuContinue
+        }
+    }
+}
+
+if (-not [string]::IsNullOrWhiteSpace($RunOption)) {
+    Invoke-ClientRunOption -Option $RunOption
+    Clear-Host
+    return
 }
 
 do {

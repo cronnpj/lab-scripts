@@ -81,13 +81,143 @@ function Show-MainMenu {
     Write-Host "  [5] Troubleshooting & Validation"
     Write-Host "  [6] DevOps & Automation"
     Write-Host "  [7] Maintenance & Updates"
+    Write-Host "  [S] Global Search"
     Write-Host "  [0] Exit"
     Write-Host ""
 
     Write-StatusLine -StatusText $statusObj.Text -StatusColor $statusObj.Color
 
-    Write-Host "Keys: 1-7 Select  |  0 Exit"
+    Write-Host "Keys: 1-7 Select  |  S Search  |  0 Exit"
     Write-Host ""
+}
+
+function Get-GlobalSearchCatalog {
+    return @(
+        [PSCustomObject]@{ Script = "ServerToolsMenu.ps1"; Area = "Server Tools"; Item = "Server management and administrative utilities"; Keywords = "server admin tools" },
+        [PSCustomObject]@{ Script = "DCToolsMenu.ps1"; Area = "Domain Controller Tools"; Item = "Active Directory and domain controller operations"; Keywords = "dc active directory ad domain" },
+        [PSCustomObject]@{ Script = "MemberServerMenu.ps1"; Area = "Member Server Tools"; Item = "Member server configuration and checks"; Keywords = "member server config" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "I1"; Area = "Windows Client Tools > Identity & Enrollment"; Item = "Join existing domain"; Keywords = "join domain enrollment identity entra" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "I2"; Area = "Windows Client Tools > Identity & Enrollment"; Item = "Show Join Status"; Keywords = "join status domain entra hybrid" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "I3"; Area = "Windows Client Tools > Identity & Enrollment"; Item = "Open Work/School Accounts"; Keywords = "work school accounts enrollment" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "I4"; Area = "Windows Client Tools > Identity & Enrollment"; Item = "Force Intune Sync"; Keywords = "intune sync" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "P1"; Area = "Windows Client Tools > Policy & Management"; Item = "Force Group Policy Update"; Keywords = "gpo gpupdate policy update" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "P2"; Area = "Windows Client Tools > Policy & Management"; Item = "Show GPO Results"; Keywords = "gpresult gpo results policy" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "P3"; Area = "Windows Client Tools > Policy & Management"; Item = "Export GPO Report"; Keywords = "gpo report html export policy" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "N1"; Area = "Windows Client Tools > Network Tools"; Item = "Show IP Configuration"; Keywords = "ipconfig ip configuration network" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "N2"; Area = "Windows Client Tools > Network Tools"; Item = "Flush DNS Cache"; Keywords = "dns flush flushdns" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "N3"; Area = "Windows Client Tools > Network Tools"; Item = "Renew DHCP Lease"; Keywords = "dhcp renew release" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "N4"; Area = "Windows Client Tools > Network Tools"; Item = "Quick Connectivity Tests"; Keywords = "connectivity gateway dns internet ping" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "S1"; Area = "Windows Client Tools > System Actions"; Item = "Rename computer"; Keywords = "rename hostname computer" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "S2"; Area = "Windows Client Tools > System Actions"; Item = "Set timezone to Eastern + resync clock"; Keywords = "timezone eastern clock sync time" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "S3"; Area = "Windows Client Tools > System Actions"; Item = "Restart Windows Update Services"; Keywords = "windows update services restart wuauserv bits" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "S4"; Area = "Windows Client Tools > System Actions"; Item = "System File Check (SFC)"; Keywords = "sfc scannow system file check" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "U1"; Area = "Windows Client Tools > Utilities"; Item = "Launch vmPing"; Keywords = "vmping utility" },
+        [PSCustomObject]@{ Script = "TroubleshootingMenu.ps1"; RunScript = "TroubleshootingMenu.ps1"; RunOption = "T1"; Area = "Troubleshooting & Validation"; Item = "Show server role install status"; Keywords = "troubleshoot validation install status role status" },
+        [PSCustomObject]@{ Script = "TroubleshootingMenu.ps1"; RunScript = "TroubleshootingMenu.ps1"; RunOption = "T2"; Area = "Troubleshooting & Validation"; Item = "System snapshot"; Keywords = "snapshot system inventory diagnostics" },
+        [PSCustomObject]@{ Script = "DevOpsToolsMenu.ps1"; Area = "DevOps & Automation"; Item = "DevOps tooling, labs, and automation"; Keywords = "devops automation lab tools" },
+        [PSCustomObject]@{ Script = "DevOpsInstallUpdateMenu.ps1"; RunScript = "DevOpsInstallUpdateMenu.ps1"; RunOption = "1"; Area = "DevOps > Install / Update Tools"; Item = "Upgrade all Winget packages"; Keywords = "winget update upgrade packages" },
+        [PSCustomObject]@{ Script = "DevOpsInstallUpdateMenu.ps1"; RunScript = "DevOpsInstallUpdateMenu.ps1"; RunOption = "2"; Area = "DevOps > Install / Update Tools"; Item = "Install talosctl"; Keywords = "talos talosctl install" },
+        [PSCustomObject]@{ Script = "DevOpsInstallUpdateMenu.ps1"; RunScript = "DevOpsInstallUpdateMenu.ps1"; RunOption = "3"; Area = "DevOps > Install / Update Tools"; Item = "Install kubectl"; Keywords = "kubernetes kubectl install" },
+        [PSCustomObject]@{ Script = "DevOpsInstallUpdateMenu.ps1"; RunScript = "DevOpsInstallUpdateMenu.ps1"; RunOption = "4"; Area = "DevOps > Install / Update Tools"; Item = "Install helm"; Keywords = "helm install charts" },
+        [PSCustomObject]@{ Script = "DevOpsInstallUpdateMenu.ps1"; RunScript = "DevOpsInstallUpdateMenu.ps1"; RunOption = "5"; Area = "DevOps > Install / Update Tools"; Item = "Install DevOps bundle"; Keywords = "bundle talosctl kubectl helm" },
+        [PSCustomObject]@{ Script = "DevOpsQuickChecksMenu.ps1"; RunScript = "DevOpsQuickChecksMenu.ps1"; RunOption = "1"; Area = "DevOps > Quick Checks / Utilities"; Item = "Show installed versions"; Keywords = "versions git kubectl talosctl helm" },
+        [PSCustomObject]@{ Script = "DevOpsQuickChecksMenu.ps1"; RunScript = "DevOpsQuickChecksMenu.ps1"; RunOption = "2"; Area = "DevOps > Quick Checks / Utilities"; Item = "kubectl get nodes/pods"; Keywords = "kubectl nodes pods services ingress cluster check" },
+        [PSCustomObject]@{ Script = "DevOpsQuickChecksMenu.ps1"; RunScript = "DevOpsQuickChecksMenu.ps1"; RunOption = "3"; Area = "DevOps > Quick Checks / Utilities"; Item = "Open repo folder in File Explorer"; Keywords = "repo explorer open folder files" },
+        [PSCustomObject]@{ Script = "DevOpsLabInstallOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "91"; Area = "DevOps > Lab Install Operations"; Item = "Install core platform"; Keywords = "bootstrap cluster metallb ingress install" },
+        [PSCustomObject]@{ Script = "DevOpsLabInstallOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "92"; Area = "DevOps > Lab Install Operations"; Item = "Repair / Reinstall MetalLB"; Keywords = "metallb vip pool range loadbalancer" },
+        [PSCustomObject]@{ Script = "DevOpsLabInstallOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "93"; Area = "DevOps > Lab Install Operations"; Item = "Install / Reinstall Portainer Admin UI"; Keywords = "portainer ingress nodeport loadbalancer" },
+        [PSCustomObject]@{ Script = "DevOpsLabInstallOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "94"; Area = "DevOps > Lab Install Operations"; Item = "Deploy / Update CITA Web Demo"; Keywords = "cita web demo deploy update" },
+        [PSCustomObject]@{ Script = "DevOpsLabInstallOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "95"; Area = "DevOps > Lab Install Operations"; Item = "Scale CITA Web Demo"; Keywords = "scale replicas deployment cita web" },
+        [PSCustomObject]@{ Script = "DevOpsLabInstallOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "96"; Area = "DevOps > Lab Install Operations"; Item = "Scale any deployed app"; Keywords = "scale app deployment interactive" },
+        [PSCustomObject]@{ Script = "DevOpsLabInstallOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "97"; Area = "DevOps > Lab Install Operations"; Item = "Install / Update app via Helm"; Keywords = "helm install update chart" },
+        [PSCustomObject]@{ Script = "DevOpsLabAdvancedOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "161"; Area = "DevOps > Lab Advanced Operations"; Item = "Wipe + Rebuild cluster"; Keywords = "wipe rebuild reset cluster" },
+        [PSCustomObject]@{ Script = "DevOpsLabAdvancedOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "162"; Area = "DevOps > Lab Advanced Operations"; Item = "Nuke local generated files"; Keywords = "nuke clean kubeconfig student overrides" },
+        [PSCustomObject]@{ Script = "DevOpsLabAdvancedOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "163"; Area = "DevOps > Lab Advanced Operations"; Item = "Repo lab-safe reset"; Keywords = "repo reset discard local changes" },
+        [PSCustomObject]@{ Script = "DevOpsLabAdvancedOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "164"; Area = "DevOps > Lab Advanced Operations"; Item = "Add new worker node"; Keywords = "worker node talos join cluster" },
+        [PSCustomObject]@{ Script = "DevOpsLabAdvancedOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "165"; Area = "DevOps > Lab Advanced Operations"; Item = "Reset CITA Web Demo only"; Keywords = "reset cita web delete namespace" },
+        [PSCustomObject]@{ Script = "DevOpsLabAdvancedOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "166"; Area = "DevOps > Lab Advanced Operations"; Item = "Open kubectl prompt"; Keywords = "kubectl prompt shell kubeconfig" },
+        [PSCustomObject]@{ Script = "MaintenanceMenu.ps1"; Area = "Maintenance & Updates"; Item = "LabTools maintenance and updates"; Keywords = "maintenance update upgrade" }
+    )
+}
+
+function Invoke-GlobalSearch {
+    Show-AppHeader -Breadcrumb "Main Menu > Global Search"
+    Write-Host "Search by keyword (example: dns, gpo, join, update, devops)." -ForegroundColor DarkGray
+    Write-Host ""
+
+    $query = Read-Host "Enter keyword (blank to cancel)"
+    if ([string]::IsNullOrWhiteSpace($query)) {
+        return
+    }
+
+    $catalog = Get-GlobalSearchCatalog
+    $matches = @($catalog | Where-Object {
+        $_.Area -like "*$query*" -or
+        $_.Item -like "*$query*" -or
+        $_.Keywords -like "*$query*"
+    })
+
+    Show-AppHeader -Breadcrumb "Main Menu > Global Search Results"
+
+    if (-not $matches -or $matches.Count -eq 0) {
+        Write-Host ("No matches found for '{0}'." -f $query) -ForegroundColor Yellow
+        Write-Host ""
+        Read-Host "Press Enter to return" | Out-Null
+        return
+    }
+
+    Write-Host ("Matches for '{0}':" -f $query) -ForegroundColor Cyan
+    Write-Host ""
+
+    for ($index = 0; $index -lt $matches.Count; $index++) {
+        $displayIndex = $index + 1
+        Write-Host ("  [{0}] {1} > {2}" -f $displayIndex, $matches[$index].Area, $matches[$index].Item)
+    }
+
+    Write-Host ""
+    Write-Host "Tip: pick a result number to open its menu, or press Enter to cancel." -ForegroundColor DarkGray
+    $selection = Read-Host "Open result"
+
+    if ([string]::IsNullOrWhiteSpace($selection)) {
+        return
+    }
+
+    $selectedIndex = 0
+    if (-not [int]::TryParse($selection, [ref]$selectedIndex)) {
+        return
+    }
+
+    if ($selectedIndex -lt 1 -or $selectedIndex -gt $matches.Count) {
+        return
+    }
+
+    $selectedResult = $matches[$selectedIndex - 1]
+    Write-Host ""
+    Write-Host ("Running: {0} > {1}" -f $selectedResult.Area, $selectedResult.Item) -ForegroundColor Cyan
+    Start-Sleep -Milliseconds 500
+
+    $runScriptName = $null
+    $runOption = $null
+
+    if ($selectedResult.PSObject.Properties.Match("RunScript").Count -gt 0) {
+        $runScriptName = $selectedResult.RunScript
+    }
+    if ($selectedResult.PSObject.Properties.Match("RunOption").Count -gt 0) {
+        $runOption = $selectedResult.RunOption
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($runScriptName) -and -not [string]::IsNullOrWhiteSpace($runOption)) {
+        $runScriptPath = Join-Path $PSScriptRoot $runScriptName
+        if (Test-Path $runScriptPath) {
+            & $runScriptPath -RunOption $runOption
+            return
+        }
+    }
+
+    $scriptPath = Join-Path $PSScriptRoot $selectedResult.Script
+    if (Test-Path $scriptPath) {
+        & $scriptPath
+    }
 }
 
 $exit = $false
@@ -103,6 +233,7 @@ do {
         "5" { & (Join-Path $PSScriptRoot "TroubleshootingMenu.ps1") }
         "6" { & (Join-Path $PSScriptRoot "DevOpsToolsMenu.ps1") }
         "7" { & (Join-Path $PSScriptRoot "MaintenanceMenu.ps1") }
+        "s" { Invoke-GlobalSearch }
         "0" { $exit = $true }
         default { Start-Sleep -Milliseconds 300 }
     }

@@ -1,4 +1,8 @@
 # C:\CITA\LabTools\src\Menu\TroubleshootingMenu.ps1
+param(
+    [string]$RunOption
+)
+
 $ErrorActionPreference = "SilentlyContinue"
 
 # Shared UI
@@ -70,6 +74,21 @@ $snapshotScript      = Join-Path $PSScriptRoot "..\Tasks\System-Snapshot.ps1"
 $back = $false
 $script:lastStatusText  = "[Ready] Ready"
 $script:lastStatusColor = "DarkGray"
+
+if (-not [string]::IsNullOrWhiteSpace($RunOption)) {
+    switch ($RunOption) {
+        "T1" { Invoke-TaskSafe -Path $installStatusScript -SuccessText "Install status displayed" }
+        "T2" { Invoke-TaskSafe -Path $snapshotScript      -SuccessText "System snapshot completed" }
+        default {
+            $script:lastStatusText  = "[Warning] Invalid search action"
+            $script:lastStatusColor = "Yellow"
+            Wait-MenuContinue
+        }
+    }
+
+    Clear-Host
+    return
+}
 
 do {
     Show-TroubleshootingMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor
