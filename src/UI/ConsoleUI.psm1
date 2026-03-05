@@ -284,8 +284,9 @@ function Get-EntraJoinInfo {
     }
 
     $default = @{
-        JoinType   = 'Unknown'
-        TenantName = ''
+        JoinType           = 'Unknown'
+        TenantName         = ''
+        WorkplaceJoined    = $false
     }
 
     try {
@@ -319,8 +320,9 @@ function Get-EntraJoinInfo {
         }
 
         $result = @{
-            JoinType   = $joinType
-            TenantName = $(if ([string]::IsNullOrWhiteSpace($tenantName)) { '' } else { $tenantName })
+            JoinType        = $joinType
+            TenantName      = $(if ([string]::IsNullOrWhiteSpace($tenantName)) { '' } else { $tenantName })
+            WorkplaceJoined = $isWorkplaceJoined
         }
 
         $script:JoinInfoCache = @{ Timestamp = Get-Date; Data = $result }
@@ -352,7 +354,17 @@ function Get-JoinDisplayInfo {
             }
         }
         'Domain' {
-            if ($domainInfo.Type -eq 'Domain') { $domainInfo.Name } else { 'Domain' }
+            if ($entraInfo.WorkplaceJoined) {
+                if ([string]::IsNullOrWhiteSpace($entraInfo.TenantName)) {
+                    'Domain + Registered'
+                } else {
+                    "Domain + Registered ({0})" -f $entraInfo.TenantName
+                }
+            } elseif ($domainInfo.Type -eq 'Domain') {
+                $domainInfo.Name
+            } else {
+                'Domain'
+            }
         }
         'Registered' { 'Registered' }
         default {
