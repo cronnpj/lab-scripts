@@ -16,9 +16,12 @@ PowerShell scripts and helpers for provisioning and managing lab environments.
 
 This repository contains a collection of PowerShell modules and scripts used to set up, configure, and maintain lab servers and clients. Typical tasks include installing roles, joining machines to a domain, renaming computers, configuring static IPs, and taking system snapshots.
 
-## Recent Updates (v2026.03.04.1)
+## Recent Updates (v2026.03.05.1)
 
-- Added a new `Internet` header status in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) with green/red connectivity indicator.
+- Added domain/workgroup membership status to the app header in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) with `Domain: <name>`, `Domain: Workgroup`, or `Domain: None` states.
+- Combined `Internet` and `Domain` into a single header row in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to reduce vertical space.
+- Refined header spacing/alignment in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) so `User`, `Mode`, `Domain`, and `Date` right-side labels align consistently.
+- Updated shortcut behavior in [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) to default to Public Desktop creation and launch Lab Tools elevated.
 - Improved Windows Client navigation in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) by adding short context descriptions and option counts under each category.
 - Added a single global search entry (`[S] Global Search`) in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) with expanded keyword coverage across Windows Client, Troubleshooting, and DevOps actions.
 - Updated global search to support direct action execution (not just menu navigation) via `RunOption` mappings in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1).
@@ -77,7 +80,7 @@ Create or repair shortcuts (Desktop + Start Menu):
 .\src\Tasks\Create-Shortcuts.ps1
 ```
 
-This creates/repairs `CITA Lab Tools.lnk` in current-user Desktop/Start Menu and all-users Start Menu. Legacy `CITA Server Setup.lnk` is removed from managed locations when found. Public Desktop creation is controlled by `src/config/labtools.json` -> `shortcuts.createPublicDesktopShortcuts` (default `false`). You can set a custom icon path with `src/config/labtools.json` -> `shortcuts.iconRelativePath` (recommended `.ico`; falls back to the default PowerShell icon if the file is missing).
+This creates/repairs `CITA Lab Tools.lnk` in current-user Desktop/Start Menu, all-users Start Menu, and (by default) Public Desktop. The task self-elevates when needed for all-users locations, and the shortcut launches Lab Tools elevated. Legacy `CITA Server Setup.lnk` is removed from managed locations when found. Public Desktop creation is controlled by `src/config/labtools.json` -> `shortcuts.createPublicDesktopShortcuts` (default `true`). You can set a custom icon path with `src/config/labtools.json` -> `shortcuts.iconRelativePath` (recommended `.ico`; falls back to the default PowerShell icon if the file is missing).
 
 Apply Windows Terminal background from repo config:
 

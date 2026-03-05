@@ -2,6 +2,19 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.03.05.1 - 2026-03-05
+
+### Header Layout and Status Enhancements
+- Added domain membership detection in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) with `Domain`, `Workgroup`, and `None` states shown in the app header.
+- Combined `Internet` and `Domain` status into one row in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to reduce header height.
+- Updated header row alignment logic in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) so right-side labels (`User`, `Mode`, `Domain`, `Date`) align to a consistent column.
+- Tuned spacing offsets in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) for `Mode`, `Domain`, and `Date` to match the current dashboard layout.
+
+### Shortcut Behavior Updates
+- Updated [src/config/labtools.json](src/config/labtools.json) default `shortcuts.createPublicDesktopShortcuts` to `true` so public desktop shortcut creation is enabled by default.
+- Updated [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) to self-elevate when needed for all-users shortcut locations.
+- Updated [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) shortcut launch arguments to run Lab Tools elevated (`Start-Process -Verb RunAs`).
+
 ## v2026.03.04.2 - 2026-03-04
 
 ### Client Utilities Menu Reorganization
