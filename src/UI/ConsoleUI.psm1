@@ -324,7 +324,13 @@ function Get-EntraJoinInfo {
         $domainJoined = (Get-DsRegValue -Lines $lines -Key 'DomainJoined')
         $workplaceJoined = (Get-DsRegValue -Lines $lines -Key 'WorkplaceJoined')
         $tenantName = (Get-DsRegValue -Lines $lines -Key 'TenantName')
+        if ([string]::IsNullOrWhiteSpace($tenantName)) {
+            $tenantName = (Get-DsRegValue -Lines $lines -Key 'WorkplaceTenantName')
+        }
         $tenantId = (Get-DsRegValue -Lines $lines -Key 'TenantId')
+        if ([string]::IsNullOrWhiteSpace($tenantId)) {
+            $tenantId = (Get-DsRegValue -Lines $lines -Key 'WorkplaceTenantId')
+        }
 
         $isAzureAdJoined = (Test-YesValue -Value $azureAdJoined)
         $isDomainJoined = (Test-YesValue -Value $domainJoined)
@@ -371,7 +377,17 @@ function Get-JoinDisplayInfo {
 
     $joinText = switch ($entraInfo.JoinType) {
         'Hybrid' {
-            if ([string]::IsNullOrWhiteSpace($tenantDisplay)) {
+            $domainName = if ($domainInfo.Type -eq 'Domain' -and -not [string]::IsNullOrWhiteSpace($domainInfo.Name)) {
+                $domainInfo.Name
+            } else {
+                ''
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($domainName) -and -not [string]::IsNullOrWhiteSpace($tenantDisplay)) {
+                "Hybrid: {0} ({1})" -f $domainName, $tenantDisplay
+            } elseif (-not [string]::IsNullOrWhiteSpace($domainName)) {
+                "Hybrid: {0}" -f $domainName
+            } elseif ([string]::IsNullOrWhiteSpace($tenantDisplay)) {
                 'Hybrid'
             } else {
                 "Hybrid ({0})" -f $tenantDisplay
