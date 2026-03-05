@@ -261,6 +261,129 @@ function Get-DomainMembershipInfo {
     }
 }
 
+function Get-DsRegValue {
+    param(
+        [Parameter(Mandatory=$true)][string[]]$Lines,
+        [Parameter(Mandatory=$true)][string]$Key
+    )
+
+    $match = $Lines |
+        Where-Object { $_ -match ("^\s*" + [regex]::Escape($Key) + "\s*:\s*") } |
+        Select-Object -First 1
+
+    if (-not $match) {
+        return $null
+    }
+
+    return (($match -split ':', 2)[1]).Trim()
+}
+
+function Get-EntraJoinInfo {
+    if ($script:JoinInfoCache -and $script:JoinInfoCache.Timestamp -and (((Get-Date) - $script:JoinInfoCache.Timestamp).TotalSeconds -lt 60)) {
+        return $script:JoinInfoCache.Data
+    }
+
+    $default = @{
+        JoinType   = 'Unknown'
+        TenantName = ''
+    }
+
+    try {
+        $dsreg = Get-Command dsregcmd.exe -ErrorAction SilentlyContinue
+        if (-not $dsreg) {
+            $script:JoinInfoCache = @{ Timestamp = Get-Date; Data = $default }
+            return $default
+        }
+
+        $lines = @(& dsregcmd.exe /status 2>&1)
+
+        $azureAdJoined = (Get-DsRegValue -Lines $lines -Key 'AzureAdJoined')
+        $domainJoined = (Get-DsRegValue -Lines $lines -Key 'DomainJoined')
+        $workplaceJoined = (Get-DsRegValue -Lines $lines -Key 'WorkplaceJoined')
+        $tenantName = (Get-DsRegValue -Lines $lines -Key 'TenantName')
+
+        $isAzureAdJoined = ($azureAdJoined -eq 'YES')
+        $isDomainJoined = ($domainJoined -eq 'YES')
+        $isWorkplaceJoined = ($workplaceJoined -eq 'YES')
+
+        $joinType = if ($isAzureAdJoined -and $isDomainJoined) {
+            'Hybrid'
+        } elseif ($isAzureAdJoined) {
+            'Cloud'
+        } elseif ($isDomainJoined) {
+            'Domain'
+        } elseif ($isWorkplaceJoined) {
+            'Registered'
+        } else {
+            'Unknown'
+        }
+
+        $result = @{
+            JoinType   = $joinType
+            TenantName = $(if ([string]::IsNullOrWhiteSpace($tenantName)) { '' } else { $tenantName })
+        }
+
+        $script:JoinInfoCache = @{ Timestamp = Get-Date; Data = $result }
+        return $result
+    }
+    catch {
+        $script:JoinInfoCache = @{ Timestamp = Get-Date; Data = $default }
+        return $default
+    }
+}
+
+function Get-JoinDisplayInfo {
+    $domainInfo = Get-DomainMembershipInfo
+    $entraInfo = Get-EntraJoinInfo
+
+    $joinText = switch ($entraInfo.JoinType) {
+        'Hybrid' {
+            if ([string]::IsNullOrWhiteSpace($entraInfo.TenantName)) {
+                'Hybrid'
+            } else {
+                "Hybrid ({0})" -f $entraInfo.TenantName
+            }
+        }
+        'Cloud' {
+            if ([string]::IsNullOrWhiteSpace($entraInfo.TenantName)) {
+                'Cloud'
+            } else {
+                "Cloud ({0})" -f $entraInfo.TenantName
+            }
+        }
+        'Domain' {
+            if ($domainInfo.Type -eq 'Domain') { $domainInfo.Name } else { 'Domain' }
+        }
+        'Registered' { 'Registered' }
+        default {
+            switch ($domainInfo.Type) {
+                'Domain' { $domainInfo.Name }
+                'Workgroup' { 'Workgroup' }
+                default { 'None' }
+            }
+        }
+    }
+
+    $joinColor = switch ($entraInfo.JoinType) {
+        'Hybrid' { 'Green' }
+        'Cloud' { 'Green' }
+        'Domain' { 'Green' }
+        'Registered' { 'Yellow' }
+        default {
+            switch ($domainInfo.Type) {
+                'Domain' { 'Green' }
+                'Workgroup' { 'Yellow' }
+                default { 'Red' }
+            }
+        }
+    }
+
+    return @{
+        Text  = $joinText
+        Color = $joinColor
+    }
+}
+
 function Write-DomainLine {
     param(
         [Parameter(Mandatory=$true)][hashtable]$DomainInfo,
@@ -300,7 +423,7 @@ function Write-DomainLine {
 function Write-InternetDomainLine {
     param(
         [Parameter(Mandatory=$true)][bool]$IsConnected,
-        [Parameter(Mandatory=$true)][hashtable]$DomainInfo,
+        [Parameter(Mandatory=$true)][hashtable]$JoinInfo,
         [int]$Width = 64
     )
 
@@ -309,17 +432,9 @@ function Write-InternetDomainLine {
     $leftValue = if ($IsConnected) { [char]0x2714 } else { [char]0x2716 }
     $leftColor = if ($IsConnected) { "Green" } else { "Red" }
 
-    $rightLabel = "Domain: "
-    $rightValue = switch ($DomainInfo.Type) {
-        'Domain' { $DomainInfo.Name }
-        'Workgroup' { 'Workgroup' }
-        default { 'None' }
-    }
-    $rightColor = switch ($DomainInfo.Type) {
-        'Domain' { 'Green' }
-        'Workgroup' { 'Yellow' }
-        default { 'Red' }
-    }
+    $rightLabel = "Join: "
+    $rightValue = $JoinInfo.Text
+    $rightColor = $JoinInfo.Color
 
     $rightLabelStart = 24
     $spacerLength = [Math]::Max(1, $rightLabelStart - ($leftLabel.Length + $leftValue.Length))
@@ -356,7 +471,7 @@ function Show-AppHeader {
     $userName = $env:USERNAME
     $networkInfo = Get-PrimaryNetworkInfo
     $internetConnected = Get-InternetStatus
-    $domainInfo = Get-DomainMembershipInfo
+    $joinInfo = Get-JoinDisplayInfo
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor DarkGray
     Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $Width "Cyan"
@@ -368,8 +483,8 @@ function Show-AppHeader {
     # Primary network line with cyan values
     Write-NetworkLine -IPAddress $networkInfo.IPAddress -Mode $networkInfo.Mode -Width $Width
 
-    # Internet + domain/workgroup membership line
-    Write-InternetDomainLine -IsConnected $internetConnected -DomainInfo $domainInfo -Width $Width
+    # Internet + join status line
+    Write-InternetDomainLine -IsConnected $internetConnected -JoinInfo $joinInfo -Width $Width
 
     # Timezone/Date line with cyan values
     Write-TimezoneDateLine -Width $Width
