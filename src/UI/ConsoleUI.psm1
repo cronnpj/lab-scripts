@@ -32,29 +32,32 @@ function Write-HostUserLine {
     # inside width for text area (excluding "| " and " |")
     $inner = $Width - 4
 
-    $labelHost = "Host: "
-    $labelUser = "    User: "
+    $leftLabel = "Host: "
+    $rightLabel = "User: "
+    $rightLabelStart = 24
 
-    $textLen = $labelHost.Length + $HostName.Length + $labelUser.Length + $UserName.Length
-    if ($textLen -gt $inner) {
-        # Truncate user first if needed, then host if still needed
-        $maxUser = [Math]::Max(0, $inner - ($labelHost.Length + $HostName.Length + $labelUser.Length))
-        if ($UserName.Length -gt $maxUser) { $UserName = $UserName.Substring(0, $maxUser) }
-
-        $textLen = $labelHost.Length + $HostName.Length + $labelUser.Length + $UserName.Length
-        if ($textLen -gt $inner) {
-            $maxHost = [Math]::Max(0, $inner - ($labelHost.Length + $labelUser.Length + $UserName.Length))
-            if ($HostName.Length -gt $maxHost) { $HostName = $HostName.Substring(0, $maxHost) }
-        }
+    $maxHostLength = [Math]::Max(0, $rightLabelStart - $leftLabel.Length)
+    if ($HostName.Length -gt $maxHostLength) {
+        $HostName = $HostName.Substring(0, $maxHostLength)
     }
 
-    $textLen = $labelHost.Length + $HostName.Length + $labelUser.Length + $UserName.Length
-    $pad = " " * ($inner - $textLen)
+    $spacerLength = [Math]::Max(1, $rightLabelStart - ($leftLabel.Length + $HostName.Length))
+    $spacer = " " * $spacerLength
+
+    $fixedLength = $leftLabel.Length + $HostName.Length + $spacerLength + $rightLabel.Length
+    $maxUserLength = [Math]::Max(0, $inner - $fixedLength)
+    if ($UserName.Length -gt $maxUserLength) {
+        $UserName = $UserName.Substring(0, $maxUserLength)
+    }
+
+    $textLen = $fixedLength + $UserName.Length
+    $pad = " " * [Math]::Max(0, ($inner - $textLen))
 
     Write-Host "| " -NoNewline -ForegroundColor Gray
-    Write-Host $labelHost -NoNewline -ForegroundColor Gray
+    Write-Host $leftLabel -NoNewline -ForegroundColor Gray
     Write-Host $HostName -NoNewline -ForegroundColor Cyan
-    Write-Host $labelUser -NoNewline -ForegroundColor Gray
+    Write-Host $spacer -NoNewline -ForegroundColor Gray
+    Write-Host $rightLabel -NoNewline -ForegroundColor Gray
     Write-Host $UserName -NoNewline -ForegroundColor Cyan
     Write-Host $pad -NoNewline -ForegroundColor Gray
     Write-Host " |" -ForegroundColor Gray
@@ -158,22 +161,32 @@ function Write-NetworkLine {
 
     $inner = $Width - 4
 
-    $labelIP = "IP: "
-    $labelMode = "     Mode: "
+    $leftLabel = "IP: "
+    $rightLabel = "Mode: "
+    $rightLabelStart = 24
 
-    $textLen = $labelIP.Length + $IPAddress.Length + $labelMode.Length + $Mode.Length
-    if ($textLen -gt $inner) {
-        $maxIp = [Math]::Max(0, $inner - ($labelIP.Length + $labelMode.Length + $Mode.Length))
-        if ($IPAddress.Length -gt $maxIp) { $IPAddress = $IPAddress.Substring(0, $maxIp) }
+    $maxIpLength = [Math]::Max(0, $rightLabelStart - $leftLabel.Length)
+    if ($IPAddress.Length -gt $maxIpLength) {
+        $IPAddress = $IPAddress.Substring(0, $maxIpLength)
     }
 
-    $textLen = $labelIP.Length + $IPAddress.Length + $labelMode.Length + $Mode.Length
+    $spacerLength = [Math]::Max(1, $rightLabelStart - ($leftLabel.Length + $IPAddress.Length))
+    $spacer = " " * $spacerLength
+
+    $fixedLength = $leftLabel.Length + $IPAddress.Length + $spacerLength + $rightLabel.Length
+    $maxModeLength = [Math]::Max(0, $inner - $fixedLength)
+    if ($Mode.Length -gt $maxModeLength) {
+        $Mode = $Mode.Substring(0, $maxModeLength)
+    }
+
+    $textLen = $fixedLength + $Mode.Length
     $pad = " " * [Math]::Max(0, ($inner - $textLen))
 
     Write-Host "| " -NoNewline -ForegroundColor Gray
-    Write-Host $labelIP -NoNewline -ForegroundColor Gray
+    Write-Host $leftLabel -NoNewline -ForegroundColor Gray
     Write-Host $IPAddress -NoNewline -ForegroundColor Cyan
-    Write-Host $labelMode -NoNewline -ForegroundColor Gray
+    Write-Host $spacer -NoNewline -ForegroundColor Gray
+    Write-Host $rightLabel -NoNewline -ForegroundColor Gray
     Write-Host $Mode -NoNewline -ForegroundColor Cyan
     Write-Host $pad -NoNewline -ForegroundColor Gray
     Write-Host " |" -ForegroundColor Gray
