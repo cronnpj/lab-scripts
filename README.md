@@ -80,7 +80,7 @@ Create or repair shortcuts (Desktop + Start Menu):
 .\src\Tasks\Create-Shortcuts.ps1
 ```
 
-This creates/repairs `CITA Lab Tools.lnk` in current-user Desktop/Start Menu, all-users Start Menu, and (by default) Public Desktop. The task self-elevates when needed for all-users locations, and the shortcut launches Lab Tools elevated. Legacy `CITA Server Setup.lnk` is removed from managed locations when found. Public Desktop creation is controlled by `src/config/labtools.json` -> `shortcuts.createPublicDesktopShortcuts` (default `true`). You can set a custom icon path with `src/config/labtools.json` -> `shortcuts.iconRelativePath` (recommended `.ico`; falls back to the default PowerShell icon if the file is missing).
+This creates/repairs `CITA Lab Tools.lnk` in current-user Start Menu, all-users Start Menu, and (by default) Public Desktop. When Public Desktop creation is enabled and available, current-user Desktop shortcut creation is skipped and any existing current-user Desktop copy is removed to avoid duplicates. The task self-elevates when needed for all-users locations, and the shortcut launches Lab Tools elevated. Legacy `CITA Server Setup.lnk` is removed from managed locations when found. Public Desktop creation is controlled by `src/config/labtools.json` -> `shortcuts.createPublicDesktopShortcuts` (default `true`). You can set a custom icon path with `src/config/labtools.json` -> `shortcuts.iconRelativePath` (recommended `.ico`; falls back to the default PowerShell icon if the file is missing).
 
 Apply Windows Terminal background from repo config:
 

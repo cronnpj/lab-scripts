@@ -89,10 +89,18 @@ $legacyShortcutNames = @(
     "CITA Server Setup.lnk"
 )
 
+$preferPublicDesktopShortcut = $createPublicDesktopShortcuts -and $isElevated
+
 $locations = @(
-    [pscustomobject]@{ Label = "CurrentUser Desktop"; Path = [Environment]::GetFolderPath("Desktop") },
     [pscustomobject]@{ Label = "CurrentUser StartMenu"; Path = (Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs") }
 )
+
+if (-not $preferPublicDesktopShortcut) {
+    $locations += [pscustomobject]@{ Label = "CurrentUser Desktop"; Path = [Environment]::GetFolderPath("Desktop") }
+}
+else {
+    Write-Host "Public Desktop shortcut is enabled; skipping current-user Desktop shortcut creation." -ForegroundColor Cyan
+}
 
 if ($isElevated) {
     $locations += [pscustomobject]@{ Label = "AllUsers StartMenu"; Path = (Join-Path $env:ProgramData "Microsoft\Windows\Start Menu\Programs") }
@@ -150,6 +158,35 @@ foreach ($location in $locations) {
     }
 }
 
+$currentUserDesktopPath = [Environment]::GetFolderPath("Desktop")
+$publicDesktopHasManagedShortcut = $false
+
+if ($commonDesktopPath) {
+    foreach ($shortcutName in $shortcutNames) {
+        $publicShortcutPath = Join-Path $commonDesktopPath $shortcutName
+        if (Test-Path $publicShortcutPath) {
+            $publicDesktopHasManagedShortcut = $true
+            break
+        }
+    }
+}
+
+if ($publicDesktopHasManagedShortcut -and $currentUserDesktopPath) {
+    foreach ($shortcutName in ($shortcutNames + $legacyShortcutNames)) {
+        $userDesktopShortcutPath = Join-Path $currentUserDesktopPath $shortcutName
+
+        if (-not (Test-Path $userDesktopShortcutPath)) { continue }
+
+        try {
+            Remove-Item -Path $userDesktopShortcutPath -Force
+            $removed += "[CurrentUser Desktop] $userDesktopShortcutPath (deduped; Public Desktop shortcut exists)"
+        }
+        catch {
+            $failed += "[CurrentUser Desktop] $userDesktopShortcutPath :: $($_.Exception.Message)"
+        }
+    }
+}
+
 foreach ($location in $locations) {
     if (-not $location.Path) { continue }
 
@@ -177,7 +214,7 @@ Write-Host "Shortcut icon: $shortcutIconLocation" -ForegroundColor Cyan
 
 if ($removed.Count -gt 0) {
     Write-Host ""
-    Write-Host "Removed public desktop shortcuts:" -ForegroundColor Green
+    Write-Host "Removed shortcuts:" -ForegroundColor Green
     $removed | ForEach-Object { Write-Host " - $_" }
 }
 
