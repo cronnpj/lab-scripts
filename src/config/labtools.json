@@ -3,7 +3,7 @@
   "roles": ["AD-Domain-Services", "DNS", "DHCP"],
   "logPath": "C:\\LabLogs\\labtools.log",
   "shortcuts": {
-    "createPublicDesktopShortcuts": false,
+    "createPublicDesktopShortcuts": true,
     "iconRelativePath": "MISC\\Icons\\Morrisville_Identity_Mustang_Mark_RGB.ico"
   }
 }

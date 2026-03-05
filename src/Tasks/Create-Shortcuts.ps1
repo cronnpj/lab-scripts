@@ -15,6 +15,14 @@ function Test-IsElevated {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+if (-not (Test-IsElevated)) {
+    Write-Host "Elevation required to create all-users shortcuts. Prompting for Administrator..." -ForegroundColor Yellow
+
+    $elevatedArgs = "-NoLogo -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+    Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList $elevatedArgs -WorkingDirectory $PSScriptRoot -Verb RunAs
+    exit 0
+}
+
 function New-LabShortcut {
     param(
         [Parameter(Mandatory=$true)][string]$ShortcutPath,
@@ -32,16 +40,21 @@ function New-LabShortcut {
     $shortcut = $wsh.CreateShortcut($ShortcutPath)
 
     $shortcut.TargetPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
-    $shortcut.Arguments = "-NoLogo -ExecutionPolicy Bypass -File `"$LauncherPath`""
+    $launcherArgs = "-NoLogo -ExecutionPolicy Bypass -File `"$LauncherPath`""
+    $escapedTargetPath = $shortcut.TargetPath.Replace("'", "''")
+    $escapedLauncherArgs = $launcherArgs.Replace("'", "''")
+    $escapedWorkingDirectory = $WorkingDirectory.Replace("'", "''")
+
+    $shortcut.Arguments = "-NoLogo -ExecutionPolicy Bypass -Command `"Start-Process -FilePath '$escapedTargetPath' -ArgumentList '$escapedLauncherArgs' -WorkingDirectory '$escapedWorkingDirectory' -Verb RunAs`""
     $shortcut.WorkingDirectory = $WorkingDirectory
     $shortcut.WindowStyle = 1
-    $shortcut.Description = "Launch CITA Lab Tools (Windows Terminal preferred)"
+    $shortcut.Description = "Launch CITA Lab Tools as Administrator (Windows Terminal preferred)"
     $shortcut.IconLocation = $IconLocation
     $shortcut.Save()
 }
 
 $workingDir = $srcRoot
-$createPublicDesktopShortcuts = $false
+$createPublicDesktopShortcuts = $true
 $defaultIconLocation = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe,0"
 $shortcutIconLocation = $defaultIconLocation
 $isElevated = Test-IsElevated
