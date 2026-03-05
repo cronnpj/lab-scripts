@@ -427,6 +427,34 @@ function Get-JoinDisplayInfo {
         }
     }
 
+    $compactJoinText = switch ($entraInfo.JoinType) {
+        'Hybrid' {
+            if ($domainInfo.Type -eq 'Domain' -and -not [string]::IsNullOrWhiteSpace($domainInfo.Name)) {
+                "Hybrid: {0}" -f $domainInfo.Name
+            } else {
+                'Hybrid'
+            }
+        }
+        'Cloud' { 'Cloud' }
+        'Domain' {
+            if ($entraInfo.WorkplaceJoined) {
+                'Domain + Registered'
+            } elseif ($domainInfo.Type -eq 'Domain') {
+                $domainInfo.Name
+            } else {
+                'Domain'
+            }
+        }
+        'Registered' { 'Registered' }
+        default {
+            switch ($domainInfo.Type) {
+                'Domain' { $domainInfo.Name }
+                'Workgroup' { 'Workgroup' }
+                default { 'None' }
+            }
+        }
+    }
+
     $joinColor = switch ($entraInfo.JoinType) {
         'Hybrid' { 'Green' }
         'Cloud' { 'Green' }
@@ -442,8 +470,10 @@ function Get-JoinDisplayInfo {
     }
 
     return @{
-        Text  = $joinText
-        Color = $joinColor
+        Text        = $joinText
+        CompactText = $compactJoinText
+        Tenant      = $tenantDisplay
+        Color       = $joinColor
     }
 }
 
@@ -521,6 +551,31 @@ function Write-InternetDomainLine {
     Write-Host " |" -ForegroundColor Gray
 }
 
+function Write-TenantLine {
+    param(
+        [Parameter(Mandatory=$true)][string]$Tenant,
+        [int]$Width = 64
+    )
+
+    $inner = $Width - 4
+    $label = "Tenant: "
+    $value = if ([string]::IsNullOrWhiteSpace($Tenant)) { 'N/A' } else { $Tenant }
+
+    $maxValueLength = [Math]::Max(0, $inner - $label.Length)
+    if ($value.Length -gt $maxValueLength) {
+        $value = $value.Substring(0, $maxValueLength)
+    }
+
+    $textLen = $label.Length + $value.Length
+    $pad = " " * [Math]::Max(0, ($inner - $textLen))
+
+    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host $label -NoNewline -ForegroundColor Gray
+    Write-Host $value -NoNewline -ForegroundColor Cyan
+    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Gray
+}
+
 function Show-AppHeader {
     param(
         [Parameter(Mandatory=$true)][string]$Breadcrumb,
@@ -536,6 +591,29 @@ function Show-AppHeader {
     $internetConnected = Get-InternetStatus
     $joinInfo = Get-JoinDisplayInfo
 
+    $joinTextForHeader = $joinInfo.Text
+    $showTenantLine = $false
+    $tenantForLine = $joinInfo.Tenant
+
+    $inner = $Width - 4
+    $leftLabel = "Internet: "
+    $leftValue = [char]0x2714
+    $rightLabel = "Join: "
+    $rightLabelStart = 24
+    $spacerLength = [Math]::Max(1, $rightLabelStart - ($leftLabel.Length + $leftValue.Length))
+    $fixedLength = $leftLabel.Length + $leftValue.Length + $spacerLength + $rightLabel.Length
+    $maxInlineJoinLength = [Math]::Max(0, $inner - $fixedLength)
+
+    if (-not [string]::IsNullOrWhiteSpace($tenantForLine) -and $joinInfo.Text.Length -gt $maxInlineJoinLength) {
+        $joinTextForHeader = $joinInfo.CompactText
+        $showTenantLine = $true
+    }
+
+    $joinLineInfo = @{
+        Text = $joinTextForHeader
+        Color = $joinInfo.Color
+    }
+
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor DarkGray
     Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $Width "Cyan"
     Write-BoxLine ("Version: {0}" -f $version) $Width "Gray"
@@ -547,10 +625,15 @@ function Show-AppHeader {
     Write-NetworkLine -IPAddress $networkInfo.IPAddress -Mode $networkInfo.Mode -Width $Width
 
     # Internet + join status line
-    Write-InternetDomainLine -IsConnected $internetConnected -JoinInfo $joinInfo -Width $Width
+    Write-InternetDomainLine -IsConnected $internetConnected -JoinInfo $joinLineInfo -Width $Width
 
     # Timezone/Date line with cyan values
     Write-TimezoneDateLine -Width $Width
+
+    # Tenant line for long join strings
+    if ($showTenantLine) {
+        Write-TenantLine -Tenant $tenantForLine -Width $Width
+    }
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor DarkGray
 
