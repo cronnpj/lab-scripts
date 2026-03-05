@@ -263,11 +263,13 @@ function Get-DomainMembershipInfo {
 
 function Get-DsRegValue {
     param(
-        [Parameter(Mandatory=$true)][string[]]$Lines,
+        [Parameter(Mandatory=$true)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Lines,
         [Parameter(Mandatory=$true)][string]$Key
     )
 
-    $match = $Lines |
+    $normalizedLines = @($Lines | Where-Object { $_ -ne $null })
+
+    $match = $normalizedLines |
         Where-Object { $_ -match ("^\s*" + [regex]::Escape($Key) + "\s*:\s*") } |
         Select-Object -First 1
 
@@ -275,7 +277,7 @@ function Get-DsRegValue {
         return (($match -split ':', 2)[1]).Trim()
     }
 
-    $rawText = ($Lines -join "`n")
+    $rawText = ($normalizedLines -join "`n")
     $escapedKey = [regex]::Escape($Key)
     $fallbackMatch = [regex]::Match($rawText, "(?im)^\s*\|?\s*" + $escapedKey + "\s*:\s*(.+?)\s*$")
     if ($fallbackMatch.Success) {
