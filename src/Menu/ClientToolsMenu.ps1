@@ -91,8 +91,8 @@ function Show-ClientMenu {
     Write-Host "      IP config, DNS flush, DHCP renew, connectivity checks" -ForegroundColor DarkGray
     Write-Host "  [4] System Actions         (4 options)"
     Write-Host "      Rename, timezone/clock sync, update services, SFC scan" -ForegroundColor DarkGray
-    Write-Host "  [5] Utilities              (1 option)"
-    Write-Host "      Launch vmPing" -ForegroundColor DarkGray
+    Write-Host "  [5] Utilities              (2 options)"
+    Write-Host "      Launch vmPing, Run Win11Debloat" -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
@@ -162,10 +162,11 @@ function Show-UtilitiesMenu {
     Show-AppHeader -Breadcrumb "Main > Windows Client Tools > Utilities"
 
     Write-Host "  [1] Launch vmPing (MISC)"
+    Write-Host "  [2] Run Win11Debloat (official upstream script)"
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
-    Write-Host "Keys: 1 Select  |  0 Back"
+    Write-Host "Keys: 1-2 Select  |  0 Back"
     Write-Host ""
 }
 
@@ -177,6 +178,7 @@ $timezoneScript     = Join-Path $PSScriptRoot "..\Tasks\Set-EasternTimeAndResync
 $joinStatusScript   = Join-Path $PSScriptRoot "..\Tasks\Client\Get-JoinStatus.ps1"
 $gpoReportScript    = Join-Path $PSScriptRoot "..\Tasks\Client\GPO-Report.ps1"
 $testConnScript     = Join-Path $PSScriptRoot "..\Tasks\Client\Test-Connectivity.ps1"
+$win11DebloatScript = Join-Path $PSScriptRoot "..\Tasks\Run-Win11Debloat.ps1"
 $vmPingPath         = Join-Path $PSScriptRoot "..\MISC\vmPing\vmPing.exe"
 
 $back = $false
@@ -304,6 +306,7 @@ function Invoke-UtilitiesMenu {
                     Start-Process -FilePath $vmPingPath
                 } -SuccessText "vmPing launched"
             }
+            "2" { Invoke-TaskSafe -Path $win11DebloatScript -SuccessText "Win11Debloat flow completed" -ShowPause:$false }
             "0"  { $backSub = $true }
             default {
                 $script:lastStatusText  = "[Warning] Invalid selection"
@@ -370,6 +373,7 @@ function Invoke-ClientRunOption {
                 Start-Process -FilePath $vmPingPath
             } -SuccessText "vmPing launched"
         }
+        "U2" { Invoke-TaskSafe -Path $win11DebloatScript -SuccessText "Win11Debloat flow completed" -ShowPause:$false }
 
         default {
             $script:lastStatusText  = "[Warning] Invalid search action"

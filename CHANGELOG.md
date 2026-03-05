@@ -2,6 +2,17 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.03.04.2 - 2026-03-04
+
+### Client Utilities Menu Reorganization
+- Moved `Run Win11Debloat (official upstream script)` from [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to Windows Client Tools > Utilities in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1).
+- Expanded Utilities in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) from 1 option to 2 options so `vmPing` and `Win11Debloat` are grouped together.
+- Updated Maintenance option/key hints in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to reflect options [1]-[4] only.
+
+### Global Search Catalog Update
+- Added a direct search action for `Run Win11Debloat` (`RunOption = "U2"`) under Windows Client Tools > Utilities in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1).
+- Kept Maintenance search coverage in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) focused on update/shortcut/background/feedback tasks.
+
 ## v2026.03.04.1 - 2026-03-04
 
 ### Header Status and Client Menu Guidance

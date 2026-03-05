@@ -112,6 +112,7 @@ function Get-GlobalSearchCatalog {
         [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "S3"; Area = "Windows Client Tools > System Actions"; Item = "Restart Windows Update Services"; Keywords = "windows update services restart wuauserv bits" },
         [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "S4"; Area = "Windows Client Tools > System Actions"; Item = "System File Check (SFC)"; Keywords = "sfc scannow system file check" },
         [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "U1"; Area = "Windows Client Tools > Utilities"; Item = "Launch vmPing"; Keywords = "vmping utility" },
+        [PSCustomObject]@{ Script = "ClientToolsMenu.ps1"; RunScript = "ClientToolsMenu.ps1"; RunOption = "U2"; Area = "Windows Client Tools > Utilities"; Item = "Run Win11Debloat"; Keywords = "win11 debloat utility cleanup" },
         [PSCustomObject]@{ Script = "TroubleshootingMenu.ps1"; RunScript = "TroubleshootingMenu.ps1"; RunOption = "T1"; Area = "Troubleshooting & Validation"; Item = "Show server role install status"; Keywords = "troubleshoot validation install status role status" },
         [PSCustomObject]@{ Script = "TroubleshootingMenu.ps1"; RunScript = "TroubleshootingMenu.ps1"; RunOption = "T2"; Area = "Troubleshooting & Validation"; Item = "System snapshot"; Keywords = "snapshot system inventory diagnostics" },
         [PSCustomObject]@{ Script = "DevOpsToolsMenu.ps1"; Area = "DevOps & Automation"; Item = "DevOps tooling, labs, and automation"; Keywords = "devops automation lab tools" },
@@ -136,7 +137,7 @@ function Get-GlobalSearchCatalog {
         [PSCustomObject]@{ Script = "DevOpsLabAdvancedOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "164"; Area = "DevOps > Lab Advanced Operations"; Item = "Add new worker node"; Keywords = "worker node talos join cluster" },
         [PSCustomObject]@{ Script = "DevOpsLabAdvancedOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "165"; Area = "DevOps > Lab Advanced Operations"; Item = "Reset CITA Web Demo only"; Keywords = "reset cita web delete namespace" },
         [PSCustomObject]@{ Script = "DevOpsLabAdvancedOpsMenu.ps1"; RunScript = "DevOpsToolsMenu.ps1"; RunOption = "166"; Area = "DevOps > Lab Advanced Operations"; Item = "Open kubectl prompt"; Keywords = "kubectl prompt shell kubeconfig" },
-        [PSCustomObject]@{ Script = "MaintenanceMenu.ps1"; Area = "Maintenance & Updates"; Item = "LabTools maintenance and updates"; Keywords = "maintenance update upgrade" }
+        [PSCustomObject]@{ Script = "MaintenanceMenu.ps1"; Area = "Maintenance & Updates"; Item = "LabTools maintenance and updates"; Keywords = "maintenance update upgrade shortcuts terminal feedback" }
     )
 }
 

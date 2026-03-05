@@ -64,22 +64,19 @@ function Show-MaintenanceMenu {
     Write-Host "  [2] Create / Repair Lab Tools shortcuts"
     Write-Host "  [3] Apply Windows Terminal background (repo config)"
     Write-Host "  [4] Report a Problem / Submit Feedback"
-    Write-Host "  [5] Run Win11Debloat (official upstream script)"
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-Host "Keys: 1-5 Select  |  0 Back"
+    Write-Host "Keys: 1-4 Select  |  0 Back"
     Write-Host ""
 }
 
 $updateScript = Join-Path $PSScriptRoot "..\Tasks\Update-LabTools.ps1"
 $shortcutScript = Join-Path $PSScriptRoot "..\Tasks\Create-Shortcuts.ps1"
 $terminalBackgroundScript = Join-Path $PSScriptRoot "..\Tasks\Apply-TerminalBackground.ps1"
-$win11DebloatScript = Join-Path $PSScriptRoot "..\Tasks\Run-Win11Debloat.ps1"
-
 $back = $false
 $script:lastStatusText  = "[Ready] Ready"
 $script:lastStatusColor = "DarkGray"
@@ -118,7 +115,6 @@ do {
                 Read-MenuContinue
             }
         }
-        "5" { Invoke-TaskSafe -Path $win11DebloatScript -SuccessText "Win11Debloat flow completed" -ShowPause:$false }
         "0" { $back = $true }
         default {
             $script:lastStatusText  = "[Warning] Invalid selection"
