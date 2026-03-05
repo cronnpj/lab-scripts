@@ -361,7 +361,11 @@ function Get-JoinDisplayInfo {
                     "Domain + Registered ({0})" -f $entraInfo.TenantName
                 }
             } elseif ($domainInfo.Type -eq 'Domain') {
-                $domainInfo.Name
+                if ([string]::IsNullOrWhiteSpace($entraInfo.TenantName)) {
+                    $domainInfo.Name
+                } else {
+                    "{0} ({1})" -f $domainInfo.Name, $entraInfo.TenantName
+                }
             } else {
                 'Domain'
             }
