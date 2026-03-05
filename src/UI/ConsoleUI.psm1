@@ -271,11 +271,30 @@ function Get-DsRegValue {
         Where-Object { $_ -match ("^\s*" + [regex]::Escape($Key) + "\s*:\s*") } |
         Select-Object -First 1
 
-    if (-not $match) {
-        return $null
+    if ($match) {
+        return (($match -split ':', 2)[1]).Trim()
     }
 
-    return (($match -split ':', 2)[1]).Trim()
+    $rawText = ($Lines -join "`n")
+    $escapedKey = [regex]::Escape($Key)
+    $fallbackMatch = [regex]::Match($rawText, "(?im)^\s*\|?\s*" + $escapedKey + "\s*:\s*(.+?)\s*$")
+    if ($fallbackMatch.Success) {
+        return $fallbackMatch.Groups[1].Value.Trim()
+    }
+
+    return $null
+}
+
+function Test-YesValue {
+    param(
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $false
+    }
+
+    return (($Value.Trim().ToUpperInvariant()) -in @('YES', 'Y', 'TRUE', '1'))
 }
 
 function Get-EntraJoinInfo {
@@ -286,6 +305,7 @@ function Get-EntraJoinInfo {
     $default = @{
         JoinType           = 'Unknown'
         TenantName         = ''
+        TenantId           = ''
         WorkplaceJoined    = $false
     }
 
@@ -302,10 +322,11 @@ function Get-EntraJoinInfo {
         $domainJoined = (Get-DsRegValue -Lines $lines -Key 'DomainJoined')
         $workplaceJoined = (Get-DsRegValue -Lines $lines -Key 'WorkplaceJoined')
         $tenantName = (Get-DsRegValue -Lines $lines -Key 'TenantName')
+        $tenantId = (Get-DsRegValue -Lines $lines -Key 'TenantId')
 
-        $isAzureAdJoined = ($azureAdJoined -eq 'YES')
-        $isDomainJoined = ($domainJoined -eq 'YES')
-        $isWorkplaceJoined = ($workplaceJoined -eq 'YES')
+        $isAzureAdJoined = (Test-YesValue -Value $azureAdJoined)
+        $isDomainJoined = (Test-YesValue -Value $domainJoined)
+        $isWorkplaceJoined = (Test-YesValue -Value $workplaceJoined)
 
         $joinType = if ($isAzureAdJoined -and $isDomainJoined) {
             'Hybrid'
@@ -322,6 +343,7 @@ function Get-EntraJoinInfo {
         $result = @{
             JoinType        = $joinType
             TenantName      = $(if ([string]::IsNullOrWhiteSpace($tenantName)) { '' } else { $tenantName })
+            TenantId        = $(if ([string]::IsNullOrWhiteSpace($tenantId)) { '' } else { $tenantId })
             WorkplaceJoined = $isWorkplaceJoined
         }
 
@@ -337,34 +359,41 @@ function Get-EntraJoinInfo {
 function Get-JoinDisplayInfo {
     $domainInfo = Get-DomainMembershipInfo
     $entraInfo = Get-EntraJoinInfo
+    $tenantDisplay = if (-not [string]::IsNullOrWhiteSpace($entraInfo.TenantName)) {
+        $entraInfo.TenantName
+    } elseif (-not [string]::IsNullOrWhiteSpace($entraInfo.TenantId)) {
+        $entraInfo.TenantId
+    } else {
+        ''
+    }
 
     $joinText = switch ($entraInfo.JoinType) {
         'Hybrid' {
-            if ([string]::IsNullOrWhiteSpace($entraInfo.TenantName)) {
+            if ([string]::IsNullOrWhiteSpace($tenantDisplay)) {
                 'Hybrid'
             } else {
-                "Hybrid ({0})" -f $entraInfo.TenantName
+                "Hybrid ({0})" -f $tenantDisplay
             }
         }
         'Cloud' {
-            if ([string]::IsNullOrWhiteSpace($entraInfo.TenantName)) {
+            if ([string]::IsNullOrWhiteSpace($tenantDisplay)) {
                 'Cloud'
             } else {
-                "Cloud ({0})" -f $entraInfo.TenantName
+                "Cloud ({0})" -f $tenantDisplay
             }
         }
         'Domain' {
             if ($entraInfo.WorkplaceJoined) {
-                if ([string]::IsNullOrWhiteSpace($entraInfo.TenantName)) {
+                if ([string]::IsNullOrWhiteSpace($tenantDisplay)) {
                     'Domain + Registered'
                 } else {
-                    "Domain + Registered ({0})" -f $entraInfo.TenantName
+                    "Domain + Registered ({0})" -f $tenantDisplay
                 }
             } elseif ($domainInfo.Type -eq 'Domain') {
-                if ([string]::IsNullOrWhiteSpace($entraInfo.TenantName)) {
+                if ([string]::IsNullOrWhiteSpace($tenantDisplay)) {
                     $domainInfo.Name
                 } else {
-                    "{0} ({1})" -f $domainInfo.Name, $entraInfo.TenantName
+                    "{0} ({1})" -f $domainInfo.Name, $tenantDisplay
                 }
             } else {
                 'Domain'
