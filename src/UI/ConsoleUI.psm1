@@ -217,6 +217,117 @@ function Write-InternetLine {
     Write-Host " |" -ForegroundColor Gray
 }
 
+function Get-DomainMembershipInfo {
+    try {
+        $computerSystem = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop
+
+        if ($computerSystem.PartOfDomain -and -not [string]::IsNullOrWhiteSpace($computerSystem.Domain)) {
+            return @{
+                Type = 'Domain'
+                Name = $computerSystem.Domain
+            }
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($computerSystem.Workgroup)) {
+            return @{
+                Type = 'Workgroup'
+                Name = $computerSystem.Workgroup
+            }
+        }
+
+        return @{
+            Type = 'None'
+            Name = ''
+        }
+    }
+    catch {
+        return @{
+            Type = 'None'
+            Name = ''
+        }
+    }
+}
+
+function Write-DomainLine {
+    param(
+        [Parameter(Mandatory=$true)][hashtable]$DomainInfo,
+        [int]$Width = 64
+    )
+
+    $inner = $Width - 4
+    $label = "Domain: "
+
+    $value = switch ($DomainInfo.Type) {
+        'Domain' { $DomainInfo.Name }
+        'Workgroup' { 'Workgroup' }
+        default { 'None' }
+    }
+
+    $valueColor = switch ($DomainInfo.Type) {
+        'Domain' { 'Green' }
+        'Workgroup' { 'Yellow' }
+        default { 'Red' }
+    }
+
+    $maxValueLength = [Math]::Max(0, $inner - $label.Length)
+    if ($value.Length -gt $maxValueLength) {
+        $value = $value.Substring(0, $maxValueLength)
+    }
+
+    $textLen = $label.Length + $value.Length
+    $pad = " " * [Math]::Max(0, ($inner - $textLen))
+
+    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host $label -NoNewline -ForegroundColor Gray
+    Write-Host $value -NoNewline -ForegroundColor $valueColor
+    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Gray
+}
+
+function Write-InternetDomainLine {
+    param(
+        [Parameter(Mandatory=$true)][bool]$IsConnected,
+        [Parameter(Mandatory=$true)][hashtable]$DomainInfo,
+        [int]$Width = 64
+    )
+
+    $inner = $Width - 4
+    $leftLabel = "Internet: "
+    $leftValue = if ($IsConnected) { [char]0x2714 } else { [char]0x2716 }
+    $leftColor = if ($IsConnected) { "Green" } else { "Red" }
+
+    $rightLabel = "Domain: "
+    $rightValue = switch ($DomainInfo.Type) {
+        'Domain' { $DomainInfo.Name }
+        'Workgroup' { 'Workgroup' }
+        default { 'None' }
+    }
+    $rightColor = switch ($DomainInfo.Type) {
+        'Domain' { 'Green' }
+        'Workgroup' { 'Yellow' }
+        default { 'Red' }
+    }
+
+    $spacer = "    "
+    $fixedLength = $leftLabel.Length + $leftValue.Length + $spacer.Length + $rightLabel.Length
+    $maxRightLength = [Math]::Max(0, $inner - $fixedLength)
+    if ($rightValue.Length -gt $maxRightLength) {
+        $rightValue = $rightValue.Substring(0, $maxRightLength)
+    }
+
+    $textLen = $fixedLength + $rightValue.Length
+    $pad = " " * [Math]::Max(0, ($inner - $textLen))
+
+    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host $leftLabel -NoNewline -ForegroundColor Gray
+    Write-Host $leftValue -NoNewline -ForegroundColor $leftColor
+    Write-Host $spacer -NoNewline -ForegroundColor Gray
+    Write-Host $rightLabel -NoNewline -ForegroundColor Gray
+    Write-Host $rightValue -NoNewline -ForegroundColor $rightColor
+    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Gray
+}
+
 function Show-AppHeader {
     param(
         [Parameter(Mandatory=$true)][string]$Breadcrumb,
@@ -230,6 +341,7 @@ function Show-AppHeader {
     $userName = $env:USERNAME
     $networkInfo = Get-PrimaryNetworkInfo
     $internetConnected = Get-InternetStatus
+    $domainInfo = Get-DomainMembershipInfo
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor DarkGray
     Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $Width "Cyan"
@@ -241,8 +353,8 @@ function Show-AppHeader {
     # Primary network line with cyan values
     Write-NetworkLine -IPAddress $networkInfo.IPAddress -Mode $networkInfo.Mode -Width $Width
 
-    # Internet line with green/red value
-    Write-InternetLine -IsConnected $internetConnected -Width $Width
+    # Internet + domain/workgroup membership line
+    Write-InternetDomainLine -IsConnected $internetConnected -DomainInfo $domainInfo -Width $Width
 
     # Timezone/Date line with cyan values
     Write-TimezoneDateLine -Width $Width
