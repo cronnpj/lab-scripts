@@ -80,7 +80,7 @@ function Write-TimezoneDateLine {
     $inner = $Width - 4
 
     $labelTZ = "TZ: "
-    $labelDate = "      Date: "
+    $labelDate = "           Date: "
 
     $textLen = $labelTZ.Length + $timeZoneStr.Length + $labelDate.Length + $currentDate.Length
     $pad = " " * [Math]::Max(0, $inner - $textLen)
@@ -159,7 +159,7 @@ function Write-NetworkLine {
     $inner = $Width - 4
 
     $labelIP = "IP: "
-    $labelMode = "    Mode: "
+    $labelMode = "     Mode: "
 
     $textLen = $labelIP.Length + $IPAddress.Length + $labelMode.Length + $Mode.Length
     if ($textLen -gt $inner) {
@@ -308,8 +308,10 @@ function Write-InternetDomainLine {
         default { 'Red' }
     }
 
-    $spacer = "    "
-    $fixedLength = $leftLabel.Length + $leftValue.Length + $spacer.Length + $rightLabel.Length
+    $rightLabelStart = 24
+    $spacerLength = [Math]::Max(1, $rightLabelStart - ($leftLabel.Length + $leftValue.Length))
+    $spacer = " " * $spacerLength
+    $fixedLength = $leftLabel.Length + $leftValue.Length + $spacerLength + $rightLabel.Length
     $maxRightLength = [Math]::Max(0, $inner - $fixedLength)
     if ($rightValue.Length -gt $maxRightLength) {
         $rightValue = $rightValue.Substring(0, $maxRightLength)
