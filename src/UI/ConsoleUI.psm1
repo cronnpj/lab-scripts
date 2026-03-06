@@ -357,8 +357,46 @@ function Get-WorkAccountTenantFromDsReg {
     return ($accounts | Select-Object -First 1)
 }
 
+function Resolve-TenantNameFromCloudDomainJoinRegistry {
+    param(
+        [string]$TenantId
+    )
+
+    if ([string]::IsNullOrWhiteSpace($TenantId)) {
+        return $null
+    }
+
+    try {
+        $basePath = 'HKLM:\SYSTEM\CurrentControlSet\Control\CloudDomainJoin\TenantInfo'
+        if (-not (Test-Path $basePath)) {
+            return $null
+        }
+
+        $targetPath = Join-Path $basePath $TenantId
+        if (-not (Test-Path $targetPath)) {
+            return $null
+        }
+
+        $props = Get-ItemProperty -Path $targetPath -ErrorAction Stop
+        $candidateFields = @('DisplayName', 'TenantName', 'DomainName', 'Name', 'TenantDomain')
+        foreach ($field in $candidateFields) {
+            if ($props.PSObject.Properties[$field]) {
+                $value = [string]$props.$field
+                if (-not [string]::IsNullOrWhiteSpace($value) -and ($value -notmatch '^[0-9a-fA-F-]{36}$')) {
+                    return $value.Trim()
+                }
+            }
+        }
+
+        return $null
+    }
+    catch {
+        return $null
+    }
+}
+
 function Get-EntraJoinInfo {
-    if ($script:JoinInfoCache -and $script:JoinInfoCache.Timestamp -and (((Get-Date) - $script:JoinInfoCache.Timestamp).TotalSeconds -lt 60)) {
+    if ($script:JoinInfoCache -and $script:JoinInfoCache.Timestamp -and (((Get-Date) - $script:JoinInfoCache.Timestamp).TotalSeconds -lt 5)) {
         return $script:JoinInfoCache.Data
     }
 
@@ -394,6 +432,13 @@ function Get-EntraJoinInfo {
             }
             if ([string]::IsNullOrWhiteSpace($tenantId) -and -not [string]::IsNullOrWhiteSpace($workAccountTenant.TenantId)) {
                 $tenantId = $workAccountTenant.TenantId
+            }
+        }
+
+        if ([string]::IsNullOrWhiteSpace($tenantName) -and -not [string]::IsNullOrWhiteSpace($tenantId)) {
+            $registryTenantName = Resolve-TenantNameFromCloudDomainJoinRegistry -TenantId $tenantId
+            if (-not [string]::IsNullOrWhiteSpace($registryTenantName)) {
+                $tenantName = $registryTenantName
             }
         }
 
