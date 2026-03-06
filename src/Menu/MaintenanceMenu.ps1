@@ -64,7 +64,7 @@ function Show-MaintenanceMenu {
     Write-Host "  [2] Create / Repair Lab Tools shortcuts"
     Write-Host "  [3] Apply Windows Terminal background (repo config)"
     Write-Host "  [4] Report a Problem / Submit Feedback"
-    Write-Host "  [5] Install / Repair PowerShell 7 (winget) + refresh shortcuts"
+    Write-Host "  [5] Install / Repair PowerShell 7 + Graph modules + refresh shortcuts"
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
@@ -118,9 +118,9 @@ do {
             }
         }
         "5" {
-            Invoke-TaskSafe -Path $installPowerShell7Script -SuccessText "PowerShell 7 install/repair completed" -ShowPause:$false
+            Invoke-TaskSafe -Path $installPowerShell7Script -SuccessText "PowerShell 7 + Graph modules verified" -ShowPause:$false
             Invoke-TaskSafe -Path $shortcutScript -SuccessText "Shortcuts refreshed for preferred shell" -ShowPause:$true
-            $script:lastStatusText  = "[Ready] PowerShell 7 check completed and shortcuts refreshed"
+            $script:lastStatusText  = "[Ready] PowerShell 7/Graph module check completed and shortcuts refreshed"
             $script:lastStatusColor = "Green"
         }
         "0" { $back = $true }

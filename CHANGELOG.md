@@ -9,6 +9,8 @@ All notable changes to this repository are documented in this file.
 - Added Maintenance option [5] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to run PowerShell 7 install/repair and then refresh Lab Tools shortcuts.
 - Updated [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1) to prefer `pwsh.exe` for launch (Windows Terminal tab and direct fallback), while still falling back to `powershell.exe` if PowerShell 7 is unavailable.
 - Updated [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) so generated shortcuts target the preferred local shell (`pwsh.exe` first, then `powershell.exe`) and retain elevated launch behavior.
+- Updated [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) to also verify/install required Microsoft Graph modules (`Microsoft.Graph.Authentication`, `Microsoft.Graph.Identity.DirectoryManagement`) when missing.
+- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to show a `Tenant` line in the dashboard for Cloud/Hybrid joins, preferring Microsoft Graph default verified domain when an authenticated Graph context is already available.
 
 ## v2026.03.05.1 - 2026-03-05
 

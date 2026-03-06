@@ -58,34 +58,78 @@ function Install-WithWinget {
     }
 }
 
+function Ensure-GraphModules {
+    $requiredModules = @(
+        "Microsoft.Graph.Authentication",
+        "Microsoft.Graph.Identity.DirectoryManagement"
+    )
+
+    if (-not (Get-Command Install-Module -ErrorAction SilentlyContinue)) {
+        throw "Install-Module command not found. Install PowerShellGet, then rerun this task."
+    }
+
+    try {
+        $psGallery = Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue
+        if ($psGallery -and $psGallery.InstallationPolicy -ne "Trusted") {
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue
+        }
+    }
+    catch {
+        # Non-blocking: repository trust prompt may still appear depending on host policy.
+    }
+
+    foreach ($moduleName in $requiredModules) {
+        $existing = Get-Module -ListAvailable -Name $moduleName | Select-Object -First 1
+        if ($existing) {
+            Write-Host "Graph module already installed: $moduleName ($($existing.Version))" -ForegroundColor Green
+            continue
+        }
+
+        Write-Host "Installing Graph module: $moduleName" -ForegroundColor Cyan
+        Install-Module -Name $moduleName -Scope AllUsers -Force -AllowClobber -ErrorAction Stop
+
+        $verify = Get-Module -ListAvailable -Name $moduleName | Select-Object -First 1
+        if (-not $verify) {
+            throw "Module install reported success, but '$moduleName' is still not discoverable."
+        }
+
+        Write-Host "Installed Graph module: $moduleName ($($verify.Version))" -ForegroundColor Green
+    }
+}
+
 try {
     Ensure-Elevated
 
     $existingPwsh = Get-InstalledPwshPath
+    $pwshPath = $existingPwsh
+
     if ($existingPwsh) {
         $versionText = try { (& $existingPwsh -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()') } catch { "unknown" }
         Write-Host "PowerShell 7 is already installed at: $existingPwsh" -ForegroundColor Green
         Write-Host "Detected version: $versionText" -ForegroundColor Green
-        return
+    }
+    else {
+        Install-WithWinget
+
+        # Refresh PATH for current process before discovery re-check.
+        $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        $env:Path = "$machinePath;$userPath"
+
+        $pwshPath = Get-InstalledPwshPath
+        if (-not $pwshPath) {
+            throw "Install completed but pwsh.exe was not found yet. Sign out/in or restart, then rerun shortcut repair."
+        }
     }
 
-    Install-WithWinget
-
-    # Refresh PATH for current process before discovery re-check.
-    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    $env:Path = "$machinePath;$userPath"
-
-    $pwshPath = Get-InstalledPwshPath
-    if (-not $pwshPath) {
-        throw "Install completed but pwsh.exe was not found yet. Sign out/in or restart, then rerun shortcut repair."
-    }
+    Ensure-GraphModules
 
     $installedVersion = try { (& $pwshPath -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()') } catch { "unknown" }
 
     Write-Host "PowerShell 7 installation complete." -ForegroundColor Green
     Write-Host "Path: $pwshPath" -ForegroundColor Green
     Write-Host "Version: $installedVersion" -ForegroundColor Green
+    Write-Host "Graph modules verified for tenant lookup." -ForegroundColor Green
     Write-Host "Next step: run Create-Shortcuts to point launcher shortcuts to PowerShell 7." -ForegroundColor Cyan
 }
 catch {

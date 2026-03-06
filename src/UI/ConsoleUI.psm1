@@ -395,6 +395,84 @@ function Resolve-TenantNameFromCloudDomainJoinRegistry {
     }
 }
 
+function Get-GraphTenantDomainInfo {
+    param(
+        [string]$TenantId
+    )
+
+    $defaultInfo = @{
+        DisplayName   = ''
+        DefaultDomain = ''
+    }
+
+    if (-not (Get-Command Get-MgContext -ErrorAction SilentlyContinue)) {
+        return $defaultInfo
+    }
+
+    if (-not (Get-Command Get-MgOrganization -ErrorAction SilentlyContinue)) {
+        return $defaultInfo
+    }
+
+    if (-not $script:GraphTenantDomainCache) {
+        $script:GraphTenantDomainCache = @{}
+    }
+
+    $cacheKey = if ([string]::IsNullOrWhiteSpace($TenantId)) { '__default__' } else { $TenantId.Trim().ToLowerInvariant() }
+    $cacheTtlSeconds = 300
+
+    if ($script:GraphTenantDomainCache.ContainsKey($cacheKey)) {
+        $cached = $script:GraphTenantDomainCache[$cacheKey]
+        if ($cached -and $cached.Timestamp -and ((New-TimeSpan -Start $cached.Timestamp -End (Get-Date)).TotalSeconds -lt $cacheTtlSeconds)) {
+            return $cached.Value
+        }
+    }
+
+    try {
+        $ctx = Get-MgContext -ErrorAction Stop
+        if (-not $ctx -or [string]::IsNullOrWhiteSpace([string]$ctx.Account)) {
+            return $defaultInfo
+        }
+
+        $orgCandidates = @(Get-MgOrganization -ErrorAction Stop)
+        if ($orgCandidates.Count -eq 0) {
+            return $defaultInfo
+        }
+
+        $org = $null
+        if (-not [string]::IsNullOrWhiteSpace($TenantId)) {
+            $org = $orgCandidates | Where-Object { $_.Id -eq $TenantId } | Select-Object -First 1
+        }
+
+        if (-not $org) {
+            $org = $orgCandidates | Select-Object -First 1
+        }
+
+        if (-not $org) {
+            return $defaultInfo
+        }
+
+        $defaultDomain = ($org.VerifiedDomains | Where-Object { $_.IsDefault } | Select-Object -First 1).Name
+        if ([string]::IsNullOrWhiteSpace($defaultDomain)) {
+            $defaultDomain = ($org.VerifiedDomains | Where-Object { $_.IsInitial } | Select-Object -First 1).Name
+        }
+
+        $result = @{
+            DisplayName   = [string]$org.DisplayName
+            DefaultDomain = [string]$defaultDomain
+        }
+
+        $script:GraphTenantDomainCache[$cacheKey] = @{
+            Timestamp = Get-Date
+            Value     = $result
+        }
+
+        return $result
+    }
+    catch {
+        return $defaultInfo
+    }
+}
+
 function Get-EntraJoinInfo {
     $default = @{
         JoinType           = 'Unknown'
@@ -476,6 +554,20 @@ function Get-JoinDisplayInfo {
     $domainInfo = Get-DomainMembershipInfo
     $entraInfo = Get-EntraJoinInfo
 
+    $tenantText = ''
+    if ($entraInfo.JoinType -in @('Hybrid', 'Cloud')) {
+        $graphTenant = Get-GraphTenantDomainInfo -TenantId $entraInfo.TenantId
+        if (-not [string]::IsNullOrWhiteSpace($graphTenant.DefaultDomain)) {
+            $tenantText = $graphTenant.DefaultDomain
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($entraInfo.TenantName)) {
+            $tenantText = $entraInfo.TenantName
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($graphTenant.DisplayName)) {
+            $tenantText = $graphTenant.DisplayName
+        }
+    }
+
     $joinText = switch ($entraInfo.JoinType) {
         'Hybrid' {
             $domainName = if ($domainInfo.Type -eq 'Domain' -and -not [string]::IsNullOrWhiteSpace($domainInfo.Name)) {
@@ -553,7 +645,8 @@ function Get-JoinDisplayInfo {
     return @{
         Text        = $joinText
         CompactText = $compactJoinText
-        Tenant      = ''
+        Tenant      = $tenantText
+        JoinType    = $entraInfo.JoinType
         Color       = $joinColor
     }
 }
@@ -689,6 +782,10 @@ function Show-AppHeader {
 
     # Internet + join status line
     Write-InternetDomainLine -IsConnected $internetConnected -JoinInfo $joinLineInfo -Width $Width
+
+    if ($joinInfo.JoinType -in @('Hybrid', 'Cloud')) {
+        Write-TenantLine -Tenant $joinInfo.Tenant -Width $Width
+    }
 
     # Timezone/Date line with cyan values
     Write-TimezoneDateLine -Width $Width
