@@ -69,56 +69,18 @@ function Get-StatusLine {
     }
 }
 
-function Get-DsRegValueForMainMenu {
-    param(
-        [Parameter(Mandatory=$true)][string[]]$Lines,
-        [Parameter(Mandatory=$true)][string]$Key
-    )
-
-    $lineMatch = $Lines |
-        Where-Object { $_ -match ("^\s*" + [regex]::Escape($Key) + "\s*:\s*") } |
-        Select-Object -First 1
-
-    if ($lineMatch) {
-        return (($lineMatch -split ':', 2)[1]).Trim()
-    }
-
-    return $null
-}
-
-function Test-YesForMainMenu {
-    param(
-        [string]$Value
-    )
-
-    if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
-    return (($Value.Trim().ToUpperInvariant()) -in @('YES', 'Y', 'TRUE', '1'))
-}
-
 function Get-JoinTypeForMainMenu {
     try {
-        $dsreg = Get-Command dsregcmd.exe -ErrorAction SilentlyContinue
-        if (-not $dsreg) { return 'Unknown' }
-
-        $lines = @(& dsregcmd.exe /status 2>&1)
-        $azureAdJoined = Get-DsRegValueForMainMenu -Lines $lines -Key 'AzureAdJoined'
-        $domainJoined = Get-DsRegValueForMainMenu -Lines $lines -Key 'DomainJoined'
-        $workplaceJoined = Get-DsRegValueForMainMenu -Lines $lines -Key 'WorkplaceJoined'
-
-        $isAzureAdJoined = Test-YesForMainMenu -Value $azureAdJoined
-        $isDomainJoined = Test-YesForMainMenu -Value $domainJoined
-        $isWorkplaceJoined = Test-YesForMainMenu -Value $workplaceJoined
-
-        if ($isAzureAdJoined -and $isDomainJoined) { return 'Hybrid' }
-        if ($isAzureAdJoined) { return 'Cloud' }
-        if ($isDomainJoined) { return 'Domain' }
-        if ($isWorkplaceJoined) { return 'Registered' }
-
-        return 'Unknown'
+        $joinType = Get-CurrentJoinType
+        if (-not [string]::IsNullOrWhiteSpace($joinType)) {
+            return $joinType
+        }
     }
     catch {
         return 'Unknown'
     }
+
+    return 'Unknown'
 }
 
 function Get-GraphConnectMenuState {

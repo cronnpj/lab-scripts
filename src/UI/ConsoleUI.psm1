@@ -873,5 +873,19 @@ function Write-StatusLine {
     Write-Host $StatusText -ForegroundColor $StatusColor
 }
 
-Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine
+function Get-CurrentJoinType {
+    try {
+        $joinInfo = Get-JoinDisplayInfo
+        if ($joinInfo -and $joinInfo.ContainsKey('JoinType') -and -not [string]::IsNullOrWhiteSpace([string]$joinInfo.JoinType)) {
+            return ([string]$joinInfo.JoinType).Trim()
+        }
+    }
+    catch {
+        return 'Unknown'
+    }
+
+    return 'Unknown'
+}
+
+Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType
 
