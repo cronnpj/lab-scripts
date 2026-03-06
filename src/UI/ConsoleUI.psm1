@@ -491,31 +491,14 @@ function Get-EntraJoinInfo {
         $azureAdJoined = (Get-DsRegValue -Lines $lines -Key 'AzureAdJoined')
         $domainJoined = (Get-DsRegValue -Lines $lines -Key 'DomainJoined')
         $workplaceJoined = (Get-DsRegValue -Lines $lines -Key 'WorkplaceJoined')
-        $tenantName = (Get-DsRegValue -Lines $lines -Key 'TenantName')
-        if ([string]::IsNullOrWhiteSpace($tenantName)) {
-            $tenantName = (Get-DsRegValue -Lines $lines -Key 'WorkplaceTenantName')
-        }
+        $tenantName = ''
         $tenantId = (Get-DsRegValue -Lines $lines -Key 'TenantId')
         if ([string]::IsNullOrWhiteSpace($tenantId)) {
             $tenantId = (Get-DsRegValue -Lines $lines -Key 'WorkplaceTenantId')
         }
 
-        if ([string]::IsNullOrWhiteSpace($tenantName) -and -not [string]::IsNullOrWhiteSpace($tenantId)) {
+        if (-not [string]::IsNullOrWhiteSpace($tenantId)) {
             $resolvedTenantName = Resolve-TenantNameFromConfigMap -TenantId $tenantId
-            if (-not [string]::IsNullOrWhiteSpace($resolvedTenantName)) {
-                $tenantName = $resolvedTenantName
-            }
-        }
-
-        if ([string]::IsNullOrWhiteSpace($tenantName) -and -not [string]::IsNullOrWhiteSpace($tenantId)) {
-            $resolvedTenantName = Resolve-TenantNameFromTenantId -TenantId $tenantId
-            if (-not [string]::IsNullOrWhiteSpace($resolvedTenantName)) {
-                $tenantName = $resolvedTenantName
-            }
-        }
-
-        if ([string]::IsNullOrWhiteSpace($tenantName) -and -not [string]::IsNullOrWhiteSpace($tenantId)) {
-            $resolvedTenantName = Resolve-TenantNameFromGraphContext -TenantId $tenantId
             if (-not [string]::IsNullOrWhiteSpace($resolvedTenantName)) {
                 $tenantName = $resolvedTenantName
             }
