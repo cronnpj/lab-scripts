@@ -475,13 +475,6 @@ function Get-EntraJoinInfo {
 function Get-JoinDisplayInfo {
     $domainInfo = Get-DomainMembershipInfo
     $entraInfo = Get-EntraJoinInfo
-    $tenantDisplay = if (-not [string]::IsNullOrWhiteSpace($entraInfo.TenantName)) {
-        $entraInfo.TenantName
-    } elseif (-not [string]::IsNullOrWhiteSpace($entraInfo.TenantId)) {
-        $entraInfo.TenantId
-    } else {
-        ''
-    }
 
     $joinText = switch ($entraInfo.JoinType) {
         'Hybrid' {
@@ -491,36 +484,16 @@ function Get-JoinDisplayInfo {
                 ''
             }
 
-            if (-not [string]::IsNullOrWhiteSpace($domainName) -and -not [string]::IsNullOrWhiteSpace($tenantDisplay)) {
-                "Hybrid: {0} ({1})" -f $domainName, $tenantDisplay
-            } elseif (-not [string]::IsNullOrWhiteSpace($domainName)) {
+            if (-not [string]::IsNullOrWhiteSpace($domainName)) {
                 "Hybrid: {0}" -f $domainName
-            } elseif ([string]::IsNullOrWhiteSpace($tenantDisplay)) {
+            } else {
                 'Hybrid'
-            } else {
-                "Hybrid ({0})" -f $tenantDisplay
             }
         }
-        'Cloud' {
-            if ([string]::IsNullOrWhiteSpace($tenantDisplay)) {
-                'Cloud'
-            } else {
-                "Cloud ({0})" -f $tenantDisplay
-            }
-        }
+        'Cloud' { 'Cloud' }
         'Domain' {
-            if ($entraInfo.WorkplaceJoined) {
-                if ([string]::IsNullOrWhiteSpace($tenantDisplay)) {
-                    'Domain + Registered'
-                } else {
-                    "Domain + Registered ({0})" -f $tenantDisplay
-                }
-            } elseif ($domainInfo.Type -eq 'Domain') {
-                if ([string]::IsNullOrWhiteSpace($tenantDisplay)) {
-                    $domainInfo.Name
-                } else {
-                    "{0} ({1})" -f $domainInfo.Name, $tenantDisplay
-                }
+            if ($domainInfo.Type -eq 'Domain' -and -not [string]::IsNullOrWhiteSpace($domainInfo.Name)) {
+                $domainInfo.Name
             } else {
                 'Domain'
             }
@@ -580,7 +553,7 @@ function Get-JoinDisplayInfo {
     return @{
         Text        = $joinText
         CompactText = $compactJoinText
-        Tenant      = $tenantDisplay
+        Tenant      = ''
         Color       = $joinColor
     }
 }
@@ -699,26 +672,8 @@ function Show-AppHeader {
     $internetConnected = Get-InternetStatus
     $joinInfo = Get-JoinDisplayInfo
 
-    $joinTextForHeader = $joinInfo.Text
-    $showTenantLine = $false
-    $tenantForLine = $joinInfo.Tenant
-
-    $inner = $Width - 4
-    $leftLabel = "Internet: "
-    $leftValue = [char]0x2714
-    $rightLabel = "Join: "
-    $rightLabelStart = 24
-    $spacerLength = [Math]::Max(1, $rightLabelStart - ($leftLabel.Length + $leftValue.Length))
-    $fixedLength = $leftLabel.Length + $leftValue.Length + $spacerLength + $rightLabel.Length
-    $maxInlineJoinLength = [Math]::Max(0, $inner - $fixedLength)
-
-    if (-not [string]::IsNullOrWhiteSpace($tenantForLine) -and $joinInfo.Text.Length -gt $maxInlineJoinLength) {
-        $joinTextForHeader = $joinInfo.CompactText
-        $showTenantLine = $true
-    }
-
     $joinLineInfo = @{
-        Text = $joinTextForHeader
+        Text = $joinInfo.Text
         Color = $joinInfo.Color
     }
 
@@ -737,11 +692,6 @@ function Show-AppHeader {
 
     # Timezone/Date line with cyan values
     Write-TimezoneDateLine -Width $Width
-
-    # Tenant line for long join strings
-    if ($showTenantLine) {
-        Write-TenantLine -Tenant $tenantForLine -Width $Width
-    }
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor DarkGray
 
