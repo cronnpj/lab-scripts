@@ -299,211 +299,6 @@ function Test-YesValue {
     return (($Value.Trim().ToUpperInvariant()) -in @('YES', 'Y', 'TRUE', '1'))
 }
 
-function Get-LabToolsConfig {
-    if ($script:LabToolsConfigLoaded) {
-        return $script:LabToolsConfig
-    }
-
-    $script:LabToolsConfigLoaded = $true
-    $script:LabToolsConfig = $null
-
-    try {
-        $configPath = Join-Path $PSScriptRoot "..\config\labtools.json"
-        if (-not (Test-Path $configPath)) {
-            return $null
-        }
-
-        $raw = Get-Content -Path $configPath -Raw -Encoding UTF8 -ErrorAction Stop
-        if ([string]::IsNullOrWhiteSpace($raw)) {
-            return $null
-        }
-
-        $script:LabToolsConfig = $raw | ConvertFrom-Json -ErrorAction Stop
-        return $script:LabToolsConfig
-    }
-    catch {
-        return $null
-    }
-}
-
-function Resolve-TenantProfileFromConfigMap {
-    param(
-        [string]$TenantId
-    )
-
-    $empty = @{ Name = ''; Domain = '' }
-
-    if ([string]::IsNullOrWhiteSpace($TenantId)) {
-        return $empty
-    }
-
-    $config = Get-LabToolsConfig
-    if (-not $config -or -not $config.PSObject.Properties['tenantAliases']) {
-        return $empty
-    }
-
-    $aliases = $config.tenantAliases
-    if (-not $aliases) {
-        return $empty
-    }
-
-    $mappedEntry = $null
-
-    try {
-        if ($aliases -is [System.Collections.IDictionary]) {
-            if ($aliases.Contains($TenantId)) {
-                $mappedEntry = $aliases[$TenantId]
-            }
-        }
-
-        if ($null -eq $mappedEntry) {
-            foreach ($prop in $aliases.PSObject.Properties) {
-                if ($prop.Name -ieq $TenantId) {
-                    $mappedEntry = $prop.Value
-                    break
-                }
-            }
-        }
-    }
-    catch {
-        return $empty
-    }
-
-    if ($null -eq $mappedEntry) {
-        return $empty
-    }
-
-    # Backward compatibility: allow simple string values.
-    if ($mappedEntry -is [string]) {
-        $name = $mappedEntry.Trim()
-        if (-not [string]::IsNullOrWhiteSpace($name)) {
-            return @{ Name = $name; Domain = '' }
-        }
-        return $empty
-    }
-
-    try {
-        $name = ''
-        $domain = ''
-
-        if ($mappedEntry.PSObject.Properties['name']) {
-            $name = [string]$mappedEntry.name
-        } elseif ($mappedEntry.PSObject.Properties['tenantName']) {
-            $name = [string]$mappedEntry.tenantName
-        }
-
-        if ($mappedEntry.PSObject.Properties['domain']) {
-            $domain = [string]$mappedEntry.domain
-        } elseif ($mappedEntry.PSObject.Properties['tenantDomain']) {
-            $domain = [string]$mappedEntry.tenantDomain
-        }
-
-        return @{
-            Name = $(if ([string]::IsNullOrWhiteSpace($name)) { '' } else { $name.Trim() })
-            Domain = $(if ([string]::IsNullOrWhiteSpace($domain)) { '' } else { $domain.Trim() })
-        }
-    }
-    catch {
-        return $empty
-    }
-}
-
-function Resolve-TenantNameFromTenantId {
-    param(
-        [string]$TenantId
-    )
-
-    if ([string]::IsNullOrWhiteSpace($TenantId)) {
-        return $null
-    }
-
-    $normalizedTenantId = $TenantId.Trim()
-    $parsedGuid = [Guid]::Empty
-    if (-not [Guid]::TryParse($normalizedTenantId, [ref]$parsedGuid)) {
-        return $null
-    }
-
-    try {
-        $uri = "https://login.microsoftonline.com/$normalizedTenantId/v2.0/.well-known/openid-configuration"
-        $oidc = Invoke-RestMethod -Uri $uri -Method Get -TimeoutSec 4 -ErrorAction Stop
-        $tokenEndpoint = [string]$oidc.token_endpoint
-        if ([string]::IsNullOrWhiteSpace($tokenEndpoint)) {
-            return $null
-        }
-
-        $segments = $tokenEndpoint -split '/'
-        if ($segments.Length -gt 3) {
-            $tenantName = $segments[3]
-            if (-not [string]::IsNullOrWhiteSpace($tenantName) -and ($tenantName -ne $normalizedTenantId)) {
-                return $tenantName
-            }
-        }
-
-        return $null
-    }
-    catch {
-        return $null
-    }
-}
-
-function Resolve-TenantNameFromGraphContext {
-    param(
-        [string]$TenantId
-    )
-
-    if ([string]::IsNullOrWhiteSpace($TenantId)) {
-        return $null
-    }
-
-    $normalizedTenantId = $TenantId.Trim()
-    $parsedGuid = [Guid]::Empty
-    if (-not [Guid]::TryParse($normalizedTenantId, [ref]$parsedGuid)) {
-        return $null
-    }
-
-    $getMgContextCmd = Get-Command Get-MgContext -ErrorAction SilentlyContinue
-    $getMgOrganizationCmd = Get-Command Get-MgOrganization -ErrorAction SilentlyContinue
-    if (-not $getMgContextCmd -or -not $getMgOrganizationCmd) {
-        return $null
-    }
-
-    try {
-        $ctx = Get-MgContext -ErrorAction Stop
-        if (-not $ctx -or [string]::IsNullOrWhiteSpace($ctx.Account)) {
-            return $null
-        }
-
-        $org = $null
-        try {
-            $org = Get-MgOrganization -OrganizationId $normalizedTenantId -ErrorAction Stop | Select-Object -First 1
-        }
-        catch {
-            $org = Get-MgOrganization -ErrorAction Stop | Select-Object -First 1
-        }
-
-        if ($org -and -not [string]::IsNullOrWhiteSpace($org.DisplayName)) {
-            return $org.DisplayName
-        }
-
-        if ($org -and $org.VerifiedDomains) {
-            $defaultDomain = $org.VerifiedDomains | Where-Object { $_.IsDefault } | Select-Object -First 1
-            if ($defaultDomain -and -not [string]::IsNullOrWhiteSpace($defaultDomain.Name)) {
-                return $defaultDomain.Name
-            }
-
-            $anyDomain = $org.VerifiedDomains | Select-Object -First 1
-            if ($anyDomain -and -not [string]::IsNullOrWhiteSpace($anyDomain.Name)) {
-                return $anyDomain.Name
-            }
-        }
-
-        return $null
-    }
-    catch {
-        return $null
-    }
-}
-
 function Get-EntraJoinInfo {
     if ($script:JoinInfoCache -and $script:JoinInfoCache.Timestamp -and (((Get-Date) - $script:JoinInfoCache.Timestamp).TotalSeconds -lt 60)) {
         return $script:JoinInfoCache.Data
@@ -512,7 +307,6 @@ function Get-EntraJoinInfo {
     $default = @{
         JoinType           = 'Unknown'
         TenantName         = ''
-        TenantDomain       = ''
         TenantId           = ''
         WorkplaceJoined    = $false
     }
@@ -529,21 +323,13 @@ function Get-EntraJoinInfo {
         $azureAdJoined = (Get-DsRegValue -Lines $lines -Key 'AzureAdJoined')
         $domainJoined = (Get-DsRegValue -Lines $lines -Key 'DomainJoined')
         $workplaceJoined = (Get-DsRegValue -Lines $lines -Key 'WorkplaceJoined')
-        $tenantName = ''
-        $tenantDomain = ''
+        $tenantName = (Get-DsRegValue -Lines $lines -Key 'TenantName')
+        if ([string]::IsNullOrWhiteSpace($tenantName)) {
+            $tenantName = (Get-DsRegValue -Lines $lines -Key 'WorkplaceTenantName')
+        }
         $tenantId = (Get-DsRegValue -Lines $lines -Key 'TenantId')
         if ([string]::IsNullOrWhiteSpace($tenantId)) {
             $tenantId = (Get-DsRegValue -Lines $lines -Key 'WorkplaceTenantId')
-        }
-
-        if (-not [string]::IsNullOrWhiteSpace($tenantId)) {
-            $tenantProfile = Resolve-TenantProfileFromConfigMap -TenantId $tenantId
-            if (-not [string]::IsNullOrWhiteSpace($tenantProfile.Name)) {
-                $tenantName = $tenantProfile.Name
-            }
-            if (-not [string]::IsNullOrWhiteSpace($tenantProfile.Domain)) {
-                $tenantDomain = $tenantProfile.Domain
-            }
         }
 
         $isAzureAdJoined = (Test-YesValue -Value $azureAdJoined)
@@ -565,7 +351,6 @@ function Get-EntraJoinInfo {
         $result = @{
             JoinType        = $joinType
             TenantName      = $(if ([string]::IsNullOrWhiteSpace($tenantName)) { '' } else { $tenantName })
-            TenantDomain    = $(if ([string]::IsNullOrWhiteSpace($tenantDomain)) { '' } else { $tenantDomain })
             TenantId        = $(if ([string]::IsNullOrWhiteSpace($tenantId)) { '' } else { $tenantId })
             WorkplaceJoined = $isWorkplaceJoined
         }
@@ -582,12 +367,8 @@ function Get-EntraJoinInfo {
 function Get-JoinDisplayInfo {
     $domainInfo = Get-DomainMembershipInfo
     $entraInfo = Get-EntraJoinInfo
-    $tenantDisplay = if (-not [string]::IsNullOrWhiteSpace($entraInfo.TenantName) -and -not [string]::IsNullOrWhiteSpace($entraInfo.TenantDomain)) {
-        "{0} ({1})" -f $entraInfo.TenantName, $entraInfo.TenantDomain
-    } elseif (-not [string]::IsNullOrWhiteSpace($entraInfo.TenantName)) {
+    $tenantDisplay = if (-not [string]::IsNullOrWhiteSpace($entraInfo.TenantName)) {
         $entraInfo.TenantName
-    } elseif (-not [string]::IsNullOrWhiteSpace($entraInfo.TenantDomain)) {
-        $entraInfo.TenantDomain
     } elseif (-not [string]::IsNullOrWhiteSpace($entraInfo.TenantId)) {
         $entraInfo.TenantId
     } else {
