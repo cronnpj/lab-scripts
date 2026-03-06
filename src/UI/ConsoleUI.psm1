@@ -783,7 +783,13 @@ function Show-AppHeader {
     # Internet + join status line
     Write-InternetDomainLine -IsConnected $internetConnected -JoinInfo $joinLineInfo -Width $Width
 
-    if ($joinInfo.JoinType -in @('Hybrid', 'Cloud')) {
+    $normalizedJoinType = ''
+    if ($joinInfo.ContainsKey('JoinType') -and $null -ne $joinInfo.JoinType) {
+        $normalizedJoinType = ([string]$joinInfo.JoinType).Trim()
+    }
+
+    $shouldShowTenantLine = ($normalizedJoinType -in @('Hybrid', 'Cloud')) -or ([string]$joinInfo.Text -match '^(Hybrid|Cloud)')
+    if ($shouldShowTenantLine) {
         Write-TenantLine -Tenant $joinInfo.Tenant -Width $Width
     }
 
