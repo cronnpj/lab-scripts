@@ -16,13 +16,17 @@ PowerShell scripts and helpers for provisioning and managing lab environments.
 
 This repository contains a collection of PowerShell modules and scripts used to set up, configure, and maintain lab servers and clients. Typical tasks include installing roles, joining machines to a domain, renaming computers, configuring static IPs, and taking system snapshots.
 
-## Recent Updates (v2026.03.05.1)
+## Recent Updates (v2026.03.06.2)
 
+- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) so the app no longer prompts for Graph during initial header render; tenant lookup now uses silent restore only at startup.
+- Added conditional Main Menu hotkey `[G]` in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) to connect Microsoft Graph on demand for Tenant info, shown only on `Hybrid`/`Cloud` join states.
+- Updated [src/VERSION.txt](src/VERSION.txt) to `v2026.03.06.2`.
 - Added [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) for existing VM retrofit installs of PowerShell 7 via `winget` (machine scope).
 - Added Maintenance option [5] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to run PowerShell 7 install/repair, verify Graph modules, and then refresh shortcuts.
 - Updated [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) to verify/install required Graph modules (`Microsoft.Graph.Authentication`, `Microsoft.Graph.Identity.DirectoryManagement`) when missing.
 - Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to display a `Tenant` line for Cloud/Hybrid joins, preferring Graph default verified domain when an authenticated Graph session already exists.
-- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) startup behavior to attempt a silent Graph context restore first, then prompt once per app session to connect when tenant info is unavailable.
+- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) startup behavior to attempt a silent Graph context restore only (no interactive prompt during initial app load).
+- Added a contextual Main Menu Graph connect action (`[G]`) for Hybrid/Cloud join states in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) so users can connect on demand for Tenant info.
 - Updated Graph connect paths in [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) and [src/Tasks/Client/Get-JoinStatus.ps1](src/Tasks/Client/Get-JoinStatus.ps1) to enable Graph context autosave (`CurrentUser`) for better cross-session persistence.
 - Updated [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1) and [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) to prefer `pwsh.exe` when available (fallback to Windows PowerShell remains).
 - Added domain/workgroup membership status to the app header in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) with `Domain: <name>`, `Domain: Workgroup`, or `Domain: None` states.

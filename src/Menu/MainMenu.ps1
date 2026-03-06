@@ -69,7 +69,124 @@ function Get-StatusLine {
     }
 }
 
+function Get-DsRegValueForMainMenu {
+    param(
+        [Parameter(Mandatory=$true)][string[]]$Lines,
+        [Parameter(Mandatory=$true)][string]$Key
+    )
+
+    $lineMatch = $Lines |
+        Where-Object { $_ -match ("^\s*" + [regex]::Escape($Key) + "\s*:\s*") } |
+        Select-Object -First 1
+
+    if ($lineMatch) {
+        return (($lineMatch -split ':', 2)[1]).Trim()
+    }
+
+    return $null
+}
+
+function Test-YesForMainMenu {
+    param(
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+    return (($Value.Trim().ToUpperInvariant()) -in @('YES', 'Y', 'TRUE', '1'))
+}
+
+function Get-JoinTypeForMainMenu {
+    try {
+        $dsreg = Get-Command dsregcmd.exe -ErrorAction SilentlyContinue
+        if (-not $dsreg) { return 'Unknown' }
+
+        $lines = @(& dsregcmd.exe /status 2>&1)
+        $azureAdJoined = Get-DsRegValueForMainMenu -Lines $lines -Key 'AzureAdJoined'
+        $domainJoined = Get-DsRegValueForMainMenu -Lines $lines -Key 'DomainJoined'
+        $workplaceJoined = Get-DsRegValueForMainMenu -Lines $lines -Key 'WorkplaceJoined'
+
+        $isAzureAdJoined = Test-YesForMainMenu -Value $azureAdJoined
+        $isDomainJoined = Test-YesForMainMenu -Value $domainJoined
+        $isWorkplaceJoined = Test-YesForMainMenu -Value $workplaceJoined
+
+        if ($isAzureAdJoined -and $isDomainJoined) { return 'Hybrid' }
+        if ($isAzureAdJoined) { return 'Cloud' }
+        if ($isDomainJoined) { return 'Domain' }
+        if ($isWorkplaceJoined) { return 'Registered' }
+
+        return 'Unknown'
+    }
+    catch {
+        return 'Unknown'
+    }
+}
+
+function Get-GraphConnectMenuState {
+    $joinType = Get-JoinTypeForMainMenu
+    return @{
+        ShowGraphConnect = ($joinType -in @('Hybrid', 'Cloud'))
+        JoinType = $joinType
+    }
+}
+
+function Invoke-MainMenuGraphConnect {
+    param(
+        [string]$JoinType = 'Unknown'
+    )
+
+    Show-AppHeader -Breadcrumb "Main Menu > Graph Tenant Connection"
+
+    Write-Host "This app detected a $JoinType environment." -ForegroundColor Cyan
+    Write-Host "Connect to Microsoft Graph now to populate Tenant info (verified domain) in the header?" -ForegroundColor Gray
+    Write-Host ""
+
+    $connectNow = Read-Host "Connect now? (Y/N)"
+    if ($connectNow -notmatch '^(?i)y(es)?$') {
+        Write-Host "Skipped Graph connection." -ForegroundColor DarkYellow
+        Start-Sleep -Milliseconds 600
+        return
+    }
+
+    $connectCmd = Get-Command Connect-MgGraph -ErrorAction SilentlyContinue
+    $contextCmd = Get-Command Get-MgContext -ErrorAction SilentlyContinue
+
+    if (-not $connectCmd -or -not $contextCmd) {
+        Write-Host "Microsoft Graph module commands are not available in this session." -ForegroundColor Yellow
+        Write-Host "Run Maintenance option [5] first to verify/install required modules." -ForegroundColor Yellow
+        Read-Host "Press Enter to continue" | Out-Null
+        return
+    }
+
+    $autosaveCmd = Get-Command Enable-MgGraphContextAutosave -ErrorAction SilentlyContinue
+    if ($autosaveCmd) {
+        try {
+            Enable-MgGraphContextAutosave -Scope CurrentUser -ErrorAction SilentlyContinue | Out-Null
+        }
+        catch {
+            # Non-blocking: autosave support varies by Graph SDK version.
+        }
+    }
+
+    try {
+        Connect-MgGraph -Scopes "Organization.Read.All" -NoWelcome -ContextScope CurrentUser -ErrorAction Stop | Out-Null
+        $ctx = Get-MgContext -ErrorAction SilentlyContinue
+
+        if ($ctx -and -not [string]::IsNullOrWhiteSpace([string]$ctx.Account)) {
+            Write-Host "Connected to Microsoft Graph as: $($ctx.Account)" -ForegroundColor Green
+        }
+        else {
+            Write-Host "Graph sign-in completed, but no active context was returned yet." -ForegroundColor DarkYellow
+        }
+    }
+    catch {
+        Write-Host "Graph connection failed: $($_.Exception.Message)" -ForegroundColor Red
+    }
+
+    Read-Host "Press Enter to continue" | Out-Null
+}
+
 function Show-MainMenu {
+    $graphState = Get-GraphConnectMenuState
     $statusObj = Get-StatusLine
 
     Show-AppHeader -Breadcrumb "Main Menu"
@@ -82,13 +199,23 @@ function Show-MainMenu {
     Write-Host "  [6] DevOps & Automation"
     Write-Host "  [7] Maintenance & Updates"
     Write-Host "  [S] Global Search"
+    if ($graphState.ShowGraphConnect) {
+        Write-Host "  [G] Connect Microsoft Graph for Tenant info"
+    }
     Write-Host "  [0] Exit"
     Write-Host ""
 
     Write-StatusLine -StatusText $statusObj.Text -StatusColor $statusObj.Color
 
-    Write-Host "Keys: 1-7 Select  |  S Search  |  0 Exit"
+    if ($graphState.ShowGraphConnect) {
+        Write-Host "Keys: 1-7 Select  |  S Search  |  G Graph  |  0 Exit"
+    }
+    else {
+        Write-Host "Keys: 1-7 Select  |  S Search  |  0 Exit"
+    }
     Write-Host ""
+
+    return $graphState
 }
 
 function Get-GlobalSearchCatalog {
@@ -152,7 +279,7 @@ function Invoke-GlobalSearch {
     }
 
     $catalog = Get-GlobalSearchCatalog
-    $matches = @($catalog | Where-Object {
+    $searchMatches = @($catalog | Where-Object {
         $_.Area -like "*$query*" -or
         $_.Item -like "*$query*" -or
         $_.Keywords -like "*$query*"
@@ -160,7 +287,7 @@ function Invoke-GlobalSearch {
 
     Show-AppHeader -Breadcrumb "Main Menu > Global Search Results"
 
-    if (-not $matches -or $matches.Count -eq 0) {
+    if (-not $searchMatches -or $searchMatches.Count -eq 0) {
         Write-Host ("No matches found for '{0}'." -f $query) -ForegroundColor Yellow
         Write-Host ""
         Read-Host "Press Enter to return" | Out-Null
@@ -170,9 +297,9 @@ function Invoke-GlobalSearch {
     Write-Host ("Matches for '{0}':" -f $query) -ForegroundColor Cyan
     Write-Host ""
 
-    for ($index = 0; $index -lt $matches.Count; $index++) {
+    for ($index = 0; $index -lt $searchMatches.Count; $index++) {
         $displayIndex = $index + 1
-        Write-Host ("  [{0}] {1} > {2}" -f $displayIndex, $matches[$index].Area, $matches[$index].Item)
+        Write-Host ("  [{0}] {1} > {2}" -f $displayIndex, $searchMatches[$index].Area, $searchMatches[$index].Item)
     }
 
     Write-Host ""
@@ -188,11 +315,11 @@ function Invoke-GlobalSearch {
         return
     }
 
-    if ($selectedIndex -lt 1 -or $selectedIndex -gt $matches.Count) {
+    if ($selectedIndex -lt 1 -or $selectedIndex -gt $searchMatches.Count) {
         return
     }
 
-    $selectedResult = $matches[$selectedIndex - 1]
+    $selectedResult = $searchMatches[$selectedIndex - 1]
     Write-Host ""
     Write-Host ("Running: {0} > {1}" -f $selectedResult.Area, $selectedResult.Item) -ForegroundColor Cyan
     Start-Sleep -Milliseconds 500
@@ -223,10 +350,10 @@ function Invoke-GlobalSearch {
 
 $exit = $false
 do {
-    Show-MainMenu
+    $graphState = Show-MainMenu
     $choice = Read-Host "Select an option"
 
-    switch ($choice) {
+    switch ($choice.ToLowerInvariant()) {
         "1" { & (Join-Path $PSScriptRoot "ServerToolsMenu.ps1") }
         "2" { & (Join-Path $PSScriptRoot "DCToolsMenu.ps1") }
         "3" { & (Join-Path $PSScriptRoot "MemberServerMenu.ps1") }
@@ -235,6 +362,14 @@ do {
         "6" { & (Join-Path $PSScriptRoot "DevOpsToolsMenu.ps1") }
         "7" { & (Join-Path $PSScriptRoot "MaintenanceMenu.ps1") }
         "s" { Invoke-GlobalSearch }
+        "g" {
+            if ($graphState.ShowGraphConnect) {
+                Invoke-MainMenuGraphConnect -JoinType $graphState.JoinType
+            }
+            else {
+                Start-Sleep -Milliseconds 300
+            }
+        }
         "0" { $exit = $true }
         default { Start-Sleep -Milliseconds 300 }
     }

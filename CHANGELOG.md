@@ -2,6 +2,14 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.03.06.2 - 2026-03-06
+
+### Graph Prompt UX and Main Menu Shortcut
+- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to remove interactive Graph prompts during header render; startup now uses silent-only Graph context restore for tenant lookup.
+- Updated [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) to show a conditional `[G] Connect Microsoft Graph for Tenant info` action only when join type is detected as `Hybrid` or `Cloud`.
+- Added a clearer Graph connection prompt flow in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1): `This app detected a <join type> environment...` before asking for consent to connect.
+- Updated [src/VERSION.txt](src/VERSION.txt) to `v2026.03.06.2`.
+
 ## v2026.03.06.1 - 2026-03-06
 
 ### PowerShell 7 Retrofit and Launch Preference

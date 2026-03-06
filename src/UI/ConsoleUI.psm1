@@ -411,7 +411,6 @@ function Ensure-GraphContextForHeader {
     if (-not $script:GraphHeaderAuthState) {
         $script:GraphHeaderAuthState = @{
             SilentAttempted = $false
-            Prompted        = $false
         }
     }
 
@@ -430,27 +429,6 @@ function Ensure-GraphContextForHeader {
     }
 
     try {
-        $ctx = Get-MgContext -ErrorAction SilentlyContinue
-        if ($ctx -and -not [string]::IsNullOrWhiteSpace([string]$ctx.Account)) {
-            return @{ Connected = $true }
-        }
-    }
-    catch {
-        # Continue to optional one-time prompt.
-    }
-
-    if ($script:GraphHeaderAuthState.Prompted) {
-        return $defaultResult
-    }
-
-    $script:GraphHeaderAuthState.Prompted = $true
-    $connectNow = Read-Host "Connect to Microsoft Graph now for Tenant info? (Y/N)"
-    if ($connectNow -notmatch '^(?i)y(es)?$') {
-        return $defaultResult
-    }
-
-    try {
-        Connect-MgGraph -Scopes "Organization.Read.All" -NoWelcome -ContextScope CurrentUser -ErrorAction Stop | Out-Null
         $ctx = Get-MgContext -ErrorAction SilentlyContinue
         if ($ctx -and -not [string]::IsNullOrWhiteSpace([string]$ctx.Account)) {
             return @{ Connected = $true }
