@@ -337,6 +337,64 @@ function Resolve-TenantNameFromTenantId {
     }
 }
 
+function Resolve-TenantNameFromGraphContext {
+    param(
+        [string]$TenantId
+    )
+
+    if ([string]::IsNullOrWhiteSpace($TenantId)) {
+        return $null
+    }
+
+    $normalizedTenantId = $TenantId.Trim()
+    $parsedGuid = [Guid]::Empty
+    if (-not [Guid]::TryParse($normalizedTenantId, [ref]$parsedGuid)) {
+        return $null
+    }
+
+    $getMgContextCmd = Get-Command Get-MgContext -ErrorAction SilentlyContinue
+    $getMgOrganizationCmd = Get-Command Get-MgOrganization -ErrorAction SilentlyContinue
+    if (-not $getMgContextCmd -or -not $getMgOrganizationCmd) {
+        return $null
+    }
+
+    try {
+        $ctx = Get-MgContext -ErrorAction Stop
+        if (-not $ctx -or [string]::IsNullOrWhiteSpace($ctx.Account)) {
+            return $null
+        }
+
+        $org = $null
+        try {
+            $org = Get-MgOrganization -OrganizationId $normalizedTenantId -ErrorAction Stop | Select-Object -First 1
+        }
+        catch {
+            $org = Get-MgOrganization -ErrorAction Stop | Select-Object -First 1
+        }
+
+        if ($org -and -not [string]::IsNullOrWhiteSpace($org.DisplayName)) {
+            return $org.DisplayName
+        }
+
+        if ($org -and $org.VerifiedDomains) {
+            $defaultDomain = $org.VerifiedDomains | Where-Object { $_.IsDefault } | Select-Object -First 1
+            if ($defaultDomain -and -not [string]::IsNullOrWhiteSpace($defaultDomain.Name)) {
+                return $defaultDomain.Name
+            }
+
+            $anyDomain = $org.VerifiedDomains | Select-Object -First 1
+            if ($anyDomain -and -not [string]::IsNullOrWhiteSpace($anyDomain.Name)) {
+                return $anyDomain.Name
+            }
+        }
+
+        return $null
+    }
+    catch {
+        return $null
+    }
+}
+
 function Get-EntraJoinInfo {
     if ($script:JoinInfoCache -and $script:JoinInfoCache.Timestamp -and (((Get-Date) - $script:JoinInfoCache.Timestamp).TotalSeconds -lt 60)) {
         return $script:JoinInfoCache.Data
@@ -372,6 +430,13 @@ function Get-EntraJoinInfo {
 
         if ([string]::IsNullOrWhiteSpace($tenantName) -and -not [string]::IsNullOrWhiteSpace($tenantId)) {
             $resolvedTenantName = Resolve-TenantNameFromTenantId -TenantId $tenantId
+            if (-not [string]::IsNullOrWhiteSpace($resolvedTenantName)) {
+                $tenantName = $resolvedTenantName
+            }
+        }
+
+        if ([string]::IsNullOrWhiteSpace($tenantName) -and -not [string]::IsNullOrWhiteSpace($tenantId)) {
+            $resolvedTenantName = Resolve-TenantNameFromGraphContext -TenantId $tenantId
             if (-not [string]::IsNullOrWhiteSpace($resolvedTenantName)) {
                 $tenantName = $resolvedTenantName
             }
