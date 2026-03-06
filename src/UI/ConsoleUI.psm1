@@ -396,10 +396,6 @@ function Resolve-TenantNameFromCloudDomainJoinRegistry {
 }
 
 function Get-EntraJoinInfo {
-    if ($script:JoinInfoCache -and $script:JoinInfoCache.Timestamp -and (((Get-Date) - $script:JoinInfoCache.Timestamp).TotalSeconds -lt 5)) {
-        return $script:JoinInfoCache.Data
-    }
-
     $default = @{
         JoinType           = 'Unknown'
         TenantName         = ''
@@ -410,7 +406,6 @@ function Get-EntraJoinInfo {
     try {
         $dsreg = Get-Command dsregcmd.exe -ErrorAction SilentlyContinue
         if (-not $dsreg) {
-            $script:JoinInfoCache = @{ Timestamp = Get-Date; Data = $default }
             return $default
         }
 
@@ -423,6 +418,11 @@ function Get-EntraJoinInfo {
         $tenantId = (Get-DsRegValue -Lines $lines -Key 'TenantId')
         if ([string]::IsNullOrWhiteSpace($tenantId)) {
             $tenantId = (Get-DsRegValue -Lines $lines -Key 'WorkplaceTenantId')
+        }
+
+        $parsedTenantNameGuid = [Guid]::Empty
+        if (-not [string]::IsNullOrWhiteSpace($tenantName) -and [Guid]::TryParse($tenantName.Trim(), [ref]$parsedTenantNameGuid)) {
+            $tenantName = ''
         }
 
         if ([string]::IsNullOrWhiteSpace($tenantName) -or [string]::IsNullOrWhiteSpace($tenantId)) {
@@ -465,11 +465,9 @@ function Get-EntraJoinInfo {
             WorkplaceJoined = $isWorkplaceJoined
         }
 
-        $script:JoinInfoCache = @{ Timestamp = Get-Date; Data = $result }
         return $result
     }
     catch {
-        $script:JoinInfoCache = @{ Timestamp = Get-Date; Data = $default }
         return $default
     }
 }
