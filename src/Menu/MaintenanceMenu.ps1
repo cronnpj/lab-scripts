@@ -64,7 +64,7 @@ function Show-MaintenanceMenu {
     Write-Host "  [2] Create / Repair Lab Tools shortcuts"
     Write-Host "  [3] Apply Windows Terminal background (repo config)"
     Write-Host "  [4] Report a Problem / Submit Feedback"
-    Write-Host "  [5] Install / Repair PowerShell 7 + Graph modules + refresh shortcuts"
+    Write-Host "  [5] Install / Repair PS7 + Graph modules (+ optional Graph sign-in) + shortcuts"
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""

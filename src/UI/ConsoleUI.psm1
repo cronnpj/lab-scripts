@@ -788,13 +788,13 @@ function Show-AppHeader {
         $normalizedJoinType = ([string]$joinInfo.JoinType).Trim()
     }
 
+    # Timezone/Date line with cyan values
+    Write-TimezoneDateLine -Width $Width
+
     $shouldShowTenantLine = ($normalizedJoinType -in @('Hybrid', 'Cloud')) -or ([string]$joinInfo.Text -match '^(Hybrid|Cloud)')
     if ($shouldShowTenantLine) {
         Write-TenantLine -Tenant $joinInfo.Tenant -Width $Width
     }
-
-    # Timezone/Date line with cyan values
-    Write-TimezoneDateLine -Width $Width
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor DarkGray
 

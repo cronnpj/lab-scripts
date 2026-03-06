@@ -97,6 +97,44 @@ function Ensure-GraphModules {
     }
 }
 
+function Invoke-GraphWarmup {
+    $connectCmd = Get-Command Connect-MgGraph -ErrorAction SilentlyContinue
+    $contextCmd = Get-Command Get-MgContext -ErrorAction SilentlyContinue
+
+    if (-not $connectCmd -or -not $contextCmd) {
+        Write-Host "Graph warm-up skipped: Graph commands are not available in this session yet." -ForegroundColor DarkYellow
+        return
+    }
+
+    try {
+        $ctx = Get-MgContext -ErrorAction SilentlyContinue
+    }
+    catch {
+        $ctx = $null
+    }
+
+    if ($ctx -and -not [string]::IsNullOrWhiteSpace([string]$ctx.Account)) {
+        Write-Host "Graph session already connected for account: $($ctx.Account)" -ForegroundColor Green
+        return
+    }
+
+    $warmupChoice = Read-Host "Open Microsoft Graph sign-in now for tenant dashboard lookup? (Y/N)"
+    if ($warmupChoice -notmatch '^(?i)y(es)?$') {
+        Write-Host "Graph warm-up skipped by user." -ForegroundColor DarkYellow
+        return
+    }
+
+    Connect-MgGraph -Scopes "Organization.Read.All" -NoWelcome -ErrorAction Stop | Out-Null
+
+    $updatedCtx = Get-MgContext -ErrorAction SilentlyContinue
+    if ($updatedCtx -and -not [string]::IsNullOrWhiteSpace([string]$updatedCtx.Account)) {
+        Write-Host "Graph session connected: $($updatedCtx.Account)" -ForegroundColor Green
+    }
+    else {
+        Write-Host "Graph sign-in completed, but no active context was returned yet." -ForegroundColor DarkYellow
+    }
+}
+
 try {
     Ensure-Elevated
 
@@ -123,6 +161,7 @@ try {
     }
 
     Ensure-GraphModules
+    Invoke-GraphWarmup
 
     $installedVersion = try { (& $pwshPath -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()') } catch { "unknown" }
 
