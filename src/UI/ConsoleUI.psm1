@@ -299,6 +299,78 @@ function Test-YesValue {
     return (($Value.Trim().ToUpperInvariant()) -in @('YES', 'Y', 'TRUE', '1'))
 }
 
+function Get-LabToolsConfig {
+    if ($script:LabToolsConfigLoaded) {
+        return $script:LabToolsConfig
+    }
+
+    $script:LabToolsConfigLoaded = $true
+    $script:LabToolsConfig = $null
+
+    try {
+        $configPath = Join-Path $PSScriptRoot "..\config\labtools.json"
+        if (-not (Test-Path $configPath)) {
+            return $null
+        }
+
+        $raw = Get-Content -Path $configPath -Raw -Encoding UTF8 -ErrorAction Stop
+        if ([string]::IsNullOrWhiteSpace($raw)) {
+            return $null
+        }
+
+        $script:LabToolsConfig = $raw | ConvertFrom-Json -ErrorAction Stop
+        return $script:LabToolsConfig
+    }
+    catch {
+        return $null
+    }
+}
+
+function Resolve-TenantNameFromConfigMap {
+    param(
+        [string]$TenantId
+    )
+
+    if ([string]::IsNullOrWhiteSpace($TenantId)) {
+        return $null
+    }
+
+    $config = Get-LabToolsConfig
+    if (-not $config -or -not $config.PSObject.Properties['tenantAliases']) {
+        return $null
+    }
+
+    $aliases = $config.tenantAliases
+    if (-not $aliases) {
+        return $null
+    }
+
+    try {
+        if ($aliases -is [System.Collections.IDictionary]) {
+            if ($aliases.Contains($TenantId)) {
+                $mapped = [string]$aliases[$TenantId]
+                if (-not [string]::IsNullOrWhiteSpace($mapped)) {
+                    return $mapped.Trim()
+                }
+            }
+        }
+
+        foreach ($prop in $aliases.PSObject.Properties) {
+            if ($prop.Name -ieq $TenantId) {
+                $mapped = [string]$prop.Value
+                if (-not [string]::IsNullOrWhiteSpace($mapped)) {
+                    return $mapped.Trim()
+                }
+            }
+        }
+    }
+    catch {
+        return $null
+    }
+
+    return $null
+}
+
 function Resolve-TenantNameFromTenantId {
     param(
         [string]$TenantId
@@ -426,6 +498,13 @@ function Get-EntraJoinInfo {
         $tenantId = (Get-DsRegValue -Lines $lines -Key 'TenantId')
         if ([string]::IsNullOrWhiteSpace($tenantId)) {
             $tenantId = (Get-DsRegValue -Lines $lines -Key 'WorkplaceTenantId')
+        }
+
+        if ([string]::IsNullOrWhiteSpace($tenantName) -and -not [string]::IsNullOrWhiteSpace($tenantId)) {
+            $resolvedTenantName = Resolve-TenantNameFromConfigMap -TenantId $tenantId
+            if (-not [string]::IsNullOrWhiteSpace($resolvedTenantName)) {
+                $tenantName = $resolvedTenantName
+            }
         }
 
         if ([string]::IsNullOrWhiteSpace($tenantName) -and -not [string]::IsNullOrWhiteSpace($tenantId)) {
