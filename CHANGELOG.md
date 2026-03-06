@@ -2,6 +2,14 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.03.06.1 - 2026-03-06
+
+### PowerShell 7 Retrofit and Launch Preference
+- Added [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) to install/repair PowerShell 7 on existing VMs using `winget` (`Microsoft.PowerShell`, machine scope), with elevation and post-install verification.
+- Added Maintenance option [5] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to run PowerShell 7 install/repair and then refresh Lab Tools shortcuts.
+- Updated [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1) to prefer `pwsh.exe` for launch (Windows Terminal tab and direct fallback), while still falling back to `powershell.exe` if PowerShell 7 is unavailable.
+- Updated [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) so generated shortcuts target the preferred local shell (`pwsh.exe` first, then `powershell.exe`) and retain elevated launch behavior.
+
 ## v2026.03.05.1 - 2026-03-05
 
 ### Header Layout and Status Enhancements

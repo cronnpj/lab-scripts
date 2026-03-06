@@ -9,6 +9,20 @@ if (-not (Test-Path $launcherPath)) {
     throw "Launcher not found: $launcherPath"
 }
 
+function Get-PreferredShortcutHostPath {
+    $pwsh = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+    if ($pwsh) {
+        return $pwsh.Source
+    }
+
+    $winPs = Get-Command powershell.exe -ErrorAction SilentlyContinue
+    if ($winPs) {
+        return $winPs.Source
+    }
+
+    throw "No supported PowerShell executable was found for shortcut target."
+}
+
 function Test-IsElevated {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($identity)
@@ -27,6 +41,7 @@ function New-LabShortcut {
     param(
         [Parameter(Mandatory=$true)][string]$ShortcutPath,
         [Parameter(Mandatory=$true)][string]$LauncherPath,
+        [Parameter(Mandatory=$true)][string]$HostExecutablePath,
         [Parameter(Mandatory=$true)][string]$WorkingDirectory,
         [Parameter(Mandatory=$true)][string]$IconLocation
     )
@@ -39,7 +54,7 @@ function New-LabShortcut {
     $wsh = New-Object -ComObject WScript.Shell
     $shortcut = $wsh.CreateShortcut($ShortcutPath)
 
-    $shortcut.TargetPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+    $shortcut.TargetPath = $HostExecutablePath
     $launcherArgs = "-NoLogo -ExecutionPolicy Bypass -File `"$LauncherPath`""
     $escapedTargetPath = $shortcut.TargetPath.Replace("'", "''")
     $escapedLauncherArgs = $launcherArgs.Replace("'", "''")
@@ -48,14 +63,15 @@ function New-LabShortcut {
     $shortcut.Arguments = "-NoLogo -ExecutionPolicy Bypass -Command `"Start-Process -FilePath '$escapedTargetPath' -ArgumentList '$escapedLauncherArgs' -WorkingDirectory '$escapedWorkingDirectory' -Verb RunAs`""
     $shortcut.WorkingDirectory = $WorkingDirectory
     $shortcut.WindowStyle = 1
-    $shortcut.Description = "Launch CITA Lab Tools as Administrator (Windows Terminal preferred)"
+    $shortcut.Description = "Launch CITA Lab Tools as Administrator (PowerShell 7 preferred)"
     $shortcut.IconLocation = $IconLocation
     $shortcut.Save()
 }
 
 $workingDir = $srcRoot
+$preferredHostPath = Get-PreferredShortcutHostPath
 $createPublicDesktopShortcuts = $true
-$defaultIconLocation = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe,0"
+$defaultIconLocation = "$preferredHostPath,0"
 $shortcutIconLocation = $defaultIconLocation
 $isElevated = Test-IsElevated
 
@@ -194,7 +210,7 @@ foreach ($location in $locations) {
         $shortcutPath = Join-Path $location.Path $shortcutName
 
         try {
-            New-LabShortcut -ShortcutPath $shortcutPath -LauncherPath $launcherPath -WorkingDirectory $workingDir -IconLocation $shortcutIconLocation
+            New-LabShortcut -ShortcutPath $shortcutPath -LauncherPath $launcherPath -HostExecutablePath $preferredHostPath -WorkingDirectory $workingDir -IconLocation $shortcutIconLocation
             $created += "[$($location.Label)] $shortcutPath"
         }
         catch {

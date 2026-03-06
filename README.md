@@ -18,6 +18,9 @@ This repository contains a collection of PowerShell modules and scripts used to 
 
 ## Recent Updates (v2026.03.05.1)
 
+- Added [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) for existing VM retrofit installs of PowerShell 7 via `winget` (machine scope).
+- Added Maintenance option [5] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to run PowerShell 7 install/repair and then refresh shortcuts.
+- Updated [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1) and [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) to prefer `pwsh.exe` when available (fallback to Windows PowerShell remains).
 - Added domain/workgroup membership status to the app header in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) with `Domain: <name>`, `Domain: Workgroup`, or `Domain: None` states.
 - Combined `Internet` and `Domain` into a single header row in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to reduce vertical space.
 - Refined header spacing/alignment in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) so `User`, `Mode`, `Domain`, and `Date` right-side labels align consistently.
@@ -81,6 +84,12 @@ Create or repair shortcuts (Desktop + Start Menu):
 ```
 
 This creates/repairs `CITA Lab Tools.lnk` in current-user Start Menu, all-users Start Menu, and (by default) Public Desktop. When Public Desktop creation is enabled and available, current-user Desktop shortcut creation is skipped and any existing current-user Desktop copy is removed to avoid duplicates. The task self-elevates when needed for all-users locations, and the shortcut launches Lab Tools elevated. Legacy `CITA Server Setup.lnk` is removed from managed locations when found. Public Desktop creation is controlled by `src/config/labtools.json` -> `shortcuts.createPublicDesktopShortcuts` (default `true`). You can set a custom icon path with `src/config/labtools.json` -> `shortcuts.iconRelativePath` (recommended `.ico`; falls back to the default PowerShell icon if the file is missing).
+
+Install or repair PowerShell 7 on existing VMs (winget-based):
+
+```powershell
+.\src\Tasks\Install-PowerShell7.ps1
+```
 
 Apply Windows Terminal background from repo config:
 

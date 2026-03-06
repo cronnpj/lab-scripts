@@ -64,19 +64,21 @@ function Show-MaintenanceMenu {
     Write-Host "  [2] Create / Repair Lab Tools shortcuts"
     Write-Host "  [3] Apply Windows Terminal background (repo config)"
     Write-Host "  [4] Report a Problem / Submit Feedback"
+    Write-Host "  [5] Install / Repair PowerShell 7 (winget) + refresh shortcuts"
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-Host "Keys: 1-4 Select  |  0 Back"
+    Write-Host "Keys: 1-5 Select  |  0 Back"
     Write-Host ""
 }
 
 $updateScript = Join-Path $PSScriptRoot "..\Tasks\Update-LabTools.ps1"
 $shortcutScript = Join-Path $PSScriptRoot "..\Tasks\Create-Shortcuts.ps1"
 $terminalBackgroundScript = Join-Path $PSScriptRoot "..\Tasks\Apply-TerminalBackground.ps1"
+$installPowerShell7Script = Join-Path $PSScriptRoot "..\Tasks\Install-PowerShell7.ps1"
 $back = $false
 $script:lastStatusText  = "[Ready] Ready"
 $script:lastStatusColor = "DarkGray"
@@ -114,6 +116,12 @@ do {
             finally {
                 Read-MenuContinue
             }
+        }
+        "5" {
+            Invoke-TaskSafe -Path $installPowerShell7Script -SuccessText "PowerShell 7 install/repair completed" -ShowPause:$false
+            Invoke-TaskSafe -Path $shortcutScript -SuccessText "Shortcuts refreshed for preferred shell" -ShowPause:$true
+            $script:lastStatusText  = "[Ready] PowerShell 7 check completed and shortcuts refreshed"
+            $script:lastStatusColor = "Green"
         }
         "0" { $back = $true }
         default {
