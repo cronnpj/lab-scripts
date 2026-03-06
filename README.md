@@ -22,6 +22,8 @@ This repository contains a collection of PowerShell modules and scripts used to 
 - Added Maintenance option [5] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to run PowerShell 7 install/repair, verify Graph modules, and then refresh shortcuts.
 - Updated [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) to verify/install required Graph modules (`Microsoft.Graph.Authentication`, `Microsoft.Graph.Identity.DirectoryManagement`) when missing.
 - Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to display a `Tenant` line for Cloud/Hybrid joins, preferring Graph default verified domain when an authenticated Graph session already exists.
+- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) startup behavior to attempt a silent Graph context restore first, then prompt once per app session to connect when tenant info is unavailable.
+- Updated Graph connect paths in [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) and [src/Tasks/Client/Get-JoinStatus.ps1](src/Tasks/Client/Get-JoinStatus.ps1) to enable Graph context autosave (`CurrentUser`) for better cross-session persistence.
 - Updated [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1) and [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) to prefer `pwsh.exe` when available (fallback to Windows PowerShell remains).
 - Added domain/workgroup membership status to the app header in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) with `Domain: <name>`, `Domain: Workgroup`, or `Domain: None` states.
 - Combined `Internet` and `Domain` into a single header row in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to reduce vertical space.

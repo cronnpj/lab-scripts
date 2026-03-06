@@ -395,6 +395,74 @@ function Resolve-TenantNameFromCloudDomainJoinRegistry {
     }
 }
 
+function Ensure-GraphContextForHeader {
+    $defaultResult = @{
+        Connected = $false
+    }
+
+    if (-not (Get-Command Get-MgContext -ErrorAction SilentlyContinue)) {
+        return $defaultResult
+    }
+
+    if (-not (Get-Command Connect-MgGraph -ErrorAction SilentlyContinue)) {
+        return $defaultResult
+    }
+
+    if (-not $script:GraphHeaderAuthState) {
+        $script:GraphHeaderAuthState = @{
+            SilentAttempted = $false
+            Prompted        = $false
+        }
+    }
+
+    if (-not $script:GraphHeaderAuthState.SilentAttempted) {
+        $script:GraphHeaderAuthState.SilentAttempted = $true
+
+        $enableAutosaveCmd = Get-Command Enable-MgGraphContextAutosave -ErrorAction SilentlyContinue
+        if ($enableAutosaveCmd) {
+            try {
+                Enable-MgGraphContextAutosave -Scope CurrentUser -ErrorAction SilentlyContinue | Out-Null
+            }
+            catch {
+                # Non-blocking: autosave support varies by installed Graph SDK version.
+            }
+        }
+    }
+
+    try {
+        $ctx = Get-MgContext -ErrorAction SilentlyContinue
+        if ($ctx -and -not [string]::IsNullOrWhiteSpace([string]$ctx.Account)) {
+            return @{ Connected = $true }
+        }
+    }
+    catch {
+        # Continue to optional one-time prompt.
+    }
+
+    if ($script:GraphHeaderAuthState.Prompted) {
+        return $defaultResult
+    }
+
+    $script:GraphHeaderAuthState.Prompted = $true
+    $connectNow = Read-Host "Connect to Microsoft Graph now for Tenant info? (Y/N)"
+    if ($connectNow -notmatch '^(?i)y(es)?$') {
+        return $defaultResult
+    }
+
+    try {
+        Connect-MgGraph -Scopes "Organization.Read.All" -NoWelcome -ContextScope CurrentUser -ErrorAction Stop | Out-Null
+        $ctx = Get-MgContext -ErrorAction SilentlyContinue
+        if ($ctx -and -not [string]::IsNullOrWhiteSpace([string]$ctx.Account)) {
+            return @{ Connected = $true }
+        }
+    }
+    catch {
+        return $defaultResult
+    }
+
+    return $defaultResult
+}
+
 function Get-GraphTenantDomainInfo {
     param(
         [string]$TenantId
@@ -427,12 +495,12 @@ function Get-GraphTenantDomainInfo {
         }
     }
 
-    try {
-        $ctx = Get-MgContext -ErrorAction Stop
-        if (-not $ctx -or [string]::IsNullOrWhiteSpace([string]$ctx.Account)) {
-            return $defaultInfo
-        }
+    $ctxState = Ensure-GraphContextForHeader
+    if (-not $ctxState.Connected) {
+        return $defaultInfo
+    }
 
+    try {
         $orgCandidates = @(Get-MgOrganization -ErrorAction Stop)
         if ($orgCandidates.Count -eq 0) {
             return $defaultInfo

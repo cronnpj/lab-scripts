@@ -100,10 +100,20 @@ function Ensure-GraphModules {
 function Invoke-GraphWarmup {
     $connectCmd = Get-Command Connect-MgGraph -ErrorAction SilentlyContinue
     $contextCmd = Get-Command Get-MgContext -ErrorAction SilentlyContinue
+    $autosaveCmd = Get-Command Enable-MgGraphContextAutosave -ErrorAction SilentlyContinue
 
     if (-not $connectCmd -or -not $contextCmd) {
         Write-Host "Graph warm-up skipped: Graph commands are not available in this session yet." -ForegroundColor DarkYellow
         return
+    }
+
+    if ($autosaveCmd) {
+        try {
+            Enable-MgGraphContextAutosave -Scope CurrentUser -ErrorAction SilentlyContinue | Out-Null
+        }
+        catch {
+            # Non-blocking: autosave support varies by Graph SDK version.
+        }
     }
 
     try {
@@ -124,7 +134,7 @@ function Invoke-GraphWarmup {
         return
     }
 
-    Connect-MgGraph -Scopes "Organization.Read.All" -NoWelcome -ErrorAction Stop | Out-Null
+    Connect-MgGraph -Scopes "Organization.Read.All" -NoWelcome -ContextScope CurrentUser -ErrorAction Stop | Out-Null
 
     $updatedCtx = Get-MgContext -ErrorAction SilentlyContinue
     if ($updatedCtx -and -not [string]::IsNullOrWhiteSpace([string]$updatedCtx.Account)) {

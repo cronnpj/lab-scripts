@@ -11,6 +11,8 @@ All notable changes to this repository are documented in this file.
 - Updated [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) so generated shortcuts target the preferred local shell (`pwsh.exe` first, then `powershell.exe`) and retain elevated launch behavior.
 - Updated [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) to also verify/install required Microsoft Graph modules (`Microsoft.Graph.Authentication`, `Microsoft.Graph.Identity.DirectoryManagement`) when missing.
 - Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to show a `Tenant` line in the dashboard for Cloud/Hybrid joins, preferring Microsoft Graph default verified domain when an authenticated Graph context is already available.
+- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to attempt silent Graph context restore at startup and prompt once per app session for Graph sign-in when tenant lookup still lacks context.
+- Updated Graph login flows in [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) and [src/Tasks/Client/Get-JoinStatus.ps1](src/Tasks/Client/Get-JoinStatus.ps1) to enable Graph context autosave and use `CurrentUser` context scope for improved session persistence.
 
 ## v2026.03.05.1 - 2026-03-05
 

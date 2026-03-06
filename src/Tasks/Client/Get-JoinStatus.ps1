@@ -26,6 +26,7 @@ function Show-GraphTenantInfo {
     $connectCmd = Get-Command Connect-MgGraph -ErrorAction SilentlyContinue
     $getOrgCmd = Get-Command Get-MgOrganization -ErrorAction SilentlyContinue
     $getCtxCmd = Get-Command Get-MgContext -ErrorAction SilentlyContinue
+    $autosaveCmd = Get-Command Enable-MgGraphContextAutosave -ErrorAction SilentlyContinue
 
     Write-Host "Microsoft Graph Tenant Check:"
 
@@ -36,6 +37,15 @@ function Show-GraphTenantInfo {
         Write-Host "  Install-Module Microsoft.Graph.Identity.DirectoryManagement -Scope CurrentUser -Force"
         Write-LabLog "GetJoinStatus: Graph commands missing; skipped tenant lookup" "WARN"
         return
+    }
+
+    if ($autosaveCmd) {
+        try {
+            Enable-MgGraphContextAutosave -Scope CurrentUser -ErrorAction SilentlyContinue | Out-Null
+        }
+        catch {
+            # Non-blocking: autosave support varies by Graph SDK version.
+        }
     }
 
     $ctx = $null
@@ -54,7 +64,7 @@ function Show-GraphTenantInfo {
             return
         }
 
-        Connect-MgGraph -Scopes "Organization.Read.All" -NoWelcome -ErrorAction Stop | Out-Null
+        Connect-MgGraph -Scopes "Organization.Read.All" -NoWelcome -ContextScope CurrentUser -ErrorAction Stop | Out-Null
         $ctx = Get-MgContext -ErrorAction SilentlyContinue
     }
 
