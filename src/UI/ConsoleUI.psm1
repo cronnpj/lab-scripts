@@ -299,6 +299,44 @@ function Test-YesValue {
     return (($Value.Trim().ToUpperInvariant()) -in @('YES', 'Y', 'TRUE', '1'))
 }
 
+function Resolve-TenantNameFromTenantId {
+    param(
+        [string]$TenantId
+    )
+
+    if ([string]::IsNullOrWhiteSpace($TenantId)) {
+        return $null
+    }
+
+    $normalizedTenantId = $TenantId.Trim()
+    $parsedGuid = [Guid]::Empty
+    if (-not [Guid]::TryParse($normalizedTenantId, [ref]$parsedGuid)) {
+        return $null
+    }
+
+    try {
+        $uri = "https://login.microsoftonline.com/$normalizedTenantId/v2.0/.well-known/openid-configuration"
+        $oidc = Invoke-RestMethod -Uri $uri -Method Get -TimeoutSec 4 -ErrorAction Stop
+        $tokenEndpoint = [string]$oidc.token_endpoint
+        if ([string]::IsNullOrWhiteSpace($tokenEndpoint)) {
+            return $null
+        }
+
+        $segments = $tokenEndpoint -split '/'
+        if ($segments.Length -gt 3) {
+            $tenantName = $segments[3]
+            if (-not [string]::IsNullOrWhiteSpace($tenantName) -and ($tenantName -ne $normalizedTenantId)) {
+                return $tenantName
+            }
+        }
+
+        return $null
+    }
+    catch {
+        return $null
+    }
+}
+
 function Get-EntraJoinInfo {
     if ($script:JoinInfoCache -and $script:JoinInfoCache.Timestamp -and (((Get-Date) - $script:JoinInfoCache.Timestamp).TotalSeconds -lt 60)) {
         return $script:JoinInfoCache.Data
@@ -330,6 +368,13 @@ function Get-EntraJoinInfo {
         $tenantId = (Get-DsRegValue -Lines $lines -Key 'TenantId')
         if ([string]::IsNullOrWhiteSpace($tenantId)) {
             $tenantId = (Get-DsRegValue -Lines $lines -Key 'WorkplaceTenantId')
+        }
+
+        if ([string]::IsNullOrWhiteSpace($tenantName) -and -not [string]::IsNullOrWhiteSpace($tenantId)) {
+            $resolvedTenantName = Resolve-TenantNameFromTenantId -TenantId $tenantId
+            if (-not [string]::IsNullOrWhiteSpace($resolvedTenantName)) {
+                $tenantName = $resolvedTenantName
+            }
         }
 
         $isAzureAdJoined = (Test-YesValue -Value $azureAdJoined)
