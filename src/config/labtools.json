@@ -7,5 +7,9 @@
     "iconRelativePath": "MISC\\Icons\\Morrisville_Identity_Mustang_Mark_RGB.ico"
   },
   "tenantAliases": {
+    "570d0e66-7fc0-4a7b-858d-61502475d4d1": {
+      "name": "Cronn",
+      "domain": "morrisville.edu"
+    }
   }
 }
