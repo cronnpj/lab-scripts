@@ -299,6 +299,64 @@ function Test-YesValue {
     return (($Value.Trim().ToUpperInvariant()) -in @('YES', 'Y', 'TRUE', '1'))
 }
 
+function Get-WorkAccountTenantFromDsReg {
+    param(
+        [Parameter(Mandatory=$true)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Lines,
+        [string]$PreferredTenantId
+    )
+
+    $accounts = @()
+    $current = @{ TenantId = ''; TenantName = '' }
+
+    foreach ($line in @($Lines | Where-Object { $_ -ne $null })) {
+        if ($line -match '^\s*\|\s*Work Account\s+\d+\s*\|') {
+            if (-not [string]::IsNullOrWhiteSpace($current.TenantId) -or -not [string]::IsNullOrWhiteSpace($current.TenantName)) {
+                $accounts += @($current)
+            }
+            $current = @{ TenantId = ''; TenantName = '' }
+            continue
+        }
+
+        $idMatch = [regex]::Match($line, '^\s*WorkplaceTenantId\s*:\s*(.+?)\s*$')
+        if ($idMatch.Success) {
+            if (-not [string]::IsNullOrWhiteSpace($current.TenantId) -or -not [string]::IsNullOrWhiteSpace($current.TenantName)) {
+                $accounts += @($current)
+                $current = @{ TenantId = ''; TenantName = '' }
+            }
+            $current.TenantId = $idMatch.Groups[1].Value.Trim()
+            continue
+        }
+
+        $nameMatch = [regex]::Match($line, '^\s*WorkplaceTenantName\s*:\s*(.+?)\s*$')
+        if ($nameMatch.Success) {
+            $current.TenantName = $nameMatch.Groups[1].Value.Trim()
+            continue
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($current.TenantId) -or -not [string]::IsNullOrWhiteSpace($current.TenantName)) {
+        $accounts += @($current)
+    }
+
+    if ($accounts.Count -eq 0) {
+        return @{ TenantId = ''; TenantName = '' }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($PreferredTenantId)) {
+        $exact = $accounts | Where-Object { $_.TenantId -ieq $PreferredTenantId } | Select-Object -First 1
+        if ($exact) {
+            return $exact
+        }
+    }
+
+    $named = $accounts | Where-Object { -not [string]::IsNullOrWhiteSpace($_.TenantName) } | Select-Object -First 1
+    if ($named) {
+        return $named
+    }
+
+    return ($accounts | Select-Object -First 1)
+}
+
 function Get-EntraJoinInfo {
     if ($script:JoinInfoCache -and $script:JoinInfoCache.Timestamp -and (((Get-Date) - $script:JoinInfoCache.Timestamp).TotalSeconds -lt 60)) {
         return $script:JoinInfoCache.Data
@@ -324,12 +382,19 @@ function Get-EntraJoinInfo {
         $domainJoined = (Get-DsRegValue -Lines $lines -Key 'DomainJoined')
         $workplaceJoined = (Get-DsRegValue -Lines $lines -Key 'WorkplaceJoined')
         $tenantName = (Get-DsRegValue -Lines $lines -Key 'TenantName')
-        if ([string]::IsNullOrWhiteSpace($tenantName)) {
-            $tenantName = (Get-DsRegValue -Lines $lines -Key 'WorkplaceTenantName')
-        }
         $tenantId = (Get-DsRegValue -Lines $lines -Key 'TenantId')
         if ([string]::IsNullOrWhiteSpace($tenantId)) {
             $tenantId = (Get-DsRegValue -Lines $lines -Key 'WorkplaceTenantId')
+        }
+
+        if ([string]::IsNullOrWhiteSpace($tenantName) -or [string]::IsNullOrWhiteSpace($tenantId)) {
+            $workAccountTenant = Get-WorkAccountTenantFromDsReg -Lines $lines -PreferredTenantId $tenantId
+            if ([string]::IsNullOrWhiteSpace($tenantName) -and -not [string]::IsNullOrWhiteSpace($workAccountTenant.TenantName)) {
+                $tenantName = $workAccountTenant.TenantName
+            }
+            if ([string]::IsNullOrWhiteSpace($tenantId) -and -not [string]::IsNullOrWhiteSpace($workAccountTenant.TenantId)) {
+                $tenantId = $workAccountTenant.TenantId
+            }
         }
 
         $isAzureAdJoined = (Test-YesValue -Value $azureAdJoined)
