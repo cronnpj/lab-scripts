@@ -5,6 +5,8 @@ All notable changes to this repository are documented in this file.
 ## v2026.03.09.1 - 2026-03-09
 
 ### Windows Client Utilities: SDelete Integration
+- Simplified [src/Tasks/Update-LabTools.ps1](src/Tasks/Update-LabTools.ps1) to in-place runtime-repo updates only; removed repo-cache/deploy behavior that created `C:\CITA\_LabToolsRepo`, `C:\CITA\LabTools`, and backup folders.
+- Updated repo detection in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) to use runtime root git repo only for update status checks.
 - Updated vmPing launch flow in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) so Utilities option [1] now ensures `vmPing.lnk` exists on both current-user Desktop and Public Desktop before launching.
 - Added skip-if-exists behavior for vmPing shortcut creation and non-blocking handling when Public Desktop shortcut creation is not permitted.
 - Added Maintenance option [6] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) for `Install / Repair PS7 only`.

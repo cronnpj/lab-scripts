@@ -8,18 +8,13 @@ function Test-GitInstalled {
     return [bool](Get-Command git -ErrorAction SilentlyContinue)
 }
 
-# Prefer separate repo if it exists, otherwise use runtime root (parent of Menu)
+# Use runtime root repo (parent of Menu) for update status checks
 function Resolve-RepoPath {
-    $preferred   = "C:\CITA\_LabToolsRepo"
     $runtimeRoot = Split-Path -Parent $PSScriptRoot
 
     if (-not (Test-GitInstalled)) { return $null }
 
-    # 1) Preferred repo
-    $isPreferredRepo = git -C $preferred rev-parse --is-inside-work-tree 2>$null
-    if ($LASTEXITCODE -eq 0 -and $isPreferredRepo.Trim() -eq "true") { return $preferred }
-
-    # 2) Runtime root as repo
+    # Runtime root as repo
     $isRuntimeRepo = git -C $runtimeRoot rev-parse --is-inside-work-tree 2>$null
     if ($LASTEXITCODE -eq 0 -and $isRuntimeRepo.Trim() -eq "true") { return $runtimeRoot }
 

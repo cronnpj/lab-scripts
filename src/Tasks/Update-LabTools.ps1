@@ -1,19 +1,11 @@
 # src\Tasks\Update-LabTools.ps1
-# Works in BOTH environments:
-# - If C:\CITA\_LabToolsRepo is a git repo => repo-cache + deploy model (server side)
-# - Else if C:\CITA\LabTools is a git repo => in-place pull model (Win11 side)
+# In-place updater model:
+# - Pulls latest changes in the currently running repo root
+# - Does not create/clone/deploy to C:\CITA cache/runtime folders
 # Always shows errors and pauses (no silent window close)
 
 $ErrorActionPreference = "Stop"
-
-# =========================
-# CONFIG - CHANGE IF NEEDED
-# =========================
-$RepoUrl  = "https://github.com/cronnpj/lab-scripts.git"
-$RepoPath = "C:\CITA\_LabToolsRepo"   # local clone cache (server model)
-$DestPath = "C:\CITA\LabTools"        # runtime path (win11 may be a repo)
-$SrcRel   = "src"                     # deployable folder in repo-cache model
-$LabsRel  = "labs"                    # merged lab content
+$RuntimeRoot = Split-Path -Parent $PSScriptRoot
 
 function Wait-MenuContinue {
     Write-Host ""
@@ -30,15 +22,6 @@ function Assert-IsAdmin {
 function Ensure-Git {
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
         throw "git is not installed. Install Git for Windows first (winget install --id Git.Git -e)."
-    }
-}
-
-function Ensure-Folders {
-    if (-not (Test-Path "C:\CITA")) {
-        New-Item -Path "C:\CITA" -ItemType Directory -Force | Out-Null
-    }
-    if (-not (Test-Path $DestPath)) {
-        New-Item -Path $DestPath -ItemType Directory -Force | Out-Null
     }
 }
 
@@ -78,39 +61,15 @@ function Test-IsAllowedStudentDemoChange([string]$PorcelainLine) {
     }
 
     return $false
-}
 
-function Clone-Or-Pull([string]$Path) {
-    if (-not (Test-Path $Path)) {
-        Write-Host "Cloning repo to $Path ..."
-        git clone $RepoUrl $Path | Out-Host
-        if ($LASTEXITCODE -ne 0) {
-            throw "Git clone failed for '$Path'."
-        }
-        return
-    }
-
-    if (-not (Is-GitRepo $Path)) {
-        $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
-        $moved = "${Path}_BROKEN_$stamp"
-        Write-Host "WARNING: '$Path' exists but is not a git repo."
-        Write-Host "Moving it to: $moved"
-        Move-Item -Path $Path -Destination $moved -Force
-
-        Write-Host "Cloning repo to $Path ..."
-        git clone $RepoUrl $Path | Out-Host
-        if ($LASTEXITCODE -ne 0) {
-            throw "Git clone failed for '$Path'."
-        }
-        return
-    }
-
+function Pull-InPlace([string]$Path) {
     Repair-KnownLabDrift -Path $Path
 
     $localChanges = @(git -C $Path status --porcelain 2>$null)
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to inspect git status in '$Path'."
     }
+
     $pullWithAutostash = $false
     if ($localChanges.Count -gt 0) {
         $allAllowedStudentChanges = $true
@@ -136,67 +95,21 @@ function Clone-Or-Pull([string]$Path) {
     if ($LASTEXITCODE -ne 0) {
         throw "Git fetch failed in '$Path'."
     }
+
     if ($pullWithAutostash) {
         git -C $Path pull --rebase --autostash | Out-Host
     }
     else {
         git -C $Path pull | Out-Host
     }
+
     if ($LASTEXITCODE -ne 0) {
         throw "Git pull failed in '$Path'."
     }
 }
 
-function Deploy-FilesFromRepo([string]$RepoRoot) {
-    $src = Join-Path $RepoRoot $SrcRel
-    if (-not (Test-Path $src)) {
-        throw "Deployable folder not found: $src"
-    }
-
-    $labs = Join-Path $RepoRoot $LabsRel
-    $labsDest = Join-Path $DestPath $LabsRel
-
-    # Backup current deployed tools
-    $backupRoot = "C:\CITA\_LabToolsBackup"
-    if (-not (Test-Path $backupRoot)) {
-        New-Item -Path $backupRoot -ItemType Directory -Force | Out-Null
-    }
-
-    $timestamp  = Get-Date -Format "yyyyMMdd-HHmmss"
-    $backupPath = Join-Path $backupRoot $timestamp
-
-    Write-Host "Backing up current LabTools to: $backupPath"
-    New-Item -Path $backupPath -ItemType Directory -Force | Out-Null
-    robocopy $DestPath $backupPath /E /NFL /NDL /NJH /NJS /NP | Out-Null
-
-    Write-Host "Deploying latest LabTools into: $DestPath"
-    robocopy $src $DestPath /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
-
-    if (Test-Path $labs) {
-        if (-not (Test-Path $labsDest)) {
-            New-Item -Path $labsDest -ItemType Directory -Force | Out-Null
-        }
-
-        Write-Host "Deploying merged labs into: $labsDest"
-        robocopy $labs $labsDest /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
-    }
-    else {
-        Write-Host "Merged labs folder not found in repo cache, skipping labs deploy." -ForegroundColor DarkYellow
-    }
-
-    $verFile = Join-Path $DestPath "VERSION.txt"
-    $ver = if (Test-Path $verFile) { (Get-Content $verFile | Select-Object -First 1).Trim() } else { "unknown" }
-
-    Write-Host ""
-    Write-Host "Update complete. Deployed version: $ver"
-    Write-Host "Backup saved at: $backupPath"
-}
-
 function Invoke-PostUpdateTerminalBackground {
-    $destRootCandidates = @(
-        $DestPath,
-        (Join-Path $DestPath "src")
-    )
+    $destRootCandidates = @($RuntimeRoot)
 
     $candidates = @(
         (Join-Path $PSScriptRoot "Apply-TerminalBackground.ps1"),
@@ -226,10 +139,7 @@ function Invoke-PostUpdateTerminalBackground {
 }
 
 function Invoke-PostUpdateShortcuts {
-    $destRootCandidates = @(
-        $DestPath,
-        (Join-Path $DestPath "src")
-    )
+    $destRootCandidates = @($RuntimeRoot)
 
     $candidates = @(
         (Join-Path $PSScriptRoot "Create-Shortcuts.ps1"),
@@ -266,37 +176,20 @@ try {
 
     Assert-IsAdmin
     Ensure-Git
-    Ensure-Folders
+    if (-not (Is-GitRepo $RuntimeRoot)) {
+        throw "Update unavailable: runtime root is not a git repository ('$RuntimeRoot'). Run Lab Tools from a cloned repo for in-place updates."
+    }
 
-    # Deterministic model selection:
-    # 1) If RepoPath is a repo => ALWAYS use repo-cache+deploy model (server)
-    # 2) Else if DestPath is a repo => in-place pull model (Win11)
-    # 3) Else => create RepoPath and use repo-cache+deploy
-    $repoCacheIsRepo = Test-Path (Join-Path $RepoPath ".git")
-    $destIsRepo      = Is-GitRepo $DestPath
+    Write-Host "Updating in-place from runtime repo: $RuntimeRoot"
+    Pull-InPlace $RuntimeRoot
+    Invoke-PostUpdateShortcuts
+    Invoke-PostUpdateTerminalBackground
 
-    if ($repoCacheIsRepo) {
-        Write-Host "Repo-cache detected. Using repo-cache + deploy model."
-        Clone-Or-Pull $RepoPath
-        Deploy-FilesFromRepo $RepoPath
-        Invoke-PostUpdateShortcuts
-        Invoke-PostUpdateTerminalBackground
-    }
-    elseif ($destIsRepo) {
-        Write-Host "Runtime folder is a git repo. Pulling updates in-place: $DestPath"
-        Clone-Or-Pull $DestPath
-        Invoke-PostUpdateShortcuts
-        Invoke-PostUpdateTerminalBackground
-        Write-Host ""
-        Write-Host "Update complete (in-place repo pull)."
-    }
-    else {
-        Write-Host "No repo detected yet. Creating repo-cache and deploying."
-        Clone-Or-Pull $RepoPath
-        Deploy-FilesFromRepo $RepoPath
-        Invoke-PostUpdateShortcuts
-        Invoke-PostUpdateTerminalBackground
-    }
+    $verFile = Join-Path $RuntimeRoot "VERSION.txt"
+    $ver = if (Test-Path $verFile) { (Get-Content $verFile | Select-Object -First 1).Trim() } else { "unknown" }
+
+    Write-Host ""
+    Write-Host "Update complete. Version: $ver"
 
     Write-Host ""
     Write-Host "You can now re-launch the menu shortcut."
