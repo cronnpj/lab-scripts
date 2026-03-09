@@ -211,8 +211,8 @@ function Show-ClientMenu {
     Write-Host "      IP config, DNS flush, DHCP renew, connectivity checks" -ForegroundColor DarkGray
     Write-Host "  [4] System Actions         (4 options)"
     Write-Host "      Rename, timezone/clock sync, update services, SFC scan" -ForegroundColor DarkGray
-    Write-Host "  [5] Utilities              (4 options)"
-    Write-Host "      Launch vmPing, Run Win11Debloat, Run SDelete, Template prep checklist" -ForegroundColor DarkGray
+    Write-Host "  [5] Utilities              (5 options)"
+    Write-Host "      Launch vmPing, Run Win11Debloat, Run SDelete, Template prep checklist, Horizon Optimization Tool" -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
@@ -285,10 +285,11 @@ function Show-UtilitiesMenu {
     Write-Host "  [2] Run Win11Debloat (official upstream script)"
     Write-Host "  [3] Run SDelete free-space overwrite"
     Write-Host "  [4] Run VM template prep checklist"
+    Write-Host "  [5] Launch VMware Horizon OS Optimization Tool"
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
-    Write-Host "Keys: 1-4 Select  |  0 Back"
+    Write-Host "Keys: 1-5 Select  |  0 Back"
     Write-Host ""
 }
 
@@ -303,6 +304,7 @@ $testConnScript     = Join-Path $PSScriptRoot "..\Tasks\Client\Test-Connectivity
 $win11DebloatScript = Join-Path $PSScriptRoot "..\Tasks\Run-Win11Debloat.ps1"
 $sdeleteScript      = Join-Path $PSScriptRoot "..\Tasks\Run-SDelete.ps1"
 $templatePrepScript = Join-Path $PSScriptRoot "..\Tasks\Run-TemplatePrepChecklist.ps1"
+$horizonOptScript   = Join-Path $PSScriptRoot "..\Tasks\Run-HorizonOptimizationTool.ps1"
 $vmPingPath         = Join-Path $PSScriptRoot "..\MISC\vmPing\vmPing.exe"
 
 $back = $false
@@ -435,6 +437,7 @@ function Invoke-UtilitiesMenu {
             "2" { Invoke-TaskSafe -Path $win11DebloatScript -SuccessText "Win11Debloat flow completed" -ShowPause:$false }
             "3" { Invoke-TaskSafe -Path $sdeleteScript -SuccessText "SDelete flow completed" -ShowPause:$false }
             "4" { Invoke-TaskSafe -Path $templatePrepScript -SuccessText "Template prep checklist completed" -ShowPause:$false }
+            "5" { Invoke-TaskSafe -Path $horizonOptScript -SuccessText "Horizon Optimization Tool flow completed" -ShowPause:$false }
             "0"  { $backSub = $true }
             default {
                 $script:lastStatusText  = "[Warning] Invalid selection"
@@ -506,6 +509,7 @@ function Invoke-ClientRunOption {
         "U2" { Invoke-TaskSafe -Path $win11DebloatScript -SuccessText "Win11Debloat flow completed" -ShowPause:$false }
         "U3" { Invoke-TaskSafe -Path $sdeleteScript -SuccessText "SDelete flow completed" -ShowPause:$false }
         "U4" { Invoke-TaskSafe -Path $templatePrepScript -SuccessText "Template prep checklist completed" -ShowPause:$false }
+        "U5" { Invoke-TaskSafe -Path $horizonOptScript -SuccessText "Horizon Optimization Tool flow completed" -ShowPause:$false }
 
         default {
             $script:lastStatusText  = "[Warning] Invalid search action"

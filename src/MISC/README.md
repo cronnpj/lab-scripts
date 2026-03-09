@@ -27,3 +27,13 @@ Place SDelete in:
 After placing the executable, launch it from:
 
 - `Main > Windows Client Tools > Utilities > [3] Run SDelete free-space overwrite`
+
+## VMware Horizon OS Optimization Tool Placement
+
+Place the Horizon Optimization Tool in:
+
+- `src/MISC/VMwareHorizonOSOptimizationTool/VMwareHorizonOSOptimizationTool-x86_64.exe`
+
+After placing the executable, launch it from:
+
+- `Main > Windows Client Tools > Utilities > [5] Launch VMware Horizon OS Optimization Tool`
