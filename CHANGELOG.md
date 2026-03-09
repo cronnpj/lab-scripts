@@ -2,25 +2,22 @@
 
 All notable changes to this repository are documented in this file.
 
-## v2026.03.06.2 - 2026-03-06
+## v2026.03.09.1 - 2026-03-09
 
-### Graph Prompt UX and Main Menu Shortcut
-- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to remove interactive Graph prompts during header render; startup now uses silent-only Graph context restore for tenant lookup.
-- Updated [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) to show a conditional `[G] Connect Microsoft Graph for Tenant info` action only when join type is detected as `Hybrid` or `Cloud`.
-- Added a clearer Graph connection prompt flow in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1): `This app detected a <join type> environment...` before asking for consent to connect.
-- Updated [src/VERSION.txt](src/VERSION.txt) to `v2026.03.06.2`.
-
-## v2026.03.06.1 - 2026-03-06
-
-### PowerShell 7 Retrofit and Launch Preference
-- Added [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) to install/repair PowerShell 7 on existing VMs using `winget` (`Microsoft.PowerShell`, machine scope), with elevation and post-install verification.
-- Added Maintenance option [5] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to run PowerShell 7 install/repair and then refresh Lab Tools shortcuts.
-- Updated [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1) to prefer `pwsh.exe` for launch (Windows Terminal tab and direct fallback), while still falling back to `powershell.exe` if PowerShell 7 is unavailable.
-- Updated [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) so generated shortcuts target the preferred local shell (`pwsh.exe` first, then `powershell.exe`) and retain elevated launch behavior.
-- Updated [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) to also verify/install required Microsoft Graph modules (`Microsoft.Graph.Authentication`, `Microsoft.Graph.Identity.DirectoryManagement`) when missing.
-- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to show a `Tenant` line in the dashboard for Cloud/Hybrid joins, preferring Microsoft Graph default verified domain when an authenticated Graph context is already available.
-- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to attempt silent Graph context restore at startup and prompt once per app session for Graph sign-in when tenant lookup still lacks context.
-- Updated Graph login flows in [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) and [src/Tasks/Client/Get-JoinStatus.ps1](src/Tasks/Client/Get-JoinStatus.ps1) to enable Graph context autosave and use `CurrentUser` context scope for improved session persistence.
+### Windows Client Utilities: SDelete Integration
+- Added [src/Tasks/Run-TemplatePrepChecklist.ps1](src/Tasks/Run-TemplatePrepChecklist.ps1) for guided Proxmox VM template prep (Sysprep prompt + optional SDelete handoff + post-step reminders).
+- Updated [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) Utilities to include option [4] `Run VM template prep checklist`.
+- Added direct global-search execution mapping in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) (`RunOption = "U4"`) for the template prep checklist.
+- Added [src/Tasks/Run-SDelete.ps1](src/Tasks/Run-SDelete.ps1) to run Sysinternals SDelete interactively with:
+	- default `-z` mode (zero free space, VM-template friendly)
+	- optional `-c` mode
+	- drive selection prompt (defaults to `C:`)
+	- admin/elevation and executable presence checks
+- Updated [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) Utilities from 2 to 3 options and added `Run SDelete free-space overwrite` as option [3].
+- Added direct global-search execution mapping in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) (`RunOption = "U3"`) for SDelete.
+- Added deployable MISC docs for SDelete placement in:
+	- [src/MISC/README.md](src/MISC/README.md)
+	- [src/MISC/SDelete/README.md](src/MISC/SDelete/README.md)
 
 ## v2026.03.05.1 - 2026-03-05
 

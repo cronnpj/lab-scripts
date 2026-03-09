@@ -17,3 +17,13 @@ Place vmPing in:
 After placing the executable, launch it from:
 
 - `Main > Windows Client Tools > [16] Launch vmPing (MISC)`
+
+## SDelete Placement
+
+Place SDelete in:
+
+- `src/MISC/SDelete/sdelete64.exe`
+
+After placing the executable, launch it from:
+
+- `Main > Windows Client Tools > Utilities > [3] Run SDelete free-space overwrite`

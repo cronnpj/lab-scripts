@@ -16,19 +16,15 @@ PowerShell scripts and helpers for provisioning and managing lab environments.
 
 This repository contains a collection of PowerShell modules and scripts used to set up, configure, and maintain lab servers and clients. Typical tasks include installing roles, joining machines to a domain, renaming computers, configuring static IPs, and taking system snapshots.
 
-## Recent Updates (v2026.03.06.2)
+## Recent Updates (v2026.03.09.1)
 
-- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) so the app no longer prompts for Graph during initial header render; tenant lookup now uses silent restore only at startup.
-- Added conditional Main Menu hotkey `[G]` in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) to connect Microsoft Graph on demand for Tenant info, shown only on `Hybrid`/`Cloud` join states.
-- Updated [src/VERSION.txt](src/VERSION.txt) to `v2026.03.06.2`.
-- Added [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) for existing VM retrofit installs of PowerShell 7 via `winget` (machine scope).
-- Added Maintenance option [5] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to run PowerShell 7 install/repair, verify Graph modules, and then refresh shortcuts.
-- Updated [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) to verify/install required Graph modules (`Microsoft.Graph.Authentication`, `Microsoft.Graph.Identity.DirectoryManagement`) when missing.
-- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to display a `Tenant` line for Cloud/Hybrid joins, preferring Graph default verified domain when an authenticated Graph session already exists.
-- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) startup behavior to attempt a silent Graph context restore only (no interactive prompt during initial app load).
-- Added a contextual Main Menu Graph connect action (`[G]`) for Hybrid/Cloud join states in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) so users can connect on demand for Tenant info.
-- Updated Graph connect paths in [src/Tasks/Install-PowerShell7.ps1](src/Tasks/Install-PowerShell7.ps1) and [src/Tasks/Client/Get-JoinStatus.ps1](src/Tasks/Client/Get-JoinStatus.ps1) to enable Graph context autosave (`CurrentUser`) for better cross-session persistence.
-- Updated [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1) and [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) to prefer `pwsh.exe` when available (fallback to Windows PowerShell remains).
+- Added guided VM template prep checklist task [src/Tasks/Run-TemplatePrepChecklist.ps1](src/Tasks/Run-TemplatePrepChecklist.ps1), including optional Sysprep launch and optional handoff to SDelete.
+- Added Windows Client Utilities option [4] in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1): `Run VM template prep checklist`.
+- Added global search action (`RunOption = "U4"`) in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) for template prep workflow.
+- Added Windows Client Utilities option [3] in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) to run SDelete free-space overwrite for VM template prep.
+- Added SDelete task script [src/Tasks/Run-SDelete.ps1](src/Tasks/Run-SDelete.ps1) with default `-z` mode, optional `-c`, drive prompt, and elevation checks.
+- Added deployable SDelete asset guidance in [src/MISC/README.md](src/MISC/README.md) and [src/MISC/SDelete/README.md](src/MISC/SDelete/README.md).
+- Added global search action (`RunOption = "U3"`) in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) for `Run SDelete free-space overwrite`.
 - Added domain/workgroup membership status to the app header in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) with `Domain: <name>`, `Domain: Workgroup`, or `Domain: None` states.
 - Combined `Internet` and `Domain` into a single header row in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to reduce vertical space.
 - Refined header spacing/alignment in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) so `User`, `Mode`, `Domain`, and `Date` right-side labels align consistently.
@@ -92,12 +88,6 @@ Create or repair shortcuts (Desktop + Start Menu):
 ```
 
 This creates/repairs `CITA Lab Tools.lnk` in current-user Start Menu, all-users Start Menu, and (by default) Public Desktop. When Public Desktop creation is enabled and available, current-user Desktop shortcut creation is skipped and any existing current-user Desktop copy is removed to avoid duplicates. The task self-elevates when needed for all-users locations, and the shortcut launches Lab Tools elevated. Legacy `CITA Server Setup.lnk` is removed from managed locations when found. Public Desktop creation is controlled by `src/config/labtools.json` -> `shortcuts.createPublicDesktopShortcuts` (default `true`). You can set a custom icon path with `src/config/labtools.json` -> `shortcuts.iconRelativePath` (recommended `.ico`; falls back to the default PowerShell icon if the file is missing).
-
-Install or repair PowerShell 7 on existing VMs (winget-based):
-
-```powershell
-.\src\Tasks\Install-PowerShell7.ps1
-```
 
 Apply Windows Terminal background from repo config:
 
