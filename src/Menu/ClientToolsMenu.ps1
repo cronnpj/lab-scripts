@@ -104,6 +104,10 @@ function Ensure-VmPingDesktopShortcuts {
         $shortcut.Save()
     }
 
+    Write-Host "vmPing shortcut targets:" -ForegroundColor DarkGray
+    Write-Host "  User Desktop: $userDesktop" -ForegroundColor DarkGray
+    Write-Host "  Public Desktop: $publicDesktop" -ForegroundColor DarkGray
+
     if ($userShortcutPath) {
         if (Test-Path $userShortcutPath) {
             Write-Host "Shortcut already exists, skipping: $userShortcutPath" -ForegroundColor DarkGray
@@ -139,12 +143,7 @@ function Ensure-VmPingDesktopShortcuts {
             return
         }
 
-        Write-Host "Public Desktop shortcut requires elevation." -ForegroundColor Yellow
-        $elevateChoice = Read-Host "Create Public Desktop vmPing shortcut now (UAC prompt)? (Y/N)"
-        if ($elevateChoice -notmatch '^(y|yes)$') {
-            Write-Host "Skipped Public Desktop shortcut creation." -ForegroundColor DarkYellow
-            return
-        }
+        Write-Host "Public Desktop shortcut requires elevation. Attempting elevated creation..." -ForegroundColor Yellow
 
         $escapedShortcutPath = $publicShortcutPath.Replace("'", "''")
         $escapedVmPingPath = $VmPingExePath.Replace("'", "''")
