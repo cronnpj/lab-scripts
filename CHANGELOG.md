@@ -5,6 +5,10 @@ All notable changes to this repository are documented in this file.
 ## v2026.03.09.1 - 2026-03-09
 
 ### Windows Client Utilities: SDelete Integration
+- Updated vmPing launch flow in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) so Utilities option [1] now ensures `vmPing.lnk` exists on both current-user Desktop and Public Desktop before launching.
+- Added skip-if-exists behavior for vmPing shortcut creation and non-blocking handling when Public Desktop shortcut creation is not permitted.
+- Added Maintenance option [6] in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) for `Install / Repair PS7 only`.
+- Added [src/Tasks/Install-PowerShell7Only.ps1](src/Tasks/Install-PowerShell7Only.ps1) for dedicated PowerShell 7 install/repair without Graph module/sign-in steps.
 - Added [src/Tasks/Run-TemplatePrepChecklist.ps1](src/Tasks/Run-TemplatePrepChecklist.ps1) for guided Proxmox VM template prep (Sysprep prompt + optional SDelete handoff + post-step reminders).
 - Updated [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) Utilities to include option [4] `Run VM template prep checklist`.
 - Added direct global-search execution mapping in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) (`RunOption = "U4"`) for the template prep checklist.

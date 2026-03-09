@@ -75,6 +75,44 @@ function Invoke-ActionSafe {
     }
 }
 
+function Ensure-VmPingDesktopShortcuts {
+    param(
+        [Parameter(Mandatory=$true)][string]$VmPingExePath
+    )
+
+    $shortcutName = "vmPing.lnk"
+    $desktopPaths = @(
+        [Environment]::GetFolderPath("Desktop"),
+        [Environment]::GetFolderPath("CommonDesktopDirectory")
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique
+
+    $shell = New-Object -ComObject WScript.Shell
+
+    foreach ($desktopPath in $desktopPaths) {
+        $shortcutPath = Join-Path $desktopPath $shortcutName
+
+        if (Test-Path $shortcutPath) {
+            Write-Host "Shortcut already exists, skipping: $shortcutPath" -ForegroundColor DarkGray
+            continue
+        }
+
+        try {
+            $shortcut = $shell.CreateShortcut($shortcutPath)
+            $shortcut.TargetPath = $VmPingExePath
+            $shortcut.WorkingDirectory = Split-Path -Parent $VmPingExePath
+            $shortcut.IconLocation = "$VmPingExePath,0"
+            $shortcut.Description = "Launch vmPing"
+            $shortcut.Save()
+
+            Write-Host "Created shortcut: $shortcutPath" -ForegroundColor Green
+        }
+        catch {
+            Write-Host "Could not create shortcut at '$shortcutPath' (continuing):" -ForegroundColor Yellow
+            Write-Host $_.Exception.Message -ForegroundColor Yellow
+        }
+    }
+}
+
 function Show-ClientMenu {
     param(
         [string]$StatusText = "Ready",
@@ -307,6 +345,8 @@ function Invoke-UtilitiesMenu {
                         throw "vmPing.exe not found at '$vmPingPath'. Place vmPing.exe in src\\MISC\\vmPing\\ and try again."
                     }
 
+                    Ensure-VmPingDesktopShortcuts -VmPingExePath $vmPingPath
+
                     Start-Process -FilePath $vmPingPath
                 } -SuccessText "vmPing launched"
             }
@@ -375,6 +415,8 @@ function Invoke-ClientRunOption {
                 if (-not (Test-Path $vmPingPath)) {
                     throw "vmPing.exe not found at '$vmPingPath'. Place vmPing.exe in src\\MISC\\vmPing\\ and try again."
                 }
+
+                Ensure-VmPingDesktopShortcuts -VmPingExePath $vmPingPath
 
                 Start-Process -FilePath $vmPingPath
             } -SuccessText "vmPing launched"
