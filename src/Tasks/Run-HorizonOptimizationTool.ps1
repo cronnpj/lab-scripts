@@ -15,42 +15,8 @@ try {
         throw "Tool not found. Place VMwareHorizonOSOptimizationTool-x86_64.exe in src\MISC\VMwareHorizonOSOptimizationTool\ and try again."
     }
 
-    Write-Host "  [1] Launch tool (interactive UI)"
-    Write-Host "  [2] Attempt quiet install/run"
-    Write-Host ""
-
-    $choice = Read-Host "Select an option (default 1)"
-    if ([string]::IsNullOrWhiteSpace($choice)) {
-        $choice = "1"
-    }
-
-    switch ($choice) {
-        "1" {
-            Start-Process -FilePath $toolPath
-            Write-Host "Tool launched." -ForegroundColor Green
-        }
-        "2" {
-            $defaultArgs = "/S"
-            $argsInput = Read-Host "Quiet arguments (default: /S)"
-            if ([string]::IsNullOrWhiteSpace($argsInput)) {
-                $argsInput = $defaultArgs
-            }
-
-            Write-Host "Running quiet mode with args: $argsInput" -ForegroundColor DarkGray
-            $proc = Start-Process -FilePath $toolPath -ArgumentList $argsInput -Wait -PassThru
-
-            if ($proc.ExitCode -eq 0) {
-                Write-Host "Quiet run completed successfully." -ForegroundColor Green
-            }
-            else {
-                Write-Host "Quiet run finished with exit code $($proc.ExitCode)." -ForegroundColor Yellow
-                Write-Host "If the tool does not support these arguments, use option [1] interactive mode or retry with different quiet arguments." -ForegroundColor Yellow
-            }
-        }
-        default {
-            Write-Host "Invalid selection. No action taken." -ForegroundColor DarkYellow
-        }
-    }
+    Start-Process -FilePath $toolPath
+    Write-Host "Tool launched." -ForegroundColor Green
 }
 catch {
     Write-Host "Horizon Optimization Tool launch failed." -ForegroundColor Red

@@ -5,7 +5,7 @@ All notable changes to this repository are documented in this file.
 ## v2026.03.09.1 - 2026-03-09
 
 ### Windows Client Utilities: SDelete Integration
-- Added [src/Tasks/Run-HorizonOptimizationTool.ps1](src/Tasks/Run-HorizonOptimizationTool.ps1) to launch `VMwareHorizonOSOptimizationTool-x86_64.exe` with interactive mode or quiet-run mode (customizable args; default `/S`).
+- Added [src/Tasks/Run-HorizonOptimizationTool.ps1](src/Tasks/Run-HorizonOptimizationTool.ps1) to launch `VMwareHorizonOSOptimizationTool-x86_64.exe` in interactive mode.
 - Updated [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) Utilities to include option [5] `Launch VMware Horizon OS Optimization Tool`.
 - Added direct global-search execution mapping in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) (`RunOption = "U5"`) for the Horizon Optimization Tool.
 - Added MISC placement docs in [src/MISC/README.md](src/MISC/README.md) and [src/MISC/VMwareHorizonOSOptimizationTool/README.md](src/MISC/VMwareHorizonOSOptimizationTool/README.md).

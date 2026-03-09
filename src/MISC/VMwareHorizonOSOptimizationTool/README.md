@@ -10,5 +10,4 @@ Runtime menu path:
 
 Task behavior:
 
-- Option [1]: launch interactive UI.
-- Option [2]: attempt quiet run/install with arguments (default `/S`, editable at runtime).
+- Launches interactive UI.
