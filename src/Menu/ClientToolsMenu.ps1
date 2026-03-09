@@ -108,6 +108,76 @@ function Ensure-VmPingDesktopShortcuts {
     Write-Host "  User Desktop: $userDesktop" -ForegroundColor DarkGray
     Write-Host "  Public Desktop: $publicDesktop" -ForegroundColor DarkGray
 
+    $publicShortcutReady = $false
+
+    if ($publicShortcutPath) {
+        if (Test-Path $publicShortcutPath) {
+            Write-Host "Shortcut already exists, skipping: $publicShortcutPath" -ForegroundColor DarkGray
+            $publicShortcutReady = $true
+        }
+        elseif (Test-IsAdministrator) {
+            try {
+                & $createShortcut $publicShortcutPath
+                Write-Host "Created shortcut: $publicShortcutPath" -ForegroundColor Green
+                $publicShortcutReady = $true
+            }
+            catch {
+                Write-Host "Could not create shortcut at '$publicShortcutPath' (continuing):" -ForegroundColor Yellow
+                Write-Host $_.Exception.Message -ForegroundColor Yellow
+            }
+        }
+        else {
+            Write-Host "Public Desktop shortcut requires elevation. Attempting elevated creation..." -ForegroundColor Yellow
+
+            $escapedShortcutPath = $publicShortcutPath.Replace("'", "''")
+            $escapedVmPingPath = $VmPingExePath.Replace("'", "''")
+            $elevatedScript = @"
+$ErrorActionPreference = 'Stop'
+$shortcutPath = '$escapedShortcutPath'
+$targetPath = '$escapedVmPingPath'
+$w = New-Object -ComObject WScript.Shell
+$s = $w.CreateShortcut($shortcutPath)
+$s.TargetPath = $targetPath
+$s.WorkingDirectory = Split-Path -Parent $targetPath
+$s.IconLocation = "$escapedVmPingPath,0"
+$s.Description = 'Launch vmPing'
+$s.Save()
+"@
+
+            $encodedScript = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($elevatedScript))
+
+            try {
+                $elevatedProc = Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", $encodedScript) -Verb RunAs -Wait -PassThru
+                if ($elevatedProc.ExitCode -eq 0 -and (Test-Path $publicShortcutPath)) {
+                    Write-Host "Created shortcut: $publicShortcutPath" -ForegroundColor Green
+                    $publicShortcutReady = $true
+                }
+                else {
+                    Write-Host "Public Desktop shortcut was not created (continuing)." -ForegroundColor Yellow
+                }
+            }
+            catch {
+                Write-Host "Public Desktop shortcut creation was cancelled or failed (continuing)." -ForegroundColor Yellow
+                Write-Host $_.Exception.Message -ForegroundColor Yellow
+            }
+        }
+    }
+
+    if ($publicShortcutReady) {
+        if ($userShortcutPath -and (Test-Path $userShortcutPath)) {
+            try {
+                Remove-Item -Path $userShortcutPath -Force
+                Write-Host "Removed duplicate user shortcut (Public shortcut preferred): $userShortcutPath" -ForegroundColor Green
+            }
+            catch {
+                Write-Host "Could not remove duplicate user shortcut at '$userShortcutPath' (continuing):" -ForegroundColor Yellow
+                Write-Host $_.Exception.Message -ForegroundColor Yellow
+            }
+        }
+
+        return
+    }
+
     if ($userShortcutPath) {
         if (Test-Path $userShortcutPath) {
             Write-Host "Shortcut already exists, skipping: $userShortcutPath" -ForegroundColor DarkGray
@@ -121,59 +191,6 @@ function Ensure-VmPingDesktopShortcuts {
                 Write-Host "Could not create shortcut at '$userShortcutPath' (continuing):" -ForegroundColor Yellow
                 Write-Host $_.Exception.Message -ForegroundColor Yellow
             }
-        }
-    }
-
-    if ($publicShortcutPath) {
-        if (Test-Path $publicShortcutPath) {
-            Write-Host "Shortcut already exists, skipping: $publicShortcutPath" -ForegroundColor DarkGray
-            return
-        }
-
-        if (Test-IsAdministrator) {
-            try {
-                & $createShortcut $publicShortcutPath
-                Write-Host "Created shortcut: $publicShortcutPath" -ForegroundColor Green
-            }
-            catch {
-                Write-Host "Could not create shortcut at '$publicShortcutPath' (continuing):" -ForegroundColor Yellow
-                Write-Host $_.Exception.Message -ForegroundColor Yellow
-            }
-
-            return
-        }
-
-        Write-Host "Public Desktop shortcut requires elevation. Attempting elevated creation..." -ForegroundColor Yellow
-
-        $escapedShortcutPath = $publicShortcutPath.Replace("'", "''")
-        $escapedVmPingPath = $VmPingExePath.Replace("'", "''")
-        $elevatedScript = @"
-$ErrorActionPreference = 'Stop'
-$shortcutPath = '$escapedShortcutPath'
-$targetPath = '$escapedVmPingPath'
-$w = New-Object -ComObject WScript.Shell
-$s = $w.CreateShortcut($shortcutPath)
-$s.TargetPath = $targetPath
-$s.WorkingDirectory = Split-Path -Parent $targetPath
-$s.IconLocation = "$escapedVmPingPath,0"
-$s.Description = 'Launch vmPing'
-$s.Save()
-"@
-
-        $encodedScript = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($elevatedScript))
-
-        try {
-            $elevatedProc = Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", $encodedScript) -Verb RunAs -Wait -PassThru
-            if ($elevatedProc.ExitCode -eq 0 -and (Test-Path $publicShortcutPath)) {
-                Write-Host "Created shortcut: $publicShortcutPath" -ForegroundColor Green
-            }
-            else {
-                Write-Host "Public Desktop shortcut was not created (continuing)." -ForegroundColor Yellow
-            }
-        }
-        catch {
-            Write-Host "Public Desktop shortcut creation was cancelled or failed (continuing)." -ForegroundColor Yellow
-            Write-Host $_.Exception.Message -ForegroundColor Yellow
         }
     }
 }
