@@ -61,6 +61,7 @@ function Test-IsAllowedStudentDemoChange([string]$PorcelainLine) {
     }
 
     return $false
+}
 
 function Pull-InPlace([string]$Path) {
     Repair-KnownLabDrift -Path $Path
