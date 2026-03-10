@@ -16,7 +16,7 @@ PowerShell scripts and helpers for provisioning and managing lab environments.
 
 This repository contains a collection of PowerShell modules and scripts used to set up, configure, and maintain lab servers and clients. Typical tasks include installing roles, joining machines to a domain, renaming computers, configuring static IPs, and taking system snapshots.
 
-## Recent Updates (v2026.03.09.1)
+## Recent Updates (v2026.03.10.1)
 
 - Streamlined Lab Tools launch flow to avoid extra transient PowerShell windows: shortcuts now launch directly, and [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1) runs in-session by default.
 - Added launcher config toggle in [src/config/labtools.json](src/config/labtools.json): `launcher.useWindowsTerminal` (default `false`) to optionally spawn a new Windows Terminal tab/window.

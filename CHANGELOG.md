@@ -2,6 +2,12 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.03.10.1 - 2026-03-10
+
+### VM Template Prep Order Fix
+- Updated [src/Tasks/Run-TemplatePrepChecklist.ps1](src/Tasks/Run-TemplatePrepChecklist.ps1) to present and execute the recommended template workflow in the correct order: run SDelete (`-z`) before Sysprep shutdown.
+- Updated [src/MISC/SDelete/README.md](src/MISC/SDelete/README.md) to match the corrected VM template prep flow.
+
 ## v2026.03.09.1 - 2026-03-09
 
 ### Windows Client Utilities: SDelete Integration
