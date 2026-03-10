@@ -18,6 +18,8 @@ This repository contains a collection of PowerShell modules and scripts used to 
 
 ## Recent Updates (v2026.03.09.1)
 
+- Streamlined Lab Tools launch flow to avoid extra transient PowerShell windows: shortcuts now launch directly, and [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1) runs in-session by default.
+- Added launcher config toggle in [src/config/labtools.json](src/config/labtools.json): `launcher.useWindowsTerminal` (default `false`) to optionally spawn a new Windows Terminal tab/window.
 - Added guided VM template prep checklist task [src/Tasks/Run-TemplatePrepChecklist.ps1](src/Tasks/Run-TemplatePrepChecklist.ps1), including optional Sysprep launch and optional handoff to SDelete.
 - Added Windows Client Utilities option [4] in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1): `Run VM template prep checklist`.
 - Added global search action (`RunOption = "U4"`) in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) for template prep workflow.
@@ -87,7 +89,7 @@ Create or repair shortcuts (Desktop + Start Menu):
 .\src\Tasks\Create-Shortcuts.ps1
 ```
 
-This creates/repairs `CITA Lab Tools.lnk` in current-user Start Menu, all-users Start Menu, and (by default) Public Desktop. When Public Desktop creation is enabled and available, current-user Desktop shortcut creation is skipped and any existing current-user Desktop copy is removed to avoid duplicates. The task self-elevates when needed for all-users locations, and the shortcut launches Lab Tools elevated. Legacy `CITA Server Setup.lnk` is removed from managed locations when found. Public Desktop creation is controlled by `src/config/labtools.json` -> `shortcuts.createPublicDesktopShortcuts` (default `true`). You can set a custom icon path with `src/config/labtools.json` -> `shortcuts.iconRelativePath` (recommended `.ico`; falls back to the default PowerShell icon if the file is missing).
+This creates/repairs `CITA Lab Tools.lnk` in current-user Start Menu, all-users Start Menu, and (by default) Public Desktop. When Public Desktop creation is enabled and available, current-user Desktop shortcut creation is skipped and any existing current-user Desktop copy is removed to avoid duplicates. The task self-elevates when needed for all-users locations. Legacy `CITA Server Setup.lnk` is removed from managed locations when found. Public Desktop creation is controlled by `src/config/labtools.json` -> `shortcuts.createPublicDesktopShortcuts` (default `true`). You can set a custom icon path with `src/config/labtools.json` -> `shortcuts.iconRelativePath` (recommended `.ico`; falls back to the default PowerShell icon if the file is missing). Launcher behavior is controlled by `src/config/labtools.json` -> `launcher.useWindowsTerminal` (default `false`, for single-window launch).
 
 Apply Windows Terminal background from repo config:
 

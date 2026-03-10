@@ -5,5 +5,8 @@
   "shortcuts": {
     "createPublicDesktopShortcuts": true,
     "iconRelativePath": "MISC\\Icons\\Morrisville_Identity_Mustang_Mark_RGB.ico"
+  },
+  "launcher": {
+    "useWindowsTerminal": false
   }
 }

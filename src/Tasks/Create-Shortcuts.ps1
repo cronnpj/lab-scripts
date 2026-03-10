@@ -56,14 +56,10 @@ function New-LabShortcut {
 
     $shortcut.TargetPath = $HostExecutablePath
     $launcherArgs = "-NoLogo -ExecutionPolicy Bypass -File `"$LauncherPath`""
-    $escapedTargetPath = $shortcut.TargetPath.Replace("'", "''")
-    $escapedLauncherArgs = $launcherArgs.Replace("'", "''")
-    $escapedWorkingDirectory = $WorkingDirectory.Replace("'", "''")
-
-    $shortcut.Arguments = "-NoLogo -ExecutionPolicy Bypass -Command `"Start-Process -FilePath '$escapedTargetPath' -ArgumentList '$escapedLauncherArgs' -WorkingDirectory '$escapedWorkingDirectory' -Verb RunAs`""
+    $shortcut.Arguments = $launcherArgs
     $shortcut.WorkingDirectory = $WorkingDirectory
     $shortcut.WindowStyle = 1
-    $shortcut.Description = "Launch CITA Lab Tools as Administrator (PowerShell 7 preferred)"
+    $shortcut.Description = "Launch CITA Lab Tools (PowerShell 7 preferred)"
     $shortcut.IconLocation = $IconLocation
     $shortcut.Save()
 }

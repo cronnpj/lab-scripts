@@ -19,29 +19,45 @@ if (-not (Test-Path $mainMenuPath)) {
     throw "Main menu script not found: $mainMenuPath"
 }
 
-$preferredShellPath = Get-PreferredPowerShellExecutable
+$configPath = Join-Path $PSScriptRoot "config\labtools.json"
+$launchInWindowsTerminal = $false
 
-$wt = Get-Command wt.exe -ErrorAction SilentlyContinue
-if ($wt) {
+if (Test-Path $configPath) {
     try {
-        $wtArgs = @(
-            "-w", "new",
-            "new-tab",
-            "--title", "CITA-LabTools",
-            "--",
-            $preferredShellPath,
-            "-NoLogo",
-            "-ExecutionPolicy", "Bypass",
-            "-File", $mainMenuPath
-        )
-
-        Start-Process -FilePath $wt.Source -ArgumentList $wtArgs
-        return
+        $config = Get-Content -Path $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($null -ne $config.launcher -and $null -ne $config.launcher.useWindowsTerminal) {
+            $launchInWindowsTerminal = [bool]$config.launcher.useWindowsTerminal
+        }
     }
     catch {
-        # Fall back to direct PowerShell launch when wt invocation fails
+        # Use default launcher behavior when config is unavailable/invalid
     }
 }
 
-# Fallback when Windows Terminal is not available
-& $preferredShellPath -NoLogo -ExecutionPolicy Bypass -File $mainMenuPath
+if ($launchInWindowsTerminal) {
+    $preferredShellPath = Get-PreferredPowerShellExecutable
+    $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
+    if ($wt) {
+        try {
+            $wtArgs = @(
+                "-w", "new",
+                "new-tab",
+                "--title", "CITA-LabTools",
+                "--",
+                $preferredShellPath,
+                "-NoLogo",
+                "-ExecutionPolicy", "Bypass",
+                "-File", $mainMenuPath
+            )
+
+            Start-Process -FilePath $wt.Source -ArgumentList $wtArgs
+            return
+        }
+        catch {
+            # Fall back to in-session launch when wt invocation fails
+        }
+    }
+}
+
+# Default: run in current shell to avoid opening extra PowerShell windows
+& $mainMenuPath
