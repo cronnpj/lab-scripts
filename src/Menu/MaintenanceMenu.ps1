@@ -58,7 +58,7 @@ function Show-MaintenanceMenu {
         [string]$StatusColor = "DarkGray"
     )
 
-    Show-AppHeader -Breadcrumb "Main > Maintenance & Updates"
+    Show-AppHeader -Breadcrumb "Main > App Maintenance & Updates"
 
     Write-Host "  [1] Update Lab Tools from GitHub (+ shortcut repair + terminal background)"
     Write-Host "  [2] Create / Repair Lab Tools shortcuts"

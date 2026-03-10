@@ -16,7 +16,12 @@ PowerShell scripts and helpers for provisioning and managing lab environments.
 
 This repository contains a collection of PowerShell modules and scripts used to set up, configure, and maintain lab servers and clients. Typical tasks include installing roles, joining machines to a domain, renaming computers, configuring static IPs, and taking system snapshots.
 
-## Recent Updates (v2026.03.10.1)
+## Recent Updates (v2026.03.10.2)
+
+- Updated menu naming to `App Maintenance & Updates` in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) and [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1).
+- Hardened PowerShell host selection in [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1): shortcut creation now prefers PowerShell 7 using PATH detection, common install paths, and App Paths registry lookups before falling back to Windows PowerShell.
+- Added Windows Client Utilities options [6]-[8] in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1): `Open winget command shell`, `Run winget upgrade --all`, and `Open new terminal tab`.
+- Added Winget shell quick-command help output for Utilities option [6] and global search mappings (`RunOption = "U6"`, `"U7"`, `"U8"`) in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1).
 
 - Streamlined Lab Tools launch flow to avoid extra transient PowerShell windows: shortcuts now launch directly, and [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1) runs in-session by default.
 - Added launcher config toggle in [src/config/labtools.json](src/config/labtools.json): `launcher.useWindowsTerminal` (default `false`) to optionally spawn a new Windows Terminal tab/window.

@@ -81,6 +81,62 @@ function Test-IsAdministrator {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function Assert-WingetAvailable {
+    if (-not (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
+        throw "winget.exe is not available on this system. Install App Installer from Microsoft Store and try again."
+    }
+}
+
+function Open-NewTerminalTabOrWindow {
+    $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
+    if ($wt) {
+        Start-Process -FilePath $wt.Source -ArgumentList @("-w", "0", "new-tab")
+        return
+    }
+
+    $pwsh = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+    if ($pwsh) {
+        Start-Process -FilePath $pwsh.Source -ArgumentList @("-NoLogo")
+        return
+    }
+
+    Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList @("-NoLogo")
+}
+
+function Open-WingetShell {
+    Assert-WingetAvailable
+
+    $pwsh = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+    $fallbackPs = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+
+    $shellExe = if ($pwsh) { $pwsh.Source } else { $fallbackPs }
+    $wingetIntroCommand = @'
+Clear-Host
+Write-Host "Winget quick commands:" -ForegroundColor Cyan
+Write-Host "  winget search <app>"
+Write-Host "  winget show <id>"
+Write-Host "  winget list"
+Write-Host "  winget install <id>"
+Write-Host "  winget uninstall <id>"
+Write-Host "  winget upgrade"
+Write-Host "  winget upgrade --all"
+Write-Host ""
+Write-Host "Example: winget search vscode" -ForegroundColor DarkGray
+'@
+
+    $encodedIntroCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($wingetIntroCommand))
+    $shellArgs = @("-NoLogo", "-NoExit", "-EncodedCommand", $encodedIntroCommand)
+
+    $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
+    if ($wt) {
+        $wtArgs = @("-w", "0", "new-tab", "--title", "Winget", "--", $shellExe) + $shellArgs
+        Start-Process -FilePath $wt.Source -ArgumentList $wtArgs
+        return
+    }
+
+    Start-Process -FilePath $shellExe -ArgumentList $shellArgs
+}
+
 function Ensure-VmPingDesktopShortcuts {
     param(
         [Parameter(Mandatory=$true)][string]$VmPingExePath
@@ -211,8 +267,8 @@ function Show-ClientMenu {
     Write-Host "      IP config, DNS flush, DHCP renew, connectivity checks" -ForegroundColor DarkGray
     Write-Host "  [4] System Actions         (4 options)"
     Write-Host "      Rename, timezone/clock sync, update services, SFC scan" -ForegroundColor DarkGray
-    Write-Host "  [5] Utilities              (5 options)"
-    Write-Host "      Launch vmPing, Run Win11Debloat, Run SDelete, Template prep checklist, Horizon Optimization Tool" -ForegroundColor DarkGray
+    Write-Host "  [5] Utilities              (8 options)"
+    Write-Host "      vmPing, Debloat, SDelete, Template prep, Horizon Tool, winget, winget upgrade --all, new terminal tab" -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
@@ -286,10 +342,13 @@ function Show-UtilitiesMenu {
     Write-Host "  [3] Run SDelete free-space overwrite"
     Write-Host "  [4] Run VM template prep checklist"
     Write-Host "  [5] Launch VMware Horizon OS Optimization Tool"
+    Write-Host "  [6] Open winget command shell"
+    Write-Host "  [7] Run winget upgrade --all"
+    Write-Host "  [8] Open new terminal tab"
     Write-Host ""
     Write-Host "  [0] Back"
     Write-Host ""
-    Write-Host "Keys: 1-5 Select  |  0 Back"
+    Write-Host "Keys: 1-8 Select  |  0 Back"
     Write-Host ""
 }
 
@@ -438,6 +497,23 @@ function Invoke-UtilitiesMenu {
             "3" { Invoke-TaskSafe -Path $sdeleteScript -SuccessText "SDelete flow completed" -ShowPause:$false }
             "4" { Invoke-TaskSafe -Path $templatePrepScript -SuccessText "Template prep checklist completed" -ShowPause:$false }
             "5" { Invoke-TaskSafe -Path $horizonOptScript -SuccessText "Horizon Optimization Tool flow completed" -ShowPause:$false }
+            "6" {
+                Invoke-ActionSafe -Action {
+                    Open-WingetShell
+                } -SuccessText "Winget shell opened"
+            }
+            "7" {
+                Invoke-ActionSafe -Action {
+                    Clear-Host
+                    Assert-WingetAvailable
+                    winget upgrade --all
+                } -SuccessText "winget upgrade --all completed"
+            }
+            "8" {
+                Invoke-ActionSafe -Action {
+                    Open-NewTerminalTabOrWindow
+                } -SuccessText "Terminal tab/window opened"
+            }
             "0"  { $backSub = $true }
             default {
                 $script:lastStatusText  = "[Warning] Invalid selection"
@@ -510,6 +586,23 @@ function Invoke-ClientRunOption {
         "U3" { Invoke-TaskSafe -Path $sdeleteScript -SuccessText "SDelete flow completed" -ShowPause:$false }
         "U4" { Invoke-TaskSafe -Path $templatePrepScript -SuccessText "Template prep checklist completed" -ShowPause:$false }
         "U5" { Invoke-TaskSafe -Path $horizonOptScript -SuccessText "Horizon Optimization Tool flow completed" -ShowPause:$false }
+        "U6" {
+            Invoke-ActionSafe -Action {
+                Open-WingetShell
+            } -SuccessText "Winget shell opened"
+        }
+        "U7" {
+            Invoke-ActionSafe -Action {
+                Clear-Host
+                Assert-WingetAvailable
+                winget upgrade --all
+            } -SuccessText "winget upgrade --all completed"
+        }
+        "U8" {
+            Invoke-ActionSafe -Action {
+                Open-NewTerminalTabOrWindow
+            } -SuccessText "Terminal tab/window opened"
+        }
 
         default {
             $script:lastStatusText  = "[Warning] Invalid search action"

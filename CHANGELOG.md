@@ -2,6 +2,19 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.03.10.2 - 2026-03-10
+
+### Maintenance and Shortcut Host Selection Updates
+- Updated maintenance naming to `App Maintenance & Updates` in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) and [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1).
+- Hardened shortcut host detection in [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) so `CITA Lab Tools.lnk` prefers PowerShell 7 when installed, using PATH checks, common install directories, and App Paths registry lookups before falling back to Windows PowerShell.
+- Added selected-host logging in [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) to make shortcut host resolution visible during option [1]/[2] maintenance runs.
+
+### Windows Client Utilities: Winget and Terminal Actions
+- Expanded Windows Client Utilities in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) with options [6]-[8]: `Open winget command shell`, `Run winget upgrade --all`, and `Open new terminal tab`.
+- Added Winget availability validation in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) with clear guidance when `winget.exe` is missing.
+- Implemented `Open winget command shell` to launch a persistent shell tab/window and display a quick command cheat sheet for common Winget actions.
+- Added global-search mappings (`RunOption = "U6"`, `"U7"`, `"U8"`) in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) for the new Utilities actions.
+
 ## v2026.03.10.1 - 2026-03-10
 
 ### VM Template Prep Order Fix

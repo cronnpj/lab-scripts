@@ -10,9 +10,63 @@ if (-not (Test-Path $launcherPath)) {
 }
 
 function Get-PreferredShortcutHostPath {
+    function Get-AppPathDefaultValue {
+        param([Parameter(Mandatory=$true)][string]$RegistryPath)
+
+        try {
+            $item = Get-Item -Path $RegistryPath -ErrorAction Stop
+            $value = $item.GetValue("")
+            if (-not [string]::IsNullOrWhiteSpace([string]$value) -and (Test-Path $value)) {
+                return [string]$value
+            }
+        }
+        catch {
+            return $null
+        }
+
+        return $null
+    }
+
     $pwsh = Get-Command pwsh.exe -ErrorAction SilentlyContinue
     if ($pwsh) {
         return $pwsh.Source
+    }
+
+    $pwshCandidates = @()
+
+    if ($env:ProgramFiles) {
+        $pwshCandidates += @(
+            (Join-Path $env:ProgramFiles "PowerShell\7\pwsh.exe"),
+            (Join-Path $env:ProgramFiles "PowerShell\7-preview\pwsh.exe")
+        )
+
+        $pfPowerShellRoot = Join-Path $env:ProgramFiles "PowerShell"
+        if (Test-Path $pfPowerShellRoot) {
+            $pwshCandidates += @(Get-ChildItem -Path $pfPowerShellRoot -Directory -ErrorAction SilentlyContinue |
+                Sort-Object -Property Name -Descending |
+                ForEach-Object { Join-Path $_.FullName "pwsh.exe" })
+        }
+    }
+
+    if (${env:ProgramFiles(x86)}) {
+        $pwshCandidates += (Join-Path ${env:ProgramFiles(x86)} "PowerShell\7\pwsh.exe")
+    }
+
+    if ($env:LocalAppData) {
+        $pwshCandidates += (Join-Path $env:LocalAppData "Microsoft\WindowsApps\pwsh.exe")
+    }
+
+    $pwshCandidates += @(
+        (Get-AppPathDefaultValue -RegistryPath "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\pwsh.exe"),
+        (Get-AppPathDefaultValue -RegistryPath "Registry::HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\pwsh.exe")
+    )
+
+    $pwshCandidates = $pwshCandidates | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -Unique
+
+    foreach ($candidate in $pwshCandidates) {
+        if (Test-Path $candidate) {
+            return $candidate
+        }
     }
 
     $winPs = Get-Command powershell.exe -ErrorAction SilentlyContinue
@@ -21,6 +75,7 @@ function Get-PreferredShortcutHostPath {
     }
 
     throw "No supported PowerShell executable was found for shortcut target."
+
 }
 
 function Test-IsElevated {
@@ -70,6 +125,11 @@ $createPublicDesktopShortcuts = $true
 $defaultIconLocation = "$preferredHostPath,0"
 $shortcutIconLocation = $defaultIconLocation
 $isElevated = Test-IsElevated
+
+Write-Host "Shortcut host selected: $preferredHostPath" -ForegroundColor Cyan
+if ($preferredHostPath -match '\\WindowsPowerShell\\v1\.0\\powershell\.exe$') {
+    Write-Host "Warning: PowerShell 7 was not discovered. Shortcut will use Windows PowerShell." -ForegroundColor DarkYellow
+}
 
 if (Test-Path $configPath) {
     try {
