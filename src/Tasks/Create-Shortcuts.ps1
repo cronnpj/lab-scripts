@@ -110,7 +110,19 @@ function New-LabShortcut {
     $shortcut = $wsh.CreateShortcut($ShortcutPath)
 
     $shortcut.TargetPath = $HostExecutablePath
-    $launcherArgs = "-NoLogo -ExecutionPolicy Bypass -File `"$LauncherPath`""
+    $escapedHostPath = $HostExecutablePath.Replace("'", "''")
+    $escapedLauncherPath = $LauncherPath.Replace("'", "''")
+    $escapedWorkingDirectory = $WorkingDirectory.Replace("'", "''")
+
+    $elevationWrapper = @"
+`$hostExe = '$escapedHostPath'
+`$launcher = '$escapedLauncherPath'
+`$workingDir = '$escapedWorkingDirectory'
+Start-Process -FilePath `$hostExe -ArgumentList @('-NoLogo', '-ExecutionPolicy', 'Bypass', '-File', `$launcher) -WorkingDirectory `$workingDir -Verb RunAs
+"@
+
+    $encodedWrapper = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($elevationWrapper))
+    $launcherArgs = "-NoLogo -NoProfile -ExecutionPolicy Bypass -EncodedCommand $encodedWrapper"
     $shortcut.Arguments = $launcherArgs
     $shortcut.WorkingDirectory = $WorkingDirectory
     $shortcut.WindowStyle = 1
