@@ -2,6 +2,15 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.03.12.1 - 2026-03-12
+
+### Repository Consolidation
+- Imported external repo history from `cronnpj/375` into [labs/375](labs/375) using a history-preserving subtree workflow.
+- Imported external repo history from `cronnpj/320-assignment-5` into [labs/320/320-assignment-5](labs/320/320-assignment-5) using a history-preserving subtree workflow.
+- Added [labs/320/README.md](labs/320/README.md) as a course-level index path for future 320 lab additions.
+- Added [labs/375/README.md](labs/375/README.md) to describe imported 375 assets and configuration files.
+- Updated [README.md](README.md) repository layout links to include consolidated lab paths.
+
 ## v2026.03.10.2 - 2026-03-10
 
 ### Maintenance and Shortcut Host Selection Updates

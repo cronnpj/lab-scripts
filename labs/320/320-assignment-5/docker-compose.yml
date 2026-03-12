@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  db:
+    image: mariadb:11
+    container_name: app_db
+    environment:
+      - MYSQL_ROOT_PASSWORD=ChangeMeRoot!
+      - MYSQL_DATABASE=appdb
+      - MYSQL_USER=appuser
+      - MYSQL_PASSWORD=ChangeMeUser!
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app_net
+
+  db_admin:
+    image: adminer:latest
+    container_name: app_adminer
+    ports:
+      - "8081:8080"
+    depends_on:
+      - db
+    networks:
+      - app_net
+
+  status-web:
+    build: ./status-web
+    container_name: status_web
+    ports:
+      - "8080:5000"
+    depends_on:
+      - db
+      - db_admin
+    networks:
+      - app_net
+
+volumes:
+  db_data:
+
+networks:
+  app_net:
+    driver: bridge
