@@ -66,6 +66,7 @@ This repository contains a collection of PowerShell modules and scripts used to 
 - Menus: [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1), [src/Menu/DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1), [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1), [src/Menu/ServerToolsMenu.ps1](src/Menu/ServerToolsMenu.ps1), [src/Menu/TroubleshootingMenu.ps1](src/Menu/TroubleshootingMenu.ps1)
 - Core tasks: [src/Tasks/Install-Roles.ps1](src/Tasks/Install-Roles.ps1), [src/Tasks/Join-Domain.ps1](src/Tasks/Join-Domain.ps1), [src/Tasks/Rename-Computer.ps1](src/Tasks/Rename-Computer.ps1), [src/Tasks/Set-StaticIP.ps1](src/Tasks/Set-StaticIP.ps1), [src/Tasks/System-Snapshot.ps1](src/Tasks/System-Snapshot.ps1), [src/Tasks/Update-LabTools.ps1](src/Tasks/Update-LabTools.ps1)
 - Kubernetes lab: [labs/k8s-baremetal-lab/README.md](labs/k8s-baremetal-lab/README.md), [labs/k8s-baremetal-lab/bootstrap.ps1](labs/k8s-baremetal-lab/bootstrap.ps1)
+- Consolidated lab imports: [labs/375/README.md](labs/375/README.md), [labs/320/README.md](labs/320/README.md), [labs/320/320-assignment-5/README.md](labs/320/320-assignment-5/README.md)
 
 ## Usage
 
