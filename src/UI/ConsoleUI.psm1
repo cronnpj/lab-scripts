@@ -13,13 +13,16 @@ function Write-BoxLine {
     param(
         [Parameter(Mandatory=$true)][string]$Text,
         [int]$Width = 64,
-        [string]$Color = "Gray"
+        [string]$Color = "Gray",
+        [string]$BorderColor = "Cyan"
     )
 
     $inner = $Width - 4
     if ($Text.Length -gt $inner) { $Text = $Text.Substring(0, $inner) }
     $pad = " " * ($inner - $Text.Length)
-    Write-Host ("| " + $Text + $pad + " |") -ForegroundColor $Color
+    Write-Host "| " -NoNewline -ForegroundColor $BorderColor
+    Write-Host ($Text + $pad) -NoNewline -ForegroundColor $Color
+    Write-Host " |" -ForegroundColor $BorderColor
 }
 
 function Write-HostUserLine {
@@ -53,14 +56,14 @@ function Write-HostUserLine {
     $textLen = $fixedLength + $UserName.Length
     $pad = " " * [Math]::Max(0, ($inner - $textLen))
 
-    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
     Write-Host $leftLabel -NoNewline -ForegroundColor Gray
     Write-Host $HostName -NoNewline -ForegroundColor Cyan
     Write-Host $spacer -NoNewline -ForegroundColor Gray
     Write-Host $rightLabel -NoNewline -ForegroundColor Gray
     Write-Host $UserName -NoNewline -ForegroundColor Cyan
     Write-Host $pad -NoNewline -ForegroundColor Gray
-    Write-Host " |" -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Cyan
 }
 
 function Write-TimezoneDateLine {
@@ -88,13 +91,13 @@ function Write-TimezoneDateLine {
     $textLen = $labelTZ.Length + $timeZoneStr.Length + $labelDate.Length + $currentDate.Length
     $pad = " " * [Math]::Max(0, $inner - $textLen)
 
-    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
     Write-Host $labelTZ -NoNewline -ForegroundColor Gray
     Write-Host $timeZoneStr -NoNewline -ForegroundColor Cyan
     Write-Host $labelDate -NoNewline -ForegroundColor Gray
     Write-Host $currentDate -NoNewline -ForegroundColor Cyan
     Write-Host $pad -NoNewline -ForegroundColor Gray
-    Write-Host " |" -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Cyan
 }
 
 function Get-PrimaryNetworkInfo {
@@ -183,14 +186,14 @@ function Write-NetworkLine {
     $textLen = $fixedLength + $Mode.Length
     $pad = " " * [Math]::Max(0, ($inner - $textLen))
 
-    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
     Write-Host $leftLabel -NoNewline -ForegroundColor Gray
     Write-Host $IPAddress -NoNewline -ForegroundColor Cyan
     Write-Host $spacer -NoNewline -ForegroundColor Gray
     Write-Host $rightLabel -NoNewline -ForegroundColor Gray
     Write-Host $Mode -NoNewline -ForegroundColor Cyan
     Write-Host $pad -NoNewline -ForegroundColor Gray
-    Write-Host " |" -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Cyan
 }
 
 function Get-InternetStatus {
@@ -225,11 +228,11 @@ function Write-InternetLine {
     $pad = " " * [Math]::Max(0, ($inner - $textLen))
     $valueColor = if ($IsConnected) { "Green" } else { "Red" }
 
-    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
     Write-Host $label -NoNewline -ForegroundColor Gray
     Write-Host $value -NoNewline -ForegroundColor $valueColor
     Write-Host $pad -NoNewline -ForegroundColor Gray
-    Write-Host " |" -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Cyan
 }
 
 function Get-DomainMembershipInfo {
@@ -730,11 +733,11 @@ function Write-DomainLine {
     $textLen = $label.Length + $value.Length
     $pad = " " * [Math]::Max(0, ($inner - $textLen))
 
-    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
     Write-Host $label -NoNewline -ForegroundColor Gray
     Write-Host $value -NoNewline -ForegroundColor $valueColor
     Write-Host $pad -NoNewline -ForegroundColor Gray
-    Write-Host " |" -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Cyan
 }
 
 function Write-InternetDomainLine {
@@ -765,14 +768,14 @@ function Write-InternetDomainLine {
     $textLen = $fixedLength + $rightValue.Length
     $pad = " " * [Math]::Max(0, ($inner - $textLen))
 
-    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
     Write-Host $leftLabel -NoNewline -ForegroundColor Gray
     Write-Host $leftValue -NoNewline -ForegroundColor $leftColor
     Write-Host $spacer -NoNewline -ForegroundColor Gray
     Write-Host $rightLabel -NoNewline -ForegroundColor Gray
     Write-Host $rightValue -NoNewline -ForegroundColor $rightColor
     Write-Host $pad -NoNewline -ForegroundColor Gray
-    Write-Host " |" -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Cyan
 }
 
 function Write-TenantLine {
@@ -793,11 +796,11 @@ function Write-TenantLine {
     $textLen = $label.Length + $value.Length
     $pad = " " * [Math]::Max(0, ($inner - $textLen))
 
-    Write-Host "| " -NoNewline -ForegroundColor Gray
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
     Write-Host $label -NoNewline -ForegroundColor Gray
     Write-Host $value -NoNewline -ForegroundColor Cyan
     Write-Host $pad -NoNewline -ForegroundColor Gray
-    Write-Host " |" -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Cyan
 }
 
 function Show-AppHeader {
@@ -820,9 +823,9 @@ function Show-AppHeader {
         Color = $joinInfo.Color
     }
 
-    Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor DarkGray
-    Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $Width "Cyan"
-    Write-BoxLine ("Version: {0}" -f $version) $Width "Gray"
+    Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor Cyan
+    Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $Width "Yellow"
+    Write-BoxLine ("Version: {0}" -f $version) $Width "Cyan"
 
     # Host/User line with cyan values
     Write-HostUserLine -HostName $hostName -UserName $userName -Width $Width
@@ -846,12 +849,33 @@ function Show-AppHeader {
         Write-TenantLine -Tenant $joinInfo.Tenant -Width $Width
     }
 
-    Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor DarkGray
+    Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor Cyan
 
     Write-Host ""
     Write-Host "Navigation: " -NoNewline -ForegroundColor DarkGray
     Write-Host $Breadcrumb -ForegroundColor Cyan
     Write-Host ""
+}
+
+function Write-MenuItem {
+    param(
+        [Parameter(Mandatory=$true)][string]$Key,
+        [Parameter(Mandatory=$true)][string]$Text,
+        [string]$Color = "White"
+    )
+    Write-Host "  [" -NoNewline -ForegroundColor DarkGray
+    Write-Host $Key -NoNewline -ForegroundColor Yellow
+    Write-Host "] " -NoNewline -ForegroundColor DarkGray
+    Write-Host $Text -ForegroundColor $Color
+}
+
+function Write-MenuKeysLine {
+    param([string]$Range)
+    Write-Host "Keys: " -NoNewline -ForegroundColor DarkGray
+    Write-Host $Range -NoNewline -ForegroundColor Yellow
+    Write-Host " Select  |  " -NoNewline -ForegroundColor DarkGray
+    Write-Host "0" -NoNewline -ForegroundColor Yellow
+    Write-Host " Back" -ForegroundColor DarkGray
 }
 
 function Write-StatusLine {
@@ -892,5 +916,5 @@ function Get-CurrentJoinType {
     return 'Unknown'
 }
 
-Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType
+Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine
 

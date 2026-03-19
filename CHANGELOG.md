@@ -2,6 +2,24 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.03.19.2 - 2026-03-19
+
+### UI Color Enhancements
+
+- Added `Write-MenuItem` and `Write-MenuKeysLine` shared helpers to [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) and exported them so all menus share a consistent colored rendering path.
+- Updated [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) header box borders (`+---+` and `| |`) from DarkGray/Gray to Cyan, title line from Cyan to Yellow, and version value from Gray to Cyan.
+- Updated `Write-BoxLine` in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to render border pipes (`| |`) in a separate `BorderColor` (default Cyan) from the text color.
+- Applied `Write-MenuItem` (yellow keys, DarkGray brackets, colored label) and `Write-MenuKeysLine` (yellow keys, DarkGray text) across all menu files: [MainMenu.ps1](src/Menu/MainMenu.ps1), [DCToolsMenu.ps1](src/Menu/DCToolsMenu.ps1), [ServerToolsMenu.ps1](src/Menu/ServerToolsMenu.ps1), [MemberServerMenu.ps1](src/Menu/MemberServerMenu.ps1), [TroubleshootingMenu.ps1](src/Menu/TroubleshootingMenu.ps1), [MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1), [ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1), [DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1), [DevOpsInstallUpdateMenu.ps1](src/Menu/DevOpsInstallUpdateMenu.ps1), [DevOpsQuickChecksMenu.ps1](src/Menu/DevOpsQuickChecksMenu.ps1), [DevOpsLabInstallOpsMenu.ps1](src/Menu/DevOpsLabInstallOpsMenu.ps1), [DevOpsLabAdvancedOpsMenu.ps1](src/Menu/DevOpsLabAdvancedOpsMenu.ps1).
+- Highlighted Maintenance option [1] (`Update Lab Tools from GitHub`) in Green in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) to distinguish it as the primary update action.
+- Simplified Maintenance option [1] label in [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1) — shortcut repair and terminal background apply happen silently behind the scenes.
+
+### Bug Fix
+
+- Fixed null-reference error in [src/Menu/DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1) `Show-CurrentContext` where `Test-Path` was called with a `$null` kubeconfig path when no kubeconfig file exists; both call sites now guard with `$kubeconfigPath -and` before invoking `Test-Path`.
+
+### Version
+- Bumped [src/VERSION.txt](src/VERSION.txt) to `v2026.03.19.2`.
+
 ## v2026.03.19.1 - 2026-03-19
 
 ### Security and Code Quality Fixes

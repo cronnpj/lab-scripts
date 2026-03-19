@@ -60,19 +60,19 @@ function Show-MaintenanceMenu {
 
     Show-AppHeader -Breadcrumb "Main > App Maintenance & Updates"
 
-    Write-Host "  [1] Update Lab Tools from GitHub (+ shortcut repair + terminal background)"
-    Write-Host "  [2] Create / Repair Lab Tools shortcuts"
-    Write-Host "  [3] Apply Windows Terminal background (repo config)"
-    Write-Host "  [4] Report a Problem / Submit Feedback"
-    Write-Host "  [5] Install / Repair PS7 + Graph modules (+ optional Graph sign-in) + shortcuts"
-    Write-Host "  [6] Install / Repair PS7 only"
+    Write-MenuItem "1" "Update Lab Tools from GitHub" "Green"
+    Write-MenuItem "2" "Create / Repair Lab Tools shortcuts"
+    Write-MenuItem "3" "Apply Windows Terminal background (repo config)"
+    Write-MenuItem "4" "Report a Problem / Submit Feedback"
+    Write-MenuItem "5" "Install / Repair PS7 + Graph modules (+ optional Graph sign-in) + shortcuts"
+    Write-MenuItem "6" "Install / Repair PS7 only"
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-Host "Keys: 1-6 Select  |  0 Back"
+    Write-MenuKeysLine "1-6"
     Write-Host ""
 }
 

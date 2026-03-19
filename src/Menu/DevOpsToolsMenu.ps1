@@ -640,12 +640,12 @@ function Show-CurrentContext {
     $repoColor = if ($repoText -eq "Missing") { "Yellow" } else { "Gray" }
 
     $kubeconfigPath = Resolve-KubeconfigPath -RepoPath $RepoPath
-    $kubeText = if (Test-Path $kubeconfigPath) { $kubeconfigPath } else { "Not found" }
+    $kubeText = if ($kubeconfigPath -and (Test-Path $kubeconfigPath)) { $kubeconfigPath } else { "Not found" }
     $kubeColor = if ($kubeText -eq "Not found") { "Yellow" } else { "Gray" }
 
     $clusterText = "Unknown"
     $clusterColor = "DarkYellow"
-    if ((Test-Cmd kubectl) -and (Test-Path $kubeconfigPath)) {
+    if ((Test-Cmd kubectl) -and $kubeconfigPath -and (Test-Path $kubeconfigPath)) {
         $nodesRaw = & kubectl --kubeconfig $kubeconfigPath --request-timeout=3s get nodes -o name 2>$null
         if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($nodesRaw | Out-String).Trim())) {
             $clusterText = "Reachable"
@@ -677,22 +677,22 @@ function Show-DevOpsMenu {
     Show-CurrentContext -RepoPath $script:RepoPath
 
     Write-Host "  Install / Update Tools" -ForegroundColor Cyan
-    Write-Host "  [1]  Open Install / Update Tools submenu"
+    Write-MenuItem "1"  "Open Install / Update Tools submenu"
     Write-Host "       Install or upgrade required CLI tools." -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  Quick Checks / Utilities" -ForegroundColor Cyan
-    Write-Host "  [6]  Open Quick Checks / Utilities submenu"
+    Write-MenuItem "6"  "Open Quick Checks / Utilities submenu"
     Write-Host "       Verify tool versions and quick cluster health." -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  Lab Repository - Install Operations" -ForegroundColor Cyan
-    Write-Host "  [9]  Open Lab Repository - Install Operations submenu"
+    Write-MenuItem "9"  "Open Lab Repository - Install Operations submenu"
     Write-Host "       Deploy and manage lab platform apps/workloads." -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  Lab Repository - Advanced Operations" -ForegroundColor Cyan
-    Write-Host "  [16] Open Lab Repository - Advanced Operations submenu"
+    Write-MenuItem "16" "Open Lab Repository - Advanced Operations submenu"
     Write-Host "       Reset, worker-node operations, and advanced maintenance." -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  [0]  Back"
+    Write-MenuItem "0"  "Back" "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor

@@ -52,15 +52,15 @@ function Show-MemberServerMenu {
 
     Show-AppHeader -Breadcrumb "Main > Member Server Tools"
 
-    Write-Host "  [1] Join existing domain"
-    Write-Host "  [2] Set timezone to Eastern + resync clock"
+    Write-MenuItem "1" "Join existing domain"
+    Write-MenuItem "2" "Set timezone to Eastern + resync clock"
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-Host "Keys: 1-2 Select  |  0 Back"
+    Write-MenuKeysLine "1-2"
     Write-Host ""
 }
 

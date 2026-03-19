@@ -17,17 +17,17 @@ function Show-DCMenu {
 
     Show-AppHeader -Breadcrumb "Main > Domain Controller Tools"
 
-    Write-Host "  [1] Install AD DS role (no promotion)"
-    Write-Host "  [2] Install DNS role"
-    Write-Host "  [3] Install DHCP role"
-    Write-Host "  [4] Install Core DC roles (AD DS | DNS | DHCP)"
+    Write-MenuItem "1" "Install AD DS role (no promotion)"
+    Write-MenuItem "2" "Install DNS role"
+    Write-MenuItem "3" "Install DHCP role"
+    Write-MenuItem "4" "Install Core DC roles (AD DS | DNS | DHCP)"
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-Host "Keys: 1-4 Select  |  0 Back"
+    Write-MenuKeysLine "1-4"
     Write-Host ""
 }
 

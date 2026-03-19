@@ -165,18 +165,18 @@ function Show-DevOpsInstallUpdateMenu {
     Show-CurrentContext -RepoPath $script:RepoPath
 
     Write-Host "  Install / Update Tools" -ForegroundColor Cyan
-    Write-Host "  [1] Upgrade all Winget packages"
+    Write-MenuItem "1" "Upgrade all Winget packages"
     Write-Host "      Update installed tool packages from Winget sources." -ForegroundColor DarkGray
-    Write-Host "  [2] Install talosctl"
+    Write-MenuItem "2" "Install talosctl"
     Write-Host "      Install Talos CLI for cluster/node operations." -ForegroundColor DarkGray
-    Write-Host "  [3] Install kubectl"
+    Write-MenuItem "3" "Install kubectl"
     Write-Host "      Install Kubernetes CLI used throughout labs." -ForegroundColor DarkGray
-    Write-Host "  [4] Install helm"
+    Write-MenuItem "4" "Install helm"
     Write-Host "      Install Helm package manager for Kubernetes apps." -ForegroundColor DarkGray
-    Write-Host "  [5] Install DevOps bundle (talosctl + kubectl + helm)"
+    Write-MenuItem "5" "Install DevOps bundle (talosctl + kubectl + helm)"
     Write-Host "      Install all core DevOps CLI tools in one step." -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor

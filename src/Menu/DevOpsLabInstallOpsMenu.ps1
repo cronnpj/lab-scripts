@@ -95,22 +95,22 @@ function Show-DevOpsLabInstallOpsMenu {
     Show-CurrentContext -RepoPath $script:RepoPath
 
     Write-Host "  Lab Repository - Install Operations" -ForegroundColor Cyan
-    Write-Host "  [1] Install core platform (Cluster + MetalLB + Ingress)"
+    Write-MenuItem "1" "Install core platform (Cluster + MetalLB + Ingress)"
     Write-Host "      Bootstrap or repair core cluster platform services." -ForegroundColor DarkGray
-    Write-Host "  [2] Repair / Reinstall MetalLB (IP pool/range)"
+    Write-MenuItem "2" "Repair / Reinstall MetalLB (IP pool/range)"
     Write-Host "      Re-apply VIP pool/range and MetalLB components." -ForegroundColor DarkGray
-    Write-Host "  [3] Install / Reinstall Portainer Admin UI (Ingress, NodePort IP, or LoadBalancer IP)"
+    Write-MenuItem "3" "Install / Reinstall Portainer Admin UI (Ingress, NodePort IP, or LoadBalancer IP)"
     Write-Host "      Deploy Portainer with your preferred exposure mode." -ForegroundColor DarkGray
-    Write-Host "  [4] Deploy / Update CITA Web Demo (namespace + ConfigMap + LoadBalancer)"
+    Write-MenuItem "4" "Deploy / Update CITA Web Demo (namespace + ConfigMap + LoadBalancer)"
     Write-Host "      Publish student HTML demo workload and service." -ForegroundColor DarkGray
-    Write-Host "  [5] Scale CITA Web Demo (2/4/5/custom replicas)"
+    Write-MenuItem "5" "Scale CITA Web Demo (2/4/5/custom replicas)"
     Write-Host "      Adjust replica count for the CITA demo deployment." -ForegroundColor DarkGray
-    Write-Host "  [6] Scale any deployed app (interactive selector)"
+    Write-MenuItem "6" "Scale any deployed app (interactive selector)"
     Write-Host "      Select and scale any deployment in the cluster." -ForegroundColor DarkGray
-    Write-Host "  [7] Install / Update app via Helm (interactive)"
+    Write-MenuItem "7" "Install / Update app via Helm (interactive)"
     Write-Host "      Install or upgrade Helm chart-based applications." -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor

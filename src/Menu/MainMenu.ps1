@@ -148,27 +148,41 @@ function Show-MainMenu {
 
     Show-AppHeader -Breadcrumb "Main Menu"
 
-    Write-Host "  [1] Server Tools"
-    Write-Host "  [2] Domain Controller Tools"
-    Write-Host "  [3] Member Server Tools"
-    Write-Host "  [4] Windows Client Tools"
-    Write-Host "  [5] Troubleshooting & Validation"
-    Write-Host "  [6] DevOps & Automation"
-    Write-Host "  [7] App Maintenance & Updates"
-    Write-Host "  [S] Global Search"
+    Write-MenuItem "1" "Server Tools"                 "Cyan"
+    Write-MenuItem "2" "Domain Controller Tools"      "Cyan"
+    Write-MenuItem "3" "Member Server Tools"           "Green"
+    Write-MenuItem "4" "Windows Client Tools"          "Green"
+    Write-MenuItem "5" "Troubleshooting & Validation"  "Yellow"
+    Write-MenuItem "6" "DevOps & Automation"           "Magenta"
+    Write-MenuItem "7" "App Maintenance & Updates"     "White"
+    Write-MenuItem "S" "Global Search"                 "White"
     if ($graphState.ShowGraphConnect) {
-        Write-Host "  [G] Connect Microsoft Graph for Tenant info"
+        Write-MenuItem "G" "Connect Microsoft Graph for Tenant info" "Magenta"
     }
-    Write-Host "  [0] Exit"
+    Write-MenuItem "0" "Exit"                          "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $statusObj.Text -StatusColor $statusObj.Color
 
     if ($graphState.ShowGraphConnect) {
-        Write-Host "Keys: 1-7 Select  |  S Search  |  G Graph  |  0 Exit"
+        Write-Host "Keys: " -NoNewline -ForegroundColor DarkGray
+        Write-Host "1-7" -NoNewline -ForegroundColor Yellow
+        Write-Host " Select  |  " -NoNewline -ForegroundColor DarkGray
+        Write-Host "S" -NoNewline -ForegroundColor Yellow
+        Write-Host " Search  |  " -NoNewline -ForegroundColor DarkGray
+        Write-Host "G" -NoNewline -ForegroundColor Yellow
+        Write-Host " Graph  |  " -NoNewline -ForegroundColor DarkGray
+        Write-Host "0" -NoNewline -ForegroundColor Yellow
+        Write-Host " Exit" -ForegroundColor DarkGray
     }
     else {
-        Write-Host "Keys: 1-7 Select  |  S Search  |  0 Exit"
+        Write-Host "Keys: " -NoNewline -ForegroundColor DarkGray
+        Write-Host "1-7" -NoNewline -ForegroundColor Yellow
+        Write-Host " Select  |  " -NoNewline -ForegroundColor DarkGray
+        Write-Host "S" -NoNewline -ForegroundColor Yellow
+        Write-Host " Search  |  " -NoNewline -ForegroundColor DarkGray
+        Write-Host "0" -NoNewline -ForegroundColor Yellow
+        Write-Host " Exit" -ForegroundColor DarkGray
     }
     Write-Host ""
 

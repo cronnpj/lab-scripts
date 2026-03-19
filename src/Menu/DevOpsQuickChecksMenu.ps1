@@ -164,14 +164,14 @@ function Show-DevOpsQuickChecksMenu {
     Show-CurrentContext -RepoPath $script:RepoPath
 
     Write-Host "  Quick Checks / Utilities" -ForegroundColor Cyan
-    Write-Host "  [1] Show installed versions (git/kubectl/talosctl/helm)"
+    Write-MenuItem "1" "Show installed versions (git/kubectl/talosctl/helm)"
     Write-Host "      Confirm required CLI tools and versions." -ForegroundColor DarkGray
-    Write-Host "  [2] kubectl get nodes/pods (uses repo kubeconfig if present)"
+    Write-MenuItem "2" "kubectl get nodes/pods (uses repo kubeconfig if present)"
     Write-Host "      Snapshot cluster health across core resources." -ForegroundColor DarkGray
-    Write-Host "  [3] Open repo folder in File Explorer"
+    Write-MenuItem "3" "Open repo folder in File Explorer"
     Write-Host "      Open local lab repo location for quick edits." -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor

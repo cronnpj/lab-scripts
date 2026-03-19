@@ -52,16 +52,16 @@ function Show-ServerToolsMenu {
 
     Show-AppHeader -Breadcrumb "Main > Server Tools"
 
-    Write-Host "  [1] Rename computer"
-    Write-Host "  [2] Configure static IP"
-    Write-Host "  [3] Set timezone to Eastern + resync clock"
+    Write-MenuItem "1" "Rename computer"
+    Write-MenuItem "2" "Configure static IP"
+    Write-MenuItem "3" "Set timezone to Eastern + resync clock"
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-Host "Keys: 1-3 Select  |  0 Back"
+    Write-MenuKeysLine "1-3"
     Write-Host ""
 }
 

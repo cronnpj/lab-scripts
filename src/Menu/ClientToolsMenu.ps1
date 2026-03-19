@@ -259,96 +259,96 @@ function Show-ClientMenu {
 
     Show-AppHeader -Breadcrumb "Main > Windows Client Tools"
 
-    Write-Host "  [1] Identity & Enrollment   (4 options)"
+    Write-MenuItem "1" "Identity & Enrollment   (4 options)"
     Write-Host "      Domain join, join status, work/school enrollment, Intune sync" -ForegroundColor DarkGray
-    Write-Host "  [2] Policy & Management    (3 options)"
+    Write-MenuItem "2" "Policy & Management    (3 options)"
     Write-Host "      GP update, policy results, GPO report export" -ForegroundColor DarkGray
-    Write-Host "  [3] Network Tools          (4 options)"
+    Write-MenuItem "3" "Network Tools          (4 options)"
     Write-Host "      IP config, DNS flush, DHCP renew, connectivity checks" -ForegroundColor DarkGray
-    Write-Host "  [4] System Actions         (4 options)"
+    Write-MenuItem "4" "System Actions         (4 options)"
     Write-Host "      Rename, timezone/clock sync, update services, SFC scan" -ForegroundColor DarkGray
-    Write-Host "  [5] Utilities              (8 options)"
+    Write-MenuItem "5" "Utilities              (8 options)"
     Write-Host "      vmPing, Debloat, SDelete, Template prep, Horizon Tool, winget, winget upgrade --all, new terminal tab" -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-Host "Keys: 1-5 Select  |  0 Back"
+    Write-MenuKeysLine "1-5"
     Write-Host ""
 }
 
 function Show-IdentityEnrollmentMenu {
     Show-AppHeader -Breadcrumb "Main > Windows Client Tools > Identity & Enrollment"
 
-    Write-Host "  [1] Join existing domain"
-    Write-Host "  [2] Show Join Status (Domain + Entra ID / Hybrid)"
-    Write-Host "  [3] Open Work/School Accounts (Enrollment)"
-    Write-Host "  [4] Force Intune Sync (best-effort)"
+    Write-MenuItem "1" "Join existing domain"
+    Write-MenuItem "2" "Show Join Status (Domain + Entra ID / Hybrid)"
+    Write-MenuItem "3" "Open Work/School Accounts (Enrollment)"
+    Write-MenuItem "4" "Force Intune Sync (best-effort)"
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
-    Write-Host "Keys: 1-4 Select  |  0 Back"
+    Write-MenuKeysLine "1-4"
     Write-Host ""
 }
 
 function Show-PolicyManagementMenu {
     Show-AppHeader -Breadcrumb "Main > Windows Client Tools > Policy & Management"
 
-    Write-Host "  [1] Force Group Policy Update (gpupdate /force)"
-    Write-Host "  [2] Show GPO Results (gpresult /r)"
-    Write-Host "  [3] Export GPO Report to Desktop (HTML)"
+    Write-MenuItem "1" "Force Group Policy Update (gpupdate /force)"
+    Write-MenuItem "2" "Show GPO Results (gpresult /r)"
+    Write-MenuItem "3" "Export GPO Report to Desktop (HTML)"
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
-    Write-Host "Keys: 1-3 Select  |  0 Back"
+    Write-MenuKeysLine "1-3"
     Write-Host ""
 }
 
 function Show-NetworkToolsMenu {
     Show-AppHeader -Breadcrumb "Main > Windows Client Tools > Network Tools"
 
-    Write-Host "  [1] Show IP Configuration (ipconfig /all)"
-    Write-Host "  [2] Flush DNS Cache"
-    Write-Host "  [3] Renew DHCP Lease (release/renew)"
-    Write-Host "  [4] Quick Connectivity Tests (GW/DNS/Internet)"
+    Write-MenuItem "1" "Show IP Configuration (ipconfig /all)"
+    Write-MenuItem "2" "Flush DNS Cache"
+    Write-MenuItem "3" "Renew DHCP Lease (release/renew)"
+    Write-MenuItem "4" "Quick Connectivity Tests (GW/DNS/Internet)"
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
-    Write-Host "Keys: 1-4 Select  |  0 Back"
+    Write-MenuKeysLine "1-4"
     Write-Host ""
 }
 
 function Show-SystemActionsMenu {
     Show-AppHeader -Breadcrumb "Main > Windows Client Tools > System Actions"
 
-    Write-Host "  [1] Rename computer"
-    Write-Host "  [2] Set timezone to Eastern + resync clock"
-    Write-Host "  [3] Restart Windows Update Services"
-    Write-Host "  [4] System File Check (SFC)"
+    Write-MenuItem "1" "Rename computer"
+    Write-MenuItem "2" "Set timezone to Eastern + resync clock"
+    Write-MenuItem "3" "Restart Windows Update Services"
+    Write-MenuItem "4" "System File Check (SFC)"
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
-    Write-Host "Keys: 1-4 Select  |  0 Back"
+    Write-MenuKeysLine "1-4"
     Write-Host ""
 }
 
 function Show-UtilitiesMenu {
     Show-AppHeader -Breadcrumb "Main > Windows Client Tools > Utilities"
 
-    Write-Host "  [1] Launch vmPing (MISC)"
-    Write-Host "  [2] Run Win11Debloat (official upstream script)"
-    Write-Host "  [3] Run SDelete free-space overwrite"
-    Write-Host "  [4] Run VM template prep checklist"
-    Write-Host "  [5] Launch VMware Horizon OS Optimization Tool"
-    Write-Host "  [6] Open winget command shell"
-    Write-Host "  [7] Run winget upgrade --all"
-    Write-Host "  [8] Open new terminal tab"
+    Write-MenuItem "1" "Launch vmPing (MISC)"
+    Write-MenuItem "2" "Run Win11Debloat (official upstream script)"
+    Write-MenuItem "3" "Run SDelete free-space overwrite"
+    Write-MenuItem "4" "Run VM template prep checklist"
+    Write-MenuItem "5" "Launch VMware Horizon OS Optimization Tool"
+    Write-MenuItem "6" "Open winget command shell"
+    Write-MenuItem "7" "Run winget upgrade --all"
+    Write-MenuItem "8" "Open new terminal tab"
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
-    Write-Host "Keys: 1-8 Select  |  0 Back"
+    Write-MenuKeysLine "1-8"
     Write-Host ""
 }
 

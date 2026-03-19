@@ -56,15 +56,15 @@ function Show-TroubleshootingMenu {
 
     Show-AppHeader -Breadcrumb "Main > Troubleshooting & Validation"
 
-    Write-Host "  [1] Show server role install status"
-    Write-Host "  [2] System snapshot"
+    Write-MenuItem "1" "Show server role install status"
+    Write-MenuItem "2" "System snapshot"
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-Host "Keys: 1-2 Select  |  0 Back"
+    Write-MenuKeysLine "1-2"
     Write-Host ""
 }
 

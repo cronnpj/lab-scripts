@@ -90,20 +90,20 @@ function Show-DevOpsLabAdvancedOpsMenu {
     Show-CurrentContext -RepoPath $script:RepoPath
 
     Write-Host "  Lab Repository - Advanced Operations" -ForegroundColor Cyan
-    Write-Host "  [1] Wipe + Rebuild cluster (student reset mode)"
+    Write-MenuItem "1" "Wipe + Rebuild cluster (student reset mode)"
     Write-Host "      Recreate cluster from scratch in guided mode." -ForegroundColor DarkGray
-    Write-Host "  [2] Nuke local generated files (kubeconfig + student-overrides)"
+    Write-MenuItem "2" "Nuke local generated files (kubeconfig + student-overrides)"
     Write-Host "      Remove local generated artifacts for clean regeneration." -ForegroundColor DarkGray
-    Write-Host "  [3] Repo lab-safe reset (discard local changes)"
+    Write-MenuItem "3" "Repo lab-safe reset (discard local changes)"
     Write-Host "      Hard reset repo state to remote branch HEAD." -ForegroundColor DarkGray
-    Write-Host "  [4] Add new worker node to existing cluster"
+    Write-MenuItem "4" "Add new worker node to existing cluster"
     Write-Host "      Join an additional Talos worker to the cluster." -ForegroundColor DarkGray
-    Write-Host "  [5] Reset CITA Web Demo only (delete namespace cita-web)"
+    Write-MenuItem "5" "Reset CITA Web Demo only (delete namespace cita-web)"
     Write-Host "      Remove demo namespace without rebuilding cluster." -ForegroundColor DarkGray
-    Write-Host "  [6] Open kubectl prompt (new window, repo kubeconfig)"
+    Write-MenuItem "6" "Open kubectl prompt (new window, repo kubeconfig)"
     Write-Host "      Open shell with KUBECONFIG preset for kubectl." -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  [0] Back"
+    Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
