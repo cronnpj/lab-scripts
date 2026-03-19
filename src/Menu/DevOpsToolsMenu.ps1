@@ -127,6 +127,18 @@ function Install-WingetPackage {
 # =========================
 function Test-GitInstalled { return [bool](Get-Command git -ErrorAction SilentlyContinue) }
 
+function Assert-ValidBranchName {
+    param([Parameter(Mandatory)][string]$Branch)
+    # Reject names that contain shell metacharacters or git-special sequences
+    # that could be used for argument injection (e.g. "--option", "a;b", "a|b").
+    if ($Branch -notmatch '^[a-zA-Z0-9._\-/]+$') {
+        throw "Invalid branch name '$Branch'. Only alphanumeric characters, dots, hyphens, underscores, and forward-slashes are allowed."
+    }
+    if ($Branch -match '^\-') {
+        throw "Invalid branch name '$Branch': branch names must not start with a dash."
+    }
+}
+
 function Install-GitIfMissing {
     if (Test-GitInstalled) { return }
 
@@ -166,6 +178,8 @@ function Reset-RepoToOrigin {
         [Parameter(Mandatory)][string]$RepoPath,
         [Parameter(Mandatory)][string]$Branch
     )
+
+    Assert-ValidBranchName -Branch $Branch
 
     Write-Host "WARNING: Lab-safe reset will discard local changes in:" -ForegroundColor DarkYellow
     Write-Host "  $RepoPath" -ForegroundColor DarkYellow
@@ -216,6 +230,8 @@ function Sync-RepoContent {
         [Parameter(Mandatory)][string]$RepoPath,
         [Parameter(Mandatory)][string]$Branch
     )
+
+    Assert-ValidBranchName -Branch $Branch
 
     $parent = Split-Path -Parent $RepoPath
     if (-not (Test-Path $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
@@ -374,7 +390,7 @@ function Resolve-KubeconfigPath {
         if (Test-Path $path) { return $path }
     }
 
-    return $candidates[0]
+    return $null
 }
 
 function Resolve-TalosConfigPath {
@@ -1371,21 +1387,24 @@ do {
                 $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
 
                 $escapedKubeconfig = $kubeconfig.Replace("'", "''")
+                # Backtick-escape $env:KUBECONFIG so it is assigned in the child
+                # process rather than expanded by the parent heredoc.
                 $promptCommand = @"
-$env:KUBECONFIG = '$escapedKubeconfig'
+`$env:KUBECONFIG = '$escapedKubeconfig'
 Clear-Host
 Write-Host 'Kubernetes shell ready.' -ForegroundColor Green
 Write-Host 'KUBECONFIG: $escapedKubeconfig' -ForegroundColor Gray
 Write-Host 'Try: kubectl get nodes -o wide' -ForegroundColor Cyan
 Write-Host 'Type exit to close this window.' -ForegroundColor DarkGray
 "@
+                $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($promptCommand))
 
                 Start-Process powershell.exe -ArgumentList @(
                     "-NoLogo",
                     "-NoExit",
                     "-NoProfile",
                     "-ExecutionPolicy", "Bypass",
-                    "-Command", $promptCommand
+                    "-EncodedCommand", $encodedCommand
                 )
             }
         }

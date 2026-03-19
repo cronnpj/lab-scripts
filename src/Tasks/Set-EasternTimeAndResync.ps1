@@ -28,9 +28,22 @@ if ($currentTimezone.Id -ne $targetTimezoneId) {
 }
 
 $w32timeService = Get-Service -Name "w32time" -ErrorAction SilentlyContinue
-if ($null -ne $w32timeService -and $w32timeService.Status -ne "Running") {
+if ($null -eq $w32timeService) {
+    throw "Windows Time service (w32time) not found. Cannot resync clock."
+}
+if ($w32timeService.Status -ne "Running") {
     Write-LabLog "Time: Starting Windows Time service"
-    Start-Service -Name "w32time" -ErrorAction SilentlyContinue
+    Start-Service -Name "w32time" -ErrorAction Stop
+    # Wait up to 10 seconds for the service to reach Running state
+    $deadline = (Get-Date).AddSeconds(10)
+    while ((Get-Date) -lt $deadline) {
+        $w32timeService.Refresh()
+        if ($w32timeService.Status -eq "Running") { break }
+        Start-Sleep -Milliseconds 500
+    }
+    if ($w32timeService.Status -ne "Running") {
+        throw "Windows Time service failed to start (status: $($w32timeService.Status))."
+    }
 }
 
 Write-LabLog "Time: Running w32tm /resync /force"

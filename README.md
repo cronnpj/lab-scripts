@@ -16,21 +16,14 @@ PowerShell scripts and helpers for provisioning and managing lab environments.
 
 This repository contains a collection of PowerShell modules and scripts used to set up, configure, and maintain lab servers and clients. Typical tasks include installing roles, joining machines to a domain, renaming computers, configuring static IPs, and taking system snapshots.
 
-## Recent Updates (v2026.03.10.2)
+## Recent Updates (v2026.03.19.1)
 
-- Updated menu naming to `App Maintenance & Updates` in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) and [src/Menu/MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1).
-- Hardened PowerShell host selection in [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1): shortcut creation now prefers PowerShell 7 using PATH detection, common install paths, and App Paths registry lookups before falling back to Windows PowerShell.
-- Added Windows Client Utilities options [6]-[8] in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1): `Open winget command shell`, `Run winget upgrade --all`, and `Open new terminal tab`.
-- Added Winget shell quick-command help output for Utilities option [6] and global search mappings (`RunOption = "U6"`, `"U7"`, `"U8"`) in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1).
-
-- Streamlined Lab Tools launch flow to avoid extra transient PowerShell windows: shortcuts now launch directly, and [src/Launch-LabTools.ps1](src/Launch-LabTools.ps1) runs in-session by default.
-- Added launcher config toggle in [src/config/labtools.json](src/config/labtools.json): `launcher.useWindowsTerminal` (default `false`) to optionally spawn a new Windows Terminal tab/window.
-- Added guided VM template prep checklist task [src/Tasks/Run-TemplatePrepChecklist.ps1](src/Tasks/Run-TemplatePrepChecklist.ps1), including optional Sysprep launch and optional handoff to SDelete.
-- Added Windows Client Utilities option [4] in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1): `Run VM template prep checklist`.
-- Added global search action (`RunOption = "U4"`) in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) for template prep workflow.
-- Added Windows Client Utilities option [3] in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1) to run SDelete free-space overwrite for VM template prep.
-- Added SDelete task script [src/Tasks/Run-SDelete.ps1](src/Tasks/Run-SDelete.ps1) with default `-z` mode, optional `-c`, drive prompt, and elevation checks.
-- Added deployable SDelete asset guidance in [src/MISC/README.md](src/MISC/README.md) and [src/MISC/SDelete/README.md](src/MISC/SDelete/README.md).
+- Applied security and code quality fixes across multiple scripts — see [CHANGELOG.md](CHANGELOG.md) for full details.
+- Fixed RCE risk in [src/Tasks/Run-Win11Debloat.ps1](src/Tasks/Run-Win11Debloat.ps1): upstream script is now downloaded to disk before execution rather than run directly in-memory.
+- Added input validation for IP addresses and DNS server in [src/Tasks/Set-StaticIP.ps1](src/Tasks/Set-StaticIP.ps1) and reserved name check in [src/Tasks/Rename-Computer.ps1](src/Tasks/Rename-Computer.ps1).
+- Hardened W32Time service handling in [src/Tasks/Set-EasternTimeAndResync.ps1](src/Tasks/Set-EasternTimeAndResync.ps1) with startup wait and verification before resync.
+- Added `$env:USERNAME` to log entries in [src/Lib/Logging.psm1](src/Lib/Logging.psm1) and removed dead duplicate function definition.
+- Fixed `Resolve-KubeconfigPath` in [src/Menu/DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1) to return `$null` instead of a nonexistent path when no kubeconfig is found.
 - Added global search action (`RunOption = "U3"`) in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) for `Run SDelete free-space overwrite`.
 - Added domain/workgroup membership status to the app header in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) with `Domain: <name>`, `Domain: Workgroup`, or `Domain: None` states.
 - Combined `Internet` and `Domain` into a single header row in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) to reduce vertical space.

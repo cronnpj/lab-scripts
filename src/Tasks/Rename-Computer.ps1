@@ -33,6 +33,12 @@ if ($newName -match '[\\\/\:\*\?\"<>\| ]') {
     Pause
     return
 }
+$reservedNames = @('CON','PRN','AUX','NUL','COM1','COM2','COM3','COM4','COM5','COM6','COM7','COM8','COM9','LPT1','LPT2','LPT3','LPT4','LPT5','LPT6','LPT7','LPT8','LPT9')
+if ($reservedNames -icontains $newName) {
+    Write-Host "Invalid name. '$newName' is a reserved Windows device name."
+    Pause
+    return
+}
 if ($newName -ieq $currentName) {
     Write-Host "Name is already $currentName. No change needed."
     Pause

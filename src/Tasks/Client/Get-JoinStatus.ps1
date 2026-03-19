@@ -1,4 +1,7 @@
 # src\Tasks\Client\Get-JoinStatus.ps1
+# Elevation: NOT required. This script only reads domain/Entra join state via
+# Win32_ComputerSystem and dsregcmd /status, which are accessible to standard users.
+# The optional Microsoft Graph lookup uses delegated user credentials, not admin rights.
 $ErrorActionPreference = "Stop"
 
 Import-Module (Join-Path $PSScriptRoot "..\..\Lib\Logging.psm1") -Force

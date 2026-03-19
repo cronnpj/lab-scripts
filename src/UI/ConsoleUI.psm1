@@ -148,6 +148,7 @@ function Get-PrimaryNetworkInfo {
         return @{ IPAddress = $primary.IPAddress; Mode = $primary.Mode }
     }
     catch {
+        Write-Verbose "Get-PrimaryNetworkInfo: $_"
         return @{ IPAddress = 'N/A'; Mode = 'Unknown' }
     }
 }
@@ -205,6 +206,7 @@ function Get-InternetStatus {
         return ($addresses -and $addresses.Count -gt 0)
     }
     catch {
+        Write-Verbose "Get-InternetStatus: $_"
         return $false
     }
 }
@@ -254,6 +256,7 @@ function Get-DomainMembershipInfo {
         }
     }
     catch {
+        Write-Verbose "Get-DomainMembershipInfo: $_"
         return @{
             Type = 'None'
             Name = ''
@@ -592,6 +595,7 @@ function Get-EntraJoinInfo {
         return $result
     }
     catch {
+        Write-Verbose "Get-EntraJoinInfo: $_"
         return $default
     }
 }
@@ -881,6 +885,7 @@ function Get-CurrentJoinType {
         }
     }
     catch {
+        Write-Verbose "Get-CurrentJoinType: $_"
         return 'Unknown'
     }
 

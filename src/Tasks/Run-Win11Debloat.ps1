@@ -27,7 +27,21 @@ try {
         return
     }
 
-    & ([scriptblock]::Create((Invoke-RestMethod $runUrl)))
+    # Download to a temp file rather than executing directly from the network.
+    # This avoids running an in-memory scriptblock whose content cannot be
+    # inspected or logged, and lets the OS/AV scan the file before execution.
+    $tempScript = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "Win11Debloat_$(Get-Date -Format 'yyyyMMddHHmmss').ps1")
+    try {
+        Write-Host "Downloading script to: $tempScript" -ForegroundColor Cyan
+        Invoke-WebRequest -Uri $runUrl -OutFile $tempScript -UseBasicParsing -ErrorAction Stop
+        Write-Host "Download complete. Executing..." -ForegroundColor Cyan
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $tempScript
+    }
+    finally {
+        if (Test-Path $tempScript) {
+            Remove-Item $tempScript -Force -ErrorAction SilentlyContinue
+        }
+    }
     Write-Host "Win11Debloat script finished." -ForegroundColor Green
 }
 catch {

@@ -60,12 +60,11 @@ catch {
 }
 
 try {
-    $parentProc = (Get-CimInstance Win32_Process -Filter "ProcessId = $((Get-CimInstance Win32_Process -Filter 'ProcessId = $PID').ParentProcessId)").Name
-    $isMenu = $false
-    if ($parentProc -match 'powershell|pwsh|code|terminal|menu') {
-        $isMenu = $true
-    }
-    if (-not $isMenu) {
+    $currentProc = Get-CimInstance Win32_Process -Filter "ProcessId = $PID" -ErrorAction SilentlyContinue
+    $parentProc = if ($null -ne $currentProc) {
+        (Get-CimInstance Win32_Process -Filter "ProcessId = $($currentProc.ParentProcessId)" -ErrorAction SilentlyContinue).Name
+    } else { $null }
+    if ($parentProc -notmatch 'powershell|pwsh|code|terminal|menu') {
         Wait-MenuContinue
     }
 } catch {

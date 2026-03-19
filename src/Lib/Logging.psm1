@@ -1,16 +1,3 @@
-function Write-LabLog {
-    param (
-        [string]$Message
-    )
-
-    $logPath = "C:\LabLogs\labtools.log"
-
-    if (-not (Test-Path "C:\LabLogs")) {
-        New-Item -Path "C:\LabLogs" -ItemType Directory | Out-Null
-    }
-
-    Add-Content -Path $logPath -Value "$(Get-Date) - $Message"
-}
 function Initialize-LabLog {
     param(
         [string]$LogDir = "C:\LabLogs",
@@ -35,7 +22,7 @@ function Write-LabLog {
 
     if (-not $script:LabLogPath) { Initialize-LabLog }
 
-    $line = "{0} [{1}] {2}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $Level, $Message
+    $line = "{0} [{1}] [{2}] {3}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $Level, $env:USERNAME, $Message
     Add-Content -Path $script:LabLogPath -Value $line
 }
 

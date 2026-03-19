@@ -114,6 +114,19 @@ function New-LabShortcut {
     $escapedLauncherPath = $LauncherPath.Replace("'", "''")
     $escapedWorkingDirectory = $WorkingDirectory.Replace("'", "''")
 
+    # The shortcut launches a non-elevated PowerShell stub that immediately
+    # re-launches the real launcher elevated via -Verb RunAs.  The stub is:
+    #
+    #   $hostExe     = '<path to pwsh.exe or powershell.exe>'
+    #   $launcher    = '<path to Launch-LabTools.ps1>'
+    #   $workingDir  = '<repo root>'
+    #   Start-Process -FilePath $hostExe \
+    #       -ArgumentList @('-NoLogo','-ExecutionPolicy','Bypass','-File',$launcher) \
+    #       -WorkingDirectory $workingDir -Verb RunAs
+    #
+    # -EncodedCommand is used here only because Windows shortcut .Arguments
+    # fields do not reliably survive round-trips with complex quoted strings.
+    # The command being encoded is the four lines above — nothing else.
     $elevationWrapper = @"
 `$hostExe = '$escapedHostPath'
 `$launcher = '$escapedLauncherPath'

@@ -2,6 +2,33 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.03.19.1 - 2026-03-19
+
+### Security and Code Quality Fixes
+
+#### High Severity
+- Updated [src/Tasks/Run-Win11Debloat.ps1](src/Tasks/Run-Win11Debloat.ps1) to download the upstream script to a temp file before execution rather than running it directly in-memory via `Invoke-RestMethod`, allowing OS/AV scanning and leaving an auditable path in output.
+- Added a comment block to [src/Tasks/Create-Shortcuts.ps1](src/Tasks/Create-Shortcuts.ps1) documenting exactly what the `-EncodedCommand` elevation wrapper does, so future reviewers can verify it without decoding the base64.
+- Added `Assert-ValidBranchName` in [src/Menu/DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1) to validate branch names before use in `git checkout` and `git reset --hard`, preventing potential argument injection if the variable origin changes.
+
+#### Medium Severity
+- Added `Assert-ValidIPv4` helper to [src/Tasks/Set-StaticIP.ps1](src/Tasks/Set-StaticIP.ps1) and applied it to IP address, gateway, and DNS inputs before any network cmdlets are called.
+- Added reserved Windows device name check (`CON`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`) to [src/Tasks/Rename-Computer.ps1](src/Tasks/Rename-Computer.ps1).
+- Updated [src/Tasks/Set-EasternTimeAndResync.ps1](src/Tasks/Set-EasternTimeAndResync.ps1) to throw if the W32Time service is missing, use `-ErrorAction Stop` when starting it, and wait/verify the service reaches `Running` state before attempting resync.
+- Fixed null reference in [src/Tasks/Client/Test-Connectivity.ps1](src/Tasks/Client/Test-Connectivity.ps1) where a nested `Get-CimInstance` call could throw if the parent process had already exited; split into two calls with null guards.
+- Changed `Resolve-KubeconfigPath` fallback return value in [src/Menu/DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1) from `$candidates[0]` to `$null` so callers receive an unambiguous signal when no kubeconfig is found.
+
+#### Low Severity
+- Removed duplicate `Write-LabLog` definition (lines 1–13) from [src/Lib/Logging.psm1](src/Lib/Logging.psm1); the first definition was dead code with a hardcoded `C:\LabLogs\labtools.log` path.
+- Added `$env:USERNAME` to the log line format in [src/Lib/Logging.psm1](src/Lib/Logging.psm1) for a complete audit trail.
+- Added `Write-Verbose` to silent catch blocks in [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) (`Get-PrimaryNetworkInfo`, `Get-InternetStatus`, `Get-DomainMembershipInfo`, `Get-EntraJoinInfo`, `Get-CurrentJoinType`) so errors are surfaced when running with `-Verbose`.
+- Switched kubectl interactive prompt in [src/Menu/DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1) from `-Command` with a dynamic string to `-EncodedCommand`; also fixed a pre-existing bug where `$env:KUBECONFIG` was expanded by the parent process instead of being assigned in the child.
+- Added adapter re-verification step to [src/Tasks/Set-StaticIP.ps1](src/Tasks/Set-StaticIP.ps1) after the confirm prompt to catch the case where the selected adapter goes down before settings are applied.
+- Added elevation comment to [src/Tasks/Client/Get-JoinStatus.ps1](src/Tasks/Client/Get-JoinStatus.ps1) documenting that admin rights are not required.
+
+### Version
+- Bumped [src/VERSION.txt](src/VERSION.txt) to `v2026.03.19.1`.
+
 ## v2026.03.12.1 - 2026-03-12
 
 ### Repository Consolidation

@@ -54,6 +54,13 @@ function Select-NetworkAdapter {
     }
 }
 
+function Assert-ValidIPv4([string]$label, [string]$value) {
+    $parsed = $null
+    if (-not [System.Net.IPAddress]::TryParse($value, [ref]$parsed) -or $parsed.AddressFamily -ne [System.Net.Sockets.AddressFamily]::InterNetwork) {
+        throw "'$value' is not a valid IPv4 address for $label."
+    }
+}
+
 function Test-IPv4InUse([string]$ip) {
     # Best-effort: if it answers ping, assume it's in use.
     # (Not perfect—some hosts block ICMP—but good enough to prevent common lab collisions.)
@@ -99,6 +106,10 @@ $gw      = Prompt-NonEmpty "Default gateway" $defaultGateway
 $defaultDns = if ($role.Trim() -eq "1") { $ip } else { "192.168.1.2" }
 $dnsInput = Prompt-NonEmpty "DNS server" $defaultDns
 
+Assert-ValidIPv4 "IP address" $ip
+Assert-ValidIPv4 "Default gateway" $gw
+Assert-ValidIPv4 "DNS server" $dnsInput
+
 Write-Host ""
 Write-Host "Summary:"
 Write-Host " Adapter: $($adapter.Name)"
@@ -127,6 +138,16 @@ if (Test-IPv4InUse -ip $ip) {
 }
 
 $ifIndex = $adapter.IfIndex
+
+# Re-verify the adapter is still present and up — the user may have taken time
+# reviewing the summary and the adapter state could have changed.
+$verifiedAdapter = Get-NetAdapter -InterfaceIndex $ifIndex -ErrorAction SilentlyContinue
+if ($null -eq $verifiedAdapter -or $verifiedAdapter.Status -ne "Up") {
+    Write-Host "Adapter '$($adapter.Name)' is no longer available. Re-run and select an active adapter." -ForegroundColor Red
+    Write-LabLog "StaticIP: Aborted - adapter $($adapter.Name) (IfIndex $ifIndex) no longer available" "WARN"
+    Wait-MenuContinue
+    return
+}
 
 # Remove existing IPv4 addresses (except APIPA) to avoid duplicates
 $existing = Get-NetIPAddress -InterfaceIndex $ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
