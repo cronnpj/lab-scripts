@@ -416,8 +416,6 @@ do {
         default { Start-Sleep -Milliseconds 300 }
     }
 
-    if (-not $exit) { Clear-Host }  # show fresh main menu after returning
-
 } while (-not $exit)
 
 Clear-Host

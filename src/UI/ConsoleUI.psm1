@@ -822,13 +822,25 @@ function Write-TenantLine {
     Write-Host " |" -ForegroundColor Cyan
 }
 
+$script:AppHeaderDrawn = $false
+
 function Show-AppHeader {
     param(
         [Parameter(Mandatory=$true)][string]$Breadcrumb,
         [int]$Width = 64
     )
 
-    Clear-Host
+    if (-not $script:AppHeaderDrawn) {
+        # First draw this session: start with a clean screen
+        Clear-Host
+        $script:AppHeaderDrawn = $true
+    }
+    else {
+        # Subsequent draws: scroll viewport to top and overwrite header in place.
+        # This keeps the header visually persistent — no blank-screen flash.
+        try { $host.UI.RawUI.WindowPosition = [System.Management.Automation.Host.Coordinates]::new(0, 0) } catch {}
+        [Console]::SetCursorPosition(0, 0)
+    }
 
     $version  = Get-AppVersion
     $hostName = $env:COMPUTERNAME
@@ -870,10 +882,20 @@ function Show-AppHeader {
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor Cyan
 
+    # Clear everything below the header box to end of screen.
+    # Removes old menu items, old command output — whatever was there before.
+    [Console]::Write([char]27 + "[J")
+
     Write-Host ""
     Write-Host "Navigation: " -NoNewline -ForegroundColor DarkGray
     Write-Host $Breadcrumb -ForegroundColor Cyan
     Write-Host ""
+}
+
+function Reset-AppHeader {
+    # Forces a full Clear-Host on the next Show-AppHeader call.
+    # Call this if the screen state is unknown (e.g., after an external process runs).
+    $script:AppHeaderDrawn = $false
 }
 
 function Write-MenuItem {
@@ -953,5 +975,5 @@ function Clear-JoinDisplayInfoCache {
     $script:JoinDisplayInfoCacheTime = [datetime]::MinValue
 }
 
-Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache, Read-MenuChoice
+Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache, Read-MenuChoice, Reset-AppHeader
 
