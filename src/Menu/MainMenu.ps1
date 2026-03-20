@@ -54,9 +54,10 @@ function Get-UpdateStatus {
 }
 
 function Get-StatusLine {
-    $status = Get-UpdateStatus
-    switch ($status) {
-        "UPDATE_AVAILABLE" { return @{ Text = "[Warning] UPDATE AVAILABLE - Run App Maintenance & Updates"; Color = "Yellow" } }
+    param([string]$Status = "")
+    if ([string]::IsNullOrEmpty($Status)) { $Status = Get-UpdateStatus }
+    switch ($Status) {
+        "UPDATE_AVAILABLE" { return @{ Text = "[Warning] UPDATE AVAILABLE - Press U to update now"; Color = "Yellow" } }
         "UP_TO_DATE"       { return @{ Text = "[Ready] Up to date"; Color = "Green" } }
         "NO_GIT"           { return @{ Text = "[Ready] Git not installed"; Color = "DarkGray" } }
         "NO_REPO"          { return @{ Text = "[Ready] Update check unavailable (repo not detected)"; Color = "DarkGray" } }
@@ -144,7 +145,9 @@ function Invoke-MainMenuGraphConnect {
 
 function Show-MainMenu {
     $graphState = Get-GraphConnectMenuState
-    $statusObj = Get-StatusLine
+    $updateStatus = Get-UpdateStatus
+    $statusObj = Get-StatusLine -Status $updateStatus
+    $updateAvailable = ($updateStatus -eq "UPDATE_AVAILABLE")
 
     Show-AppHeader -Breadcrumb "Main Menu"
 
@@ -156,6 +159,9 @@ function Show-MainMenu {
     Write-MenuItem "6" "DevOps & Automation"           "Magenta"
     Write-MenuItem "7" "App Maintenance & Updates"     "White"
     Write-MenuItem "S" "Global Search"                 "White"
+    if ($updateAvailable) {
+        Write-MenuItem "U" "Update Lab Tools from GitHub" "Yellow"
+    }
     if ($graphState.ShowGraphConnect) {
         Write-MenuItem "G" "Connect Microsoft Graph for Tenant info" "Magenta"
     }
@@ -164,29 +170,30 @@ function Show-MainMenu {
 
     Write-StatusLine -StatusText $statusObj.Text -StatusColor $statusObj.Color
 
-    if ($graphState.ShowGraphConnect) {
-        Write-Host "Keys: " -NoNewline -ForegroundColor DarkGray
-        Write-Host "1-7" -NoNewline -ForegroundColor Yellow
-        Write-Host " Select  |  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "S" -NoNewline -ForegroundColor Yellow
-        Write-Host " Search  |  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "G" -NoNewline -ForegroundColor Yellow
-        Write-Host " Graph  |  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "0" -NoNewline -ForegroundColor Yellow
-        Write-Host " Exit" -ForegroundColor DarkGray
-    }
-    else {
-        Write-Host "Keys: " -NoNewline -ForegroundColor DarkGray
-        Write-Host "1-7" -NoNewline -ForegroundColor Yellow
-        Write-Host " Select  |  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "S" -NoNewline -ForegroundColor Yellow
-        Write-Host " Search  |  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "0" -NoNewline -ForegroundColor Yellow
-        Write-Host " Exit" -ForegroundColor DarkGray
+    # Build keys line dynamically based on active shortcuts
+    $keyParts = [System.Collections.Generic.List[hashtable]]::new()
+    $keyParts.Add(@{ Key = "1-7"; Label = " Select" })
+    $keyParts.Add(@{ Key = "S";   Label = " Search" })
+    if ($updateAvailable)            { $keyParts.Add(@{ Key = "U"; Label = " Update" }) }
+    if ($graphState.ShowGraphConnect) { $keyParts.Add(@{ Key = "G"; Label = " Graph"  }) }
+    $keyParts.Add(@{ Key = "0"; Label = " Exit" })
+
+    Write-Host "Keys: " -NoNewline -ForegroundColor DarkGray
+    for ($i = 0; $i -lt $keyParts.Count; $i++) {
+        Write-Host $keyParts[$i].Key -NoNewline -ForegroundColor Yellow
+        if ($i -lt $keyParts.Count - 1) {
+            Write-Host "$($keyParts[$i].Label)  |  " -NoNewline -ForegroundColor DarkGray
+        } else {
+            Write-Host $keyParts[$i].Label -ForegroundColor DarkGray
+        }
     }
     Write-Host ""
 
-    return $graphState
+    return @{
+        ShowGraphConnect = $graphState.ShowGraphConnect
+        JoinType         = $graphState.JoinType
+        UpdateAvailable  = $updateAvailable
+    }
 }
 
 function Get-GlobalSearchCatalog {
@@ -327,7 +334,7 @@ function Invoke-GlobalSearch {
 
 $exit = $false
 do {
-    $graphState = Show-MainMenu
+    $menuState = Show-MainMenu
     $choice = Read-Host "Select an option"
 
     switch ($choice.ToLowerInvariant()) {
@@ -339,9 +346,19 @@ do {
         "6" { & (Join-Path $PSScriptRoot "DevOpsToolsMenu.ps1") }
         "7" { & (Join-Path $PSScriptRoot "MaintenanceMenu.ps1") }
         "s" { Invoke-GlobalSearch }
+        "u" {
+            if ($menuState.UpdateAvailable) {
+                Show-AppHeader -Breadcrumb "Main Menu > Update Lab Tools"
+                & (Join-Path $PSScriptRoot "..\Tasks\Update-LabTools.ps1")
+                Read-Host "Press Enter to continue" | Out-Null
+            }
+            else {
+                Start-Sleep -Milliseconds 300
+            }
+        }
         "g" {
-            if ($graphState.ShowGraphConnect) {
-                Invoke-MainMenuGraphConnect -JoinType $graphState.JoinType
+            if ($menuState.ShowGraphConnect) {
+                Invoke-MainMenuGraphConnect -JoinType $menuState.JoinType
             }
             else {
                 Start-Sleep -Milliseconds 300

@@ -190,10 +190,34 @@ try {
     $ver = if (Test-Path $verFile) { (Get-Content $verFile | Select-Object -First 1).Trim() } else { "unknown" }
 
     Write-Host ""
-    Write-Host "Update complete. Version: $ver"
+    Write-Host "Update complete. Version: $ver" -ForegroundColor Green
 
+    # What's new: show last 5 commits
+    $recentLog = git -C $RuntimeRoot log --oneline -5 2>$null
+    if ($recentLog) {
+        Write-Host ""
+        Write-Host "What's new (recent commits):" -ForegroundColor Cyan
+        $recentLog | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
+    }
+
+    # Offer to relaunch
     Write-Host ""
-    Write-Host "You can now re-launch the menu shortcut."
+    $relaunch = Read-Host "Relaunch Lab Tools now? (Y/N)"
+    if ($relaunch -match '^(?i)y(es)?$') {
+        $launcher = Join-Path $RuntimeRoot "Launch-LabTools.ps1"
+        if (Test-Path $launcher) {
+            Write-Host "Relaunching..." -ForegroundColor Cyan
+            Start-Sleep -Milliseconds 500
+            & $launcher
+        }
+        else {
+            Write-Host "Launcher not found at: $launcher" -ForegroundColor Yellow
+            Write-Host "Re-open the terminal manually to pick up the update." -ForegroundColor DarkGray
+        }
+    }
+    else {
+        Write-Host "Re-open the terminal to pick up the update." -ForegroundColor DarkGray
+    }
 }
 catch {
     $script:updateFailed = $true
