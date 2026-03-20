@@ -8,7 +8,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Continue"
 
-Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force -ErrorAction Stop
+if (-not (Get-Module ConsoleUI)) { Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force -ErrorAction Stop }
 
 # =========================
 # Small UX helpers
@@ -1423,5 +1423,4 @@ Write-Host 'Type exit to close this window.' -ForegroundColor DarkGray
 
 } while (-not $back)
 
-Clear-Host
 return

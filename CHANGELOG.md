@@ -2,6 +2,16 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.03.20.1 - 2026-03-20
+
+### UI / Navigation — Persistent Header
+
+- Changed all sub-menu `Import-Module` calls for [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) from unconditional `-Force` to a conditional check (`if (-not (Get-Module ConsoleUI))`). This preserves the `$script:AppHeaderDrawn` module state across menu transitions so the in-place header overwrite works when navigating between menus. Affects: [ServerToolsMenu.ps1](src/Menu/ServerToolsMenu.ps1), [DCToolsMenu.ps1](src/Menu/DCToolsMenu.ps1), [MemberServerMenu.ps1](src/Menu/MemberServerMenu.ps1), [ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1), [TroubleshootingMenu.ps1](src/Menu/TroubleshootingMenu.ps1), [MaintenanceMenu.ps1](src/Menu/MaintenanceMenu.ps1), [DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1), [DevOpsInstallUpdateMenu.ps1](src/Menu/DevOpsInstallUpdateMenu.ps1), [DevOpsQuickChecksMenu.ps1](src/Menu/DevOpsQuickChecksMenu.ps1), [DevOpsLabInstallOpsMenu.ps1](src/Menu/DevOpsLabInstallOpsMenu.ps1), [DevOpsLabAdvancedOpsMenu.ps1](src/Menu/DevOpsLabAdvancedOpsMenu.ps1).
+- Removed `Clear-Host` before `return` in all sub-menus. The exit clear was causing a blank-screen flicker when pressing `0` to go back to the main menu. [src/UI/ConsoleUI.psm1](src/UI/ConsoleUI.psm1) already clears below the header via `ESC[J` on each redraw, making the exit clear redundant.
+
+### Version
+- Bumped [src/VERSION.txt](src/VERSION.txt) to `v2026.03.20.1`.
+
 ## v2026.03.19.2 - 2026-03-19
 
 ### UI Color Enhancements

@@ -8,7 +8,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Continue"
 
-Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force -ErrorAction Stop
+if (-not (Get-Module ConsoleUI)) { Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force -ErrorAction Stop }
 
 $script:RepoUrl  = "https://github.com/cronnpj/lab-scripts.git"
 $script:Branch   = "main"
@@ -281,5 +281,4 @@ while (-not $back) {
     }
 }
 
-Clear-Host
 return

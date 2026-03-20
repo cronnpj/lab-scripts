@@ -2,7 +2,7 @@
 $ErrorActionPreference = "SilentlyContinue"
 
 # Shared UI
-Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force
+if (-not (Get-Module ConsoleUI)) { Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force }
 
 function Read-MenuContinue {
     Write-Host ""
@@ -138,5 +138,4 @@ do {
 
 } while (-not $back)
 
-Clear-Host
 return

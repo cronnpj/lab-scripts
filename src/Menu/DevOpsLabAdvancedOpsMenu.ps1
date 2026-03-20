@@ -4,7 +4,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Continue"
 
-Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force -ErrorAction Stop
+if (-not (Get-Module ConsoleUI)) { Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force -ErrorAction Stop }
 
 $script:RepoTarget = "labs\k8s-baremetal-lab\bootstrap.ps1"
 
@@ -173,5 +173,4 @@ while (-not $back) {
     }
 }
 
-Clear-Host
 return

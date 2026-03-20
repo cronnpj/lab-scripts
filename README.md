@@ -16,7 +16,10 @@ PowerShell scripts and helpers for provisioning and managing lab environments.
 
 This repository contains a collection of PowerShell modules and scripts used to set up, configure, and maintain lab servers and clients. Typical tasks include installing roles, joining machines to a domain, renaming computers, configuring static IPs, and taking system snapshots.
 
-## Recent Updates (v2026.03.19.1)
+## Recent Updates (v2026.03.20.1)
+
+- Eliminated menu navigation flicker: sub-menus no longer force-reload the shared UI module (`ConsoleUI.psm1`), preserving the in-place header overwrite state across all menu transitions.
+- Removed redundant `Clear-Host` on sub-menu exit — the header's `ESC[J` clear already handles stale content below, so the blank-screen flash when pressing `0` to go back no longer occurs.
 
 - Applied security and code quality fixes across multiple scripts — see [CHANGELOG.md](CHANGELOG.md) for full details.
 - Fixed RCE risk in [src/Tasks/Run-Win11Debloat.ps1](src/Tasks/Run-Win11Debloat.ps1): upstream script is now downloaded to disk before execution rather than run directly in-memory.
