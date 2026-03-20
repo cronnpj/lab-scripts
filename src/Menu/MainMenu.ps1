@@ -26,7 +26,16 @@ function Get-RepoPath {
     return (Resolve-RepoPath)
 }
 
+$script:UpdateStatusCache     = $null
+$script:UpdateStatusCacheTime = [datetime]::MinValue
+
 function Get-UpdateStatus {
+    $cacheTtl = 300  # 5 minutes - git fetch is a network call, no need to run it on every menu render
+    if ($null -ne $script:UpdateStatusCache -and
+        ([datetime]::Now - $script:UpdateStatusCacheTime).TotalSeconds -lt $cacheTtl) {
+        return $script:UpdateStatusCache
+    }
+
     try {
         if (-not (Test-GitInstalled)) { return "NO_GIT" }
 
@@ -36,21 +45,27 @@ function Get-UpdateStatus {
         git -C $repoPath fetch --quiet 2>$null | Out-Null
 
         $branch = (git -C $repoPath rev-parse --abbrev-ref HEAD 2>$null).Trim()
-        if (-not $branch) { return "UNKNOWN" }
-
-        $counts = (git -C $repoPath rev-list --left-right --count "HEAD...origin/$branch" 2>$null).Trim()
-        if (-not $counts) { return "UNKNOWN" }
-
-        $parts = $counts -split "`t"
-        if ($parts.Count -lt 2) { return "UNKNOWN" }
-
-        $behind = 0
-        if (-not [int]::TryParse($parts[1], [ref]$behind)) { return "UNKNOWN" }
-
-        if ($behind -gt 0) { return "UPDATE_AVAILABLE" }
-        return "UP_TO_DATE"
+        if (-not $branch) { $result = "UNKNOWN" }
+        else {
+            $counts = (git -C $repoPath rev-list --left-right --count "HEAD...origin/$branch" 2>$null).Trim()
+            if (-not $counts) { $result = "UNKNOWN" }
+            else {
+                $parts = $counts -split "`t"
+                if ($parts.Count -lt 2) { $result = "UNKNOWN" }
+                else {
+                    $behind = 0
+                    if (-not [int]::TryParse($parts[1], [ref]$behind)) { $result = "UNKNOWN" }
+                    elseif ($behind -gt 0) { $result = "UPDATE_AVAILABLE" }
+                    else { $result = "UP_TO_DATE" }
+                }
+            }
+        }
     }
-    catch { return "UNKNOWN" }
+    catch { $result = "UNKNOWN" }
+
+    $script:UpdateStatusCache     = $result
+    $script:UpdateStatusCacheTime = [datetime]::Now
+    return $result
 }
 
 function Get-StatusLine {

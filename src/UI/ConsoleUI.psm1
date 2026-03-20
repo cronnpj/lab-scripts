@@ -196,22 +196,30 @@ function Write-NetworkLine {
     Write-Host " |" -ForegroundColor Cyan
 }
 
+$script:InternetStatusCache     = $null
+$script:InternetStatusCacheTime = [datetime]::MinValue
+
 function Get-InternetStatus {
+    $cacheTtl = 30
+    if ($null -ne $script:InternetStatusCache -and
+        ([datetime]::Now - $script:InternetStatusCacheTime).TotalSeconds -lt $cacheTtl) {
+        return $script:InternetStatusCache
+    }
+
     try {
         $connectTask = [System.Net.Dns]::GetHostAddressesAsync('www.msftconnecttest.com')
         $completed = $connectTask.Wait(1500)
 
-        if (-not $completed) {
-            return $false
-        }
-
-        $addresses = $connectTask.Result
-        return ($addresses -and $addresses.Count -gt 0)
+        $result = $completed -and $connectTask.Result -and $connectTask.Result.Count -gt 0
     }
     catch {
         Write-Verbose "Get-InternetStatus: $_"
-        return $false
+        $result = $false
     }
+
+    $script:InternetStatusCache     = $result
+    $script:InternetStatusCacheTime = [datetime]::Now
+    return $result
 }
 
 function Write-InternetLine {
@@ -603,7 +611,16 @@ function Get-EntraJoinInfo {
     }
 }
 
+$script:JoinDisplayInfoCache     = $null
+$script:JoinDisplayInfoCacheTime = [datetime]::MinValue
+
 function Get-JoinDisplayInfo {
+    $cacheTtl = 60
+    if ($null -ne $script:JoinDisplayInfoCache -and
+        ([datetime]::Now - $script:JoinDisplayInfoCacheTime).TotalSeconds -lt $cacheTtl) {
+        return $script:JoinDisplayInfoCache
+    }
+
     $domainInfo = Get-DomainMembershipInfo
     $entraInfo = Get-EntraJoinInfo
 
@@ -695,13 +712,15 @@ function Get-JoinDisplayInfo {
         }
     }
 
-    return @{
+    $script:JoinDisplayInfoCache     = @{
         Text        = $joinText
         CompactText = $compactJoinText
         Tenant      = $tenantText
         JoinType    = $entraInfo.JoinType
         Color       = $joinColor
     }
+    $script:JoinDisplayInfoCacheTime = [datetime]::Now
+    return $script:JoinDisplayInfoCache
 }
 
 function Write-DomainLine {
