@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"Read-Host.*Select\\\\|Read-Host.*option\\\\|Read-Host.*choice\" c:/Users/pat/lab-scripts/src/Menu/*.ps1)"
+    ]
+  }
+}

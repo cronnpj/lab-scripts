@@ -75,7 +75,7 @@ $timezoneScript  = Join-Path $PSScriptRoot "..\Tasks\Set-EasternTimeAndResync.ps
 
 do {
     Show-ServerToolsMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor
-    $choice = Read-Host "Select an option"
+    $choice = Read-MenuChoice
 
     switch ($choice) {
         "1" { Invoke-TaskSafe -Path $renameScript   -SuccessText "Rename computer completed" }

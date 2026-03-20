@@ -92,7 +92,7 @@ if (-not [string]::IsNullOrWhiteSpace($RunOption)) {
 
 do {
     Show-TroubleshootingMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor
-    $choice = Read-Host "Select an option"
+    $choice = Read-MenuChoice
 
     switch ($choice) {
         "1" { Invoke-TaskSafe -Path $installStatusScript -SuccessText "Install status displayed" }

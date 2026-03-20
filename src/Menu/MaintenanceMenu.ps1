@@ -87,7 +87,7 @@ $script:lastStatusColor = "DarkGray"
 
 do {
     Show-MaintenanceMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor
-    $choice = Read-Host "Select an option"
+    $choice = Read-MenuChoice
 
     switch ($choice) {
             "1" {

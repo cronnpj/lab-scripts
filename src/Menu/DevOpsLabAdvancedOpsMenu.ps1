@@ -127,7 +127,7 @@ $optionMap = @{
 $back = $false
 while (-not $back) {
     Show-DevOpsLabAdvancedOpsMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor
-    $choice = Read-Host "Select an option"
+    $choice = Read-MenuChoice
 
     switch ($choice) {
         "0" { $back = $true }

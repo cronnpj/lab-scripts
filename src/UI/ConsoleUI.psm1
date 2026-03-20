@@ -935,10 +935,23 @@ function Get-CurrentJoinType {
     return 'Unknown'
 }
 
+function Read-MenuChoice {
+    # Single-keypress input — no Enter required. Consistent across all menus.
+    Write-Host "Select an option: " -NoNewline
+    while ($true) {
+        if ([Console]::KeyAvailable) {
+            $key = [Console]::ReadKey($true)
+            Write-Host $key.KeyChar
+            return $key.KeyChar.ToString()
+        }
+        Start-Sleep -Milliseconds 100
+    }
+}
+
 function Clear-JoinDisplayInfoCache {
     $script:JoinDisplayInfoCache     = $null
     $script:JoinDisplayInfoCacheTime = [datetime]::MinValue
 }
 
-Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache
+Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache, Read-MenuChoice
 

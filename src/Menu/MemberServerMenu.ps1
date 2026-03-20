@@ -73,7 +73,7 @@ $script:lastStatusColor = "DarkGray"
 
 do {
     Show-MemberServerMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor
-    $choice = Read-Host "Select an option"
+    $choice = Read-MenuChoice
 
     switch ($choice) {
         "1" { Invoke-TaskSafe -Path $joinDomainScript -SuccessText "Join domain completed" }

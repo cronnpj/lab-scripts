@@ -226,7 +226,7 @@ while (-not $back) {
         $isAutomated = $true
     }
     else {
-        $choice = Read-Host "Select an option"
+        $choice = Read-MenuChoice
     }
 
     switch ($choice) {

@@ -374,7 +374,7 @@ function Invoke-IdentityEnrollmentMenu {
     $backSub = $false
     do {
         Show-IdentityEnrollmentMenu
-        $choice = Read-Host "Select an option"
+        $choice = Read-MenuChoice
 
         switch ($choice) {
             "1"  { Invoke-TaskSafe   -Path $joinDomainScript -SuccessText "Join domain completed" }
@@ -401,7 +401,7 @@ function Invoke-PolicyManagementMenu {
     $backSub = $false
     do {
         Show-PolicyManagementMenu
-        $choice = Read-Host "Select an option"
+        $choice = Read-MenuChoice
 
         switch ($choice) {
             "1"  { Invoke-ActionSafe -Action { Clear-Host; gpupdate /force } -SuccessText "Group Policy update completed" }
@@ -421,7 +421,7 @@ function Invoke-NetworkToolsMenu {
     $backSub = $false
     do {
         Show-NetworkToolsMenu
-        $choice = Read-Host "Select an option"
+        $choice = Read-MenuChoice
 
         switch ($choice) {
             "1"  { Invoke-ActionSafe -Action { Clear-Host; ipconfig /all } -SuccessText "IP configuration displayed" }
@@ -450,7 +450,7 @@ function Invoke-SystemActionsMenu {
     $backSub = $false
     do {
         Show-SystemActionsMenu
-        $choice = Read-Host "Select an option"
+        $choice = Read-MenuChoice
 
         switch ($choice) {
             "1"  { Invoke-TaskSafe   -Path $renameScript -SuccessText "Rename computer completed" }
@@ -479,7 +479,7 @@ function Invoke-UtilitiesMenu {
     $backSub = $false
     do {
         Show-UtilitiesMenu
-        $choice = Read-Host "Select an option"
+        $choice = Read-MenuChoice
 
         switch ($choice) {
             "1" {
@@ -620,7 +620,7 @@ if (-not [string]::IsNullOrWhiteSpace($RunOption)) {
 
 do {
     Show-ClientMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor
-    $choice = Read-Host "Select an option"
+    $choice = Read-MenuChoice
 
     switch ($choice) {
         "1"  { Invoke-IdentityEnrollmentMenu }
