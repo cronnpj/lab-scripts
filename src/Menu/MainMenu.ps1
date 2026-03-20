@@ -146,6 +146,7 @@ function Invoke-MainMenuGraphConnect {
 
         if ($ctx -and -not [string]::IsNullOrWhiteSpace([string]$ctx.Account)) {
             Write-Host "Connected to Microsoft Graph as: $($ctx.Account)" -ForegroundColor Green
+            Clear-JoinDisplayInfoCache  # force header to re-read tenant on next render
         }
         else {
             Write-Host "Graph sign-in completed, but no active context was returned yet." -ForegroundColor DarkYellow

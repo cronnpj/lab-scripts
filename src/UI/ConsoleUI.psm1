@@ -935,5 +935,10 @@ function Get-CurrentJoinType {
     return 'Unknown'
 }
 
-Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine
+function Clear-JoinDisplayInfoCache {
+    $script:JoinDisplayInfoCache     = $null
+    $script:JoinDisplayInfoCacheTime = [datetime]::MinValue
+}
+
+Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache
 

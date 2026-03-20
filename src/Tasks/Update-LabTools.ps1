@@ -233,9 +233,16 @@ catch {
 }
 finally {
     # Suppress pause if running from menu (parent process is PowerShell, WindowsTerminal, or called from another script)
-    $parentProc = (Get-CimInstance Win32_Process -Filter "ProcessId = $((Get-CimInstance Win32_Process -Filter 'ProcessId = $PID').ParentProcessId)").Name
     $isMenu = $false
-    if ($parentProc -match 'powershell|pwsh|code|terminal|menu') {
+    try {
+        $parentPid = (Get-CimInstance Win32_Process -Filter "ProcessId = $PID" -ErrorAction Stop).ParentProcessId
+        $parentProc = (Get-CimInstance Win32_Process -Filter "ProcessId = $parentPid" -ErrorAction Stop).Name
+        if ($parentProc -match 'powershell|pwsh|code|terminal|menu') {
+            $isMenu = $true
+        }
+    }
+    catch {
+        # If process detection fails, default to no pause (safe for menu-launched context)
         $isMenu = $true
     }
     if (-not $isMenu) {
