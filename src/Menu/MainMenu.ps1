@@ -348,10 +348,42 @@ function Invoke-GlobalSearch {
     }
 }
 
+function Read-MainMenuChoice {
+    # Polls for a keypress every 500ms. Returns the character pressed immediately
+    # (no Enter needed), or $null after the refresh interval to trigger a menu re-render.
+    param([int]$RefreshIntervalSeconds = 300)
+
+    Write-Host "Select an option: " -NoNewline
+
+    $refreshAt = [datetime]::Now.AddSeconds($RefreshIntervalSeconds)
+    while ($true) {
+        if ([Console]::KeyAvailable) {
+            $key = [Console]::ReadKey($true)
+            Write-Host $key.KeyChar  # echo the character
+            return $key.KeyChar.ToString()
+        }
+        if ([datetime]::Now -ge $refreshAt) {
+            Write-Host ""  # move to next line before re-render
+            return $null
+        }
+        Start-Sleep -Milliseconds 500
+    }
+}
+
 $exit = $false
 do {
     $menuState = Show-MainMenu
-    $choice = Read-Host "Select an option"
+
+    $choice = $null
+    while ($null -eq $choice) {
+        $choice = Read-MainMenuChoice -RefreshIntervalSeconds 300
+        if ($null -eq $choice) {
+            # 5-minute idle timeout: bust update cache and re-render to pick up any new release
+            $script:UpdateStatusCache     = $null
+            $script:UpdateStatusCacheTime = [datetime]::MinValue
+            $menuState = Show-MainMenu
+        }
+    }
 
     switch ($choice.ToLowerInvariant()) {
         "1" { & (Join-Path $PSScriptRoot "ServerToolsMenu.ps1") }
