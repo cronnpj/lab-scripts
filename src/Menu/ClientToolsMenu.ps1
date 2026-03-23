@@ -267,8 +267,8 @@ function Show-ClientMenu {
     Write-Host "      IP config, DNS flush, DHCP renew, connectivity checks" -ForegroundColor DarkGray
     Write-MenuItem "4" "System Actions         (4 options)"
     Write-Host "      Rename, timezone/clock sync, update services, SFC scan" -ForegroundColor DarkGray
-    Write-MenuItem "5" "Utilities              (8 options)"
-    Write-Host "      vmPing, Debloat, SDelete, Template prep, Horizon Tool, winget, winget upgrade --all, new terminal tab" -ForegroundColor DarkGray
+    Write-MenuItem "5" "Utilities              (9 options)"
+    Write-Host "      vmPing, Debloat, SDelete, Template prep, Horizon Tool, winget, winget upgrade --all, new terminal tab, VirtIO tools" -ForegroundColor DarkGray
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
@@ -345,10 +345,11 @@ function Show-UtilitiesMenu {
     Write-MenuItem "6" "Open winget command shell"
     Write-MenuItem "7" "Run winget upgrade --all"
     Write-MenuItem "8" "Open new terminal tab"
+    Write-MenuItem "9" "Install VirtIO guest tools (Proxmox VM)"
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
-    Write-MenuKeysLine "1-8"
+    Write-MenuKeysLine "1-9"
     Write-Host ""
 }
 
@@ -514,6 +515,13 @@ function Invoke-UtilitiesMenu {
                     Open-NewTerminalTabOrWindow
                 } -SuccessText "Terminal tab/window opened"
             }
+            "9" {
+                Invoke-ActionSafe -Action {
+                    Clear-Host
+                    Assert-WingetAvailable
+                    winget install RedHat.VirtIO
+                } -SuccessText "VirtIO guest tools install completed"
+            }
             "0"  { $backSub = $true }
             default {
                 $script:lastStatusText  = "[Warning] Invalid selection"
@@ -602,6 +610,13 @@ function Invoke-ClientRunOption {
             Invoke-ActionSafe -Action {
                 Open-NewTerminalTabOrWindow
             } -SuccessText "Terminal tab/window opened"
+        }
+        "U9" {
+            Invoke-ActionSafe -Action {
+                Clear-Host
+                Assert-WingetAvailable
+                winget install RedHat.VirtIO
+            } -SuccessText "VirtIO guest tools install completed"
         }
 
         default {
