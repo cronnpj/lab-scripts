@@ -519,7 +519,7 @@ function Invoke-UtilitiesMenu {
                 Invoke-ActionSafe -Action {
                     Clear-Host
                     Assert-WingetAvailable
-                    winget install RedHat.VirtIO
+                    winget install RedHat.VirtIO --source winget
                 } -SuccessText "VirtIO guest tools install completed"
             }
             "0"  { $backSub = $true }
@@ -615,7 +615,7 @@ function Invoke-ClientRunOption {
             Invoke-ActionSafe -Action {
                 Clear-Host
                 Assert-WingetAvailable
-                winget install RedHat.VirtIO
+                winget install RedHat.VirtIO --source winget
             } -SuccessText "VirtIO guest tools install completed"
         }
 
