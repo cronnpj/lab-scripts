@@ -259,8 +259,8 @@ function Show-ClientMenu {
 
     Show-AppHeader -Breadcrumb "Main > Windows Client Tools"
 
-    Write-MenuItem "1" "Identity & Enrollment   (4 options)"
-    Write-Host "      Domain join, join status, work/school enrollment, Intune sync" -ForegroundColor DarkGray
+    Write-MenuItem "1" "Identity & Enrollment   (6 options)"
+    Write-Host "      Domain join, join status, work/school enrollment, Intune sync, Autopilot registration" -ForegroundColor DarkGray
     Write-MenuItem "2" "Policy & Management    (3 options)"
     Write-Host "      GP update, policy results, GPO report export" -ForegroundColor DarkGray
     Write-MenuItem "3" "Network Tools          (4 options)"
@@ -286,10 +286,12 @@ function Show-IdentityEnrollmentMenu {
     Write-MenuItem "2" "Show Join Status (Domain + Entra ID / Hybrid)"
     Write-MenuItem "3" "Open Work/School Accounts (Enrollment)"
     Write-MenuItem "4" "Force Intune Sync (best-effort)"
+    Write-MenuItem "5" "Register device in Autopilot (CSV export)"
+    Write-MenuItem "6" "Register device in Autopilot (upload directly to Intune)"
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
-    Write-MenuKeysLine "1-4"
+    Write-MenuKeysLine "1-6"
     Write-Host ""
 }
 
@@ -358,7 +360,8 @@ $joinDomainScript   = Join-Path $PSScriptRoot "..\Tasks\Join-Domain.ps1"
 $renameScript       = Join-Path $PSScriptRoot "..\Tasks\Rename-Computer.ps1"
 $timezoneScript     = Join-Path $PSScriptRoot "..\Tasks\Set-EasternTimeAndResync.ps1"
 
-$joinStatusScript   = Join-Path $PSScriptRoot "..\Tasks\Client\Get-JoinStatus.ps1"
+$joinStatusScript         = Join-Path $PSScriptRoot "..\Tasks\Client\Get-JoinStatus.ps1"
+$autopilotScript          = Join-Path $PSScriptRoot "..\Tasks\Client\Register-AutopilotDevice.ps1"
 $gpoReportScript    = Join-Path $PSScriptRoot "..\Tasks\Client\GPO-Report.ps1"
 $testConnScript     = Join-Path $PSScriptRoot "..\Tasks\Client\Test-Connectivity.ps1"
 $win11DebloatScript = Join-Path $PSScriptRoot "..\Tasks\Run-Win11Debloat.ps1"
@@ -387,6 +390,12 @@ function Invoke-IdentityEnrollmentMenu {
                     Write-Host "Opening Work/School settings. Use Sync if available."
                     Start-Process "ms-settings:workplace"
                 } -SuccessText "Opened enrollment settings"
+            }
+            "5"  { Invoke-TaskSafe -Path $autopilotScript -SuccessText "Autopilot CSV export completed" -ShowPause:$false }
+            "6"  {
+                Invoke-ActionSafe -Action {
+                    & $autopilotScript -Online
+                } -SuccessText "Autopilot online registration completed" -ShowPause:$false
             }
             "0"  { $backSub = $true }
             default {
@@ -547,6 +556,12 @@ function Invoke-ClientRunOption {
                 Write-Host "Opening Work/School settings. Use Sync if available."
                 Start-Process "ms-settings:workplace"
             } -SuccessText "Opened enrollment settings"
+        }
+        "I5" { Invoke-TaskSafe -Path $autopilotScript -SuccessText "Autopilot CSV export completed" -ShowPause:$false }
+        "I6" {
+            Invoke-ActionSafe -Action {
+                & $autopilotScript -Online
+            } -SuccessText "Autopilot online registration completed" -ShowPause:$false
         }
 
         "P1" { Invoke-ActionSafe -Action { Clear-Host; gpupdate /force } -SuccessText "Group Policy update completed" }
