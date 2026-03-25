@@ -267,8 +267,8 @@ function Show-ClientMenu {
     Write-Host "      IP config, DNS flush, DHCP renew, connectivity checks" -ForegroundColor DarkGray
     Write-MenuItem "4" "System Actions         (4 options)"
     Write-Host "      Rename, timezone/clock sync, update services, SFC scan" -ForegroundColor DarkGray
-    Write-MenuItem "5" "Utilities              (9 options)"
-    Write-Host "      vmPing, Debloat, SDelete, Template prep, Horizon Tool, winget, winget upgrade --all, new terminal tab, VirtIO tools" -ForegroundColor DarkGray
+    Write-MenuItem "5" "Utilities              (10 options)"
+    Write-Host "      vmPing, Debloat, SDelete, Template prep, Horizon Tool, winget, winget upgrade --all, new terminal tab, VirtIO tools, Sysprep" -ForegroundColor DarkGray
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
@@ -348,10 +348,11 @@ function Show-UtilitiesMenu {
     Write-MenuItem "7" "Run winget upgrade --all"
     Write-MenuItem "8" "Open new terminal tab"
     Write-MenuItem "9" "Install VirtIO guest tools (Proxmox VM)"
+    Write-MenuItem "S" "Run Sysprep (removes Winget first, then launches Sysprep)"
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
-    Write-MenuKeysLine "1-9"
+    Write-MenuKeysLine "1-9 · S"
     Write-Host ""
 }
 
@@ -531,6 +532,22 @@ function Invoke-UtilitiesMenu {
                     winget install RedHat.VirtIO --source winget --scope machine
                 } -SuccessText "VirtIO guest tools install completed"
             }
+            "S" {
+                Invoke-ActionSafe -Action {
+                    Clear-Host
+                    $sysprepExePath = Join-Path $env:WINDIR "System32\Sysprep\Sysprep.exe"
+                    if (-not (Test-Path $sysprepExePath)) {
+                        throw "Sysprep.exe not found at '$sysprepExePath'."
+                    }
+                    Write-Host "Removing Winget AppxPackage (all users)..." -ForegroundColor Cyan
+                    Get-AppxPackage -AllUsers -Name "*Winget*" | Remove-AppxPackage -AllUsers
+                    Write-Host "Removing Winget provisioned package..." -ForegroundColor Cyan
+                    Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -like "*Winget*" } | Remove-AppxProvisionedPackage -Online
+                    Write-Host "Winget removal complete. Launching Sysprep..." -ForegroundColor Green
+                    Write-Host "Use: Enter System Out-of-Box Experience (OOBE) + Generalize + Shutdown." -ForegroundColor DarkGray
+                    Start-Process -FilePath $sysprepExePath | Out-Null
+                } -SuccessText "Sysprep launched"
+            }
             "0"  { $backSub = $true }
             default {
                 $script:lastStatusText  = "[Warning] Invalid selection"
@@ -632,6 +649,22 @@ function Invoke-ClientRunOption {
                 Assert-WingetAvailable
                 winget install RedHat.VirtIO --source winget --scope machine
             } -SuccessText "VirtIO guest tools install completed"
+        }
+        "US" {
+            Invoke-ActionSafe -Action {
+                Clear-Host
+                $sysprepExePath = Join-Path $env:WINDIR "System32\Sysprep\Sysprep.exe"
+                if (-not (Test-Path $sysprepExePath)) {
+                    throw "Sysprep.exe not found at '$sysprepExePath'."
+                }
+                Write-Host "Removing Winget AppxPackage (all users)..." -ForegroundColor Cyan
+                Get-AppxPackage -AllUsers -Name "*Winget*" | Remove-AppxPackage -AllUsers
+                Write-Host "Removing Winget provisioned package..." -ForegroundColor Cyan
+                Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -like "*Winget*" } | Remove-AppxProvisionedPackage -Online
+                Write-Host "Winget removal complete. Launching Sysprep..." -ForegroundColor Green
+                Write-Host "Use: Enter System Out-of-Box Experience (OOBE) + Generalize + Shutdown." -ForegroundColor DarkGray
+                Start-Process -FilePath $sysprepExePath | Out-Null
+            } -SuccessText "Sysprep launched"
         }
 
         default {
