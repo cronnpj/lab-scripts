@@ -516,7 +516,7 @@ function Invoke-UtilitiesMenu {
                 Invoke-ActionSafe -Action {
                     Clear-Host
                     Assert-WingetAvailable
-                    winget upgrade --all
+                    winget upgrade --all --scope machine
                 } -SuccessText "winget upgrade --all completed"
             }
             "8" {
@@ -528,7 +528,7 @@ function Invoke-UtilitiesMenu {
                 Invoke-ActionSafe -Action {
                     Clear-Host
                     Assert-WingetAvailable
-                    winget install RedHat.VirtIO --source winget
+                    winget install RedHat.VirtIO --source winget --scope machine
                 } -SuccessText "VirtIO guest tools install completed"
             }
             "0"  { $backSub = $true }
@@ -618,7 +618,7 @@ function Invoke-ClientRunOption {
             Invoke-ActionSafe -Action {
                 Clear-Host
                 Assert-WingetAvailable
-                winget upgrade --all
+                winget upgrade --all --scope machine
             } -SuccessText "winget upgrade --all completed"
         }
         "U8" {
@@ -630,7 +630,7 @@ function Invoke-ClientRunOption {
             Invoke-ActionSafe -Action {
                 Clear-Host
                 Assert-WingetAvailable
-                winget install RedHat.VirtIO --source winget
+                winget install RedHat.VirtIO --source winget --scope machine
             } -SuccessText "VirtIO guest tools install completed"
         }
 

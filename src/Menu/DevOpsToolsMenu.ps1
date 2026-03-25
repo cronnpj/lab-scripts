@@ -116,7 +116,7 @@ function Install-WingetPackage {
     # Keeps catalog fresh; helps prevent "not found" issues on some machines.
     try { winget source update | Out-Null } catch {}
 
-    winget install -e --id $Id --accept-package-agreements --accept-source-agreements --silent --disable-interactivity
+    winget install -e --id $Id --scope machine --accept-package-agreements --accept-source-agreements --silent --disable-interactivity
     if ($LASTEXITCODE -ne 0) {
         throw "winget install failed for id: $Id"
     }

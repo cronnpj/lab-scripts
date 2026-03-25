@@ -47,7 +47,7 @@ function Install-WingetPackage {
 
     try { winget source update | Out-Null } catch {}
 
-    winget install -e --id $Id --accept-package-agreements --accept-source-agreements
+    winget install -e --id $Id --scope machine --accept-package-agreements --accept-source-agreements
     if ($LASTEXITCODE -ne 0) {
         throw "winget install failed for id: $Id"
     }
@@ -204,7 +204,7 @@ while (-not $back) {
         "1" {
             Invoke-ActionSafe -SuccessText "Winget upgrade completed" -Action {
                 Assert-Admin
-                winget upgrade --all --accept-package-agreements --accept-source-agreements
+                winget upgrade --all --scope machine --accept-package-agreements --accept-source-agreements
             }
         }
         "2" {
