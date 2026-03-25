@@ -372,16 +372,25 @@ function Read-MainMenuChoice {
 }
 
 $exit = $false
+$script:LastUpdateCacheBust = [datetime]::MinValue
+
 do {
     $menuState = Show-MainMenu
 
     $choice = $null
     while ($null -eq $choice) {
-        $choice = Read-MainMenuChoice -RefreshIntervalSeconds 300
+        # Use a short refresh interval when internet is down so the header updates
+        # quickly when connectivity is restored (Get-InternetStatus has a 30s TTL cache).
+        $refreshSecs = if (Get-InternetStatus) { 300 } else { 30 }
+        $choice = Read-MainMenuChoice -RefreshIntervalSeconds $refreshSecs
+
         if ($null -eq $choice) {
-            # 5-minute idle timeout: bust update cache and re-render to pick up any new release
-            $script:UpdateStatusCache     = $null
-            $script:UpdateStatusCacheTime = [datetime]::MinValue
+            # Bust the update cache only on the 5-minute cadence, not on every 30s internet check.
+            if (([datetime]::Now - $script:LastUpdateCacheBust).TotalSeconds -ge 300) {
+                $script:UpdateStatusCache     = $null
+                $script:UpdateStatusCacheTime = [datetime]::MinValue
+                $script:LastUpdateCacheBust   = [datetime]::Now
+            }
             $menuState = Show-MainMenu
         }
     }

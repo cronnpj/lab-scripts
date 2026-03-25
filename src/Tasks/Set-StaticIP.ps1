@@ -171,7 +171,7 @@ Write-LabLog "StaticIP: Disabling DHCP on adapter $($adapter.Name)"
 Set-NetIPInterface -InterfaceIndex $ifIndex -Dhcp Disabled -ErrorAction Stop
 
 Write-LabLog "StaticIP: Setting IP $ip/$prefix GW $gw"
-New-NetIPAddress -InterfaceIndex $ifIndex -IPAddress $ip -PrefixLength $prefix -DefaultGateway $gw -ErrorAction Stop | Out-Null
+New-NetIPAddress -InterfaceIndex $ifIndex -IPAddress $ip -PrefixLength $prefix -DefaultGateway $gw -ErrorAction Stop -WarningAction SilentlyContinue | Out-Null
 
 Write-LabLog "StaticIP: Setting DNS server(s): $dnsInput"
 Set-DnsClientServerAddress -InterfaceIndex $ifIndex -ServerAddresses @($dnsInput) -ErrorAction Stop
@@ -179,6 +179,8 @@ Set-DnsClientServerAddress -InterfaceIndex $ifIndex -ServerAddresses @($dnsInput
 # Bounce adapter to apply cleanly
 Write-LabLog "StaticIP: Restarting adapter $($adapter.Name)"
 Restart-NetAdapter -Name $adapter.Name -Confirm:$false -ErrorAction SilentlyContinue
+Write-Host "Waiting for adapter to reinitialize..."
+Start-Sleep -Seconds 3
 
 Write-Host ""
 Write-Host "Static IP configuration applied."

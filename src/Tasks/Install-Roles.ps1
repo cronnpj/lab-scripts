@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("ADDS","DNS","DHCP","CORE_DC")]
+    [ValidateSet("ADDS","DNS","DHCP","ADDS_DNS","CORE_DC")]
     [string]$Mode
 )
 
@@ -36,6 +36,10 @@ switch ($Mode) {
     "ADDS"    { Install-FeatureSafe -Name "AD-Domain-Services" }
     "DNS"     { Install-FeatureSafe -Name "DNS" }
     "DHCP"    { Install-FeatureSafe -Name "DHCP" }
+    "ADDS_DNS" {
+        Install-FeatureSafe -Name "AD-Domain-Services"
+        Install-FeatureSafe -Name "DNS"
+    }
     "CORE_DC" {
         Install-FeatureSafe -Name "AD-Domain-Services"
         Install-FeatureSafe -Name "DNS"
