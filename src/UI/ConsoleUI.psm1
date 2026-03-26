@@ -66,10 +66,10 @@ function Write-HostUserLine {
     else {
         # 3-column layout with Width=80 (inner=76):
         #   Col1 0-23  (24): "Host: " + up to 18 chars
-        #   Col2 24-49 (26): "User: " + up to 20 chars
-        #   Col3 50-75 (26): "OS: "   + up to 22 chars
+        #   Col2 24-50 (27): "User: " + up to 21 chars
+        #   Col3 51-75 (25): "OS: "   + up to 21 chars
         $col2Start = 24
-        $col3Start = 50
+        $col3Start = 51
 
         $label1 = "Host: "
         $label2 = "User: "
