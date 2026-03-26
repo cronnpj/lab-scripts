@@ -975,8 +975,11 @@ function Show-AppHeader {
     }
     else {
         # Subsequent draws: scroll viewport to top and overwrite header in place.
-        # This keeps the header visually persistent — no blank-screen flash.
+        # ESC[2J erases the visible screen (not scrollback) before rewriting, clearing
+        # any wide output (e.g. winget tables) that extended beyond column 80.
         try { $host.UI.RawUI.WindowPosition = [System.Management.Automation.Host.Coordinates]::new(0, 0) } catch {}
+        [Console]::SetCursorPosition(0, 0)
+        [Console]::Write([char]27 + "[2J")
         [Console]::SetCursorPosition(0, 0)
     }
 
