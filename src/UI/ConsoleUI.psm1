@@ -915,25 +915,49 @@ function Write-OSLine {
 function Write-RolesLine {
     param(
         [Parameter(Mandatory=$true)][string[]]$Roles,
-        [int]$Width = 64
+        [int]$Width = 80
     )
 
-    $inner = $Width - 4
-    $label = "Roles: "
-    $value = if ($Roles.Count -eq 0) { 'None' } else { $Roles -join ', ' }
+    $inner     = $Width - 4       # usable chars between "| " and " |"
+    $label     = "Roles: "        # 7 chars — first line prefix
+    $indent    = " " * $label.Length  # continuation lines align under role names
+    $maxPerLine = $inner - $label.Length  # chars available for role text per line
 
-    $maxValueLength = [Math]::Max(0, $inner - $label.Length)
-    if ($value.Length -gt $maxValueLength) {
-        $value = $value.Substring(0, [Math]::Max(0, $maxValueLength - 3)) + '...'
+    if ($Roles.Count -eq 0) {
+        $pad = " " * [Math]::Max(0, $inner - $label.Length - 4)
+        Write-Host "| " -NoNewline -ForegroundColor Cyan
+        Write-Host $label -NoNewline -ForegroundColor Gray
+        Write-Host "None" -NoNewline -ForegroundColor Cyan
+        Write-Host $pad -NoNewline -ForegroundColor Gray
+        Write-Host " |" -ForegroundColor Cyan
+        return
     }
 
-    $pad = " " * [Math]::Max(0, $inner - $label.Length - $value.Length)
+    # Build wrapped lines: greedily pack roles onto each line separated by ", "
+    $lines  = [System.Collections.Generic.List[string]]::new()
+    $current = ''
+    foreach ($role in $Roles) {
+        $candidate = if ($current -eq '') { $role } else { "$current, $role" }
+        if ($candidate.Length -le $maxPerLine) {
+            $current = $candidate
+        } else {
+            if ($current -ne '') { $lines.Add($current) }
+            # If a single role is wider than the line, truncate it
+            $current = if ($role.Length -gt $maxPerLine) { $role.Substring(0, $maxPerLine) } else { $role }
+        }
+    }
+    if ($current -ne '') { $lines.Add($current) }
 
-    Write-Host "| " -NoNewline -ForegroundColor Cyan
-    Write-Host $label -NoNewline -ForegroundColor Gray
-    Write-Host $value -NoNewline -ForegroundColor Cyan
-    Write-Host $pad -NoNewline -ForegroundColor Gray
-    Write-Host " |" -ForegroundColor Cyan
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $prefix = if ($i -eq 0) { $label } else { $indent }
+        $text   = $lines[$i]
+        $pad    = " " * [Math]::Max(0, $inner - $prefix.Length - $text.Length)
+        Write-Host "| " -NoNewline -ForegroundColor Cyan
+        Write-Host $prefix -NoNewline -ForegroundColor Gray
+        Write-Host $text -NoNewline -ForegroundColor Cyan
+        Write-Host $pad -NoNewline -ForegroundColor Gray
+        Write-Host " |" -ForegroundColor Cyan
+    }
 }
 
 $script:AppHeaderDrawn = $false
