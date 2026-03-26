@@ -66,10 +66,10 @@ function Write-HostUserLine {
     else {
         # 3-column layout with Width=80 (inner=76):
         #   Col1 0-23  (24): "Host: " + up to 18 chars
-        #   Col2 24-51 (28): "User: " + up to 22 chars
-        #   Col3 52-75 (24): "OS: "   + up to 20 chars
+        #   Col2 24-49 (26): "User: " + up to 20 chars
+        #   Col3 50-75 (26): "OS: "   + up to 22 chars
         $col2Start = 24
-        $col3Start = 52
+        $col3Start = 50
 
         $label1 = "Host: "
         $label2 = "User: "
@@ -991,7 +991,7 @@ function Show-AppHeader {
     # Timezone/Date line with cyan values
     Write-TimezoneDateLine -Width $Width
 
-    $shouldShowTenantLine = ($normalizedJoinType -in @('Hybrid', 'Cloud')) -or ([string]$joinInfo.Text -match '^(Hybrid|Cloud)')
+    $shouldShowTenantLine = (($normalizedJoinType -in @('Hybrid', 'Cloud')) -or ([string]$joinInfo.Text -match '^(Hybrid|Cloud)')) -and -not [string]::IsNullOrWhiteSpace($joinInfo.Tenant)
     if ($shouldShowTenantLine) {
         Write-TenantLine -Tenant $joinInfo.Tenant -Width $Width
     }
