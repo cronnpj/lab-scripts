@@ -29,41 +29,79 @@ function Write-HostUserLine {
     param(
         [Parameter(Mandatory=$true)][string]$HostName,
         [Parameter(Mandatory=$true)][string]$UserName,
-        [int]$Width = 64
+        [string]$OSCaption = '',
+        [int]$Width = 80
     )
 
     # inside width for text area (excluding "| " and " |")
     $inner = $Width - 4
 
-    $leftLabel = "Host: "
-    $rightLabel = "User: "
-    $rightLabelStart = 24
+    if ([string]::IsNullOrWhiteSpace($OSCaption)) {
+        # 2-column layout
+        $leftLabel = "Host: "
+        $rightLabel = "User: "
+        $rightLabelStart = 24
 
-    $maxHostLength = [Math]::Max(0, $rightLabelStart - $leftLabel.Length)
-    if ($HostName.Length -gt $maxHostLength) {
-        $HostName = $HostName.Substring(0, $maxHostLength)
+        $maxHostLength = [Math]::Max(0, $rightLabelStart - $leftLabel.Length)
+        if ($HostName.Length -gt $maxHostLength) { $HostName = $HostName.Substring(0, $maxHostLength) }
+
+        $spacerLength = [Math]::Max(1, $rightLabelStart - ($leftLabel.Length + $HostName.Length))
+        $spacer = " " * $spacerLength
+
+        $fixedLength = $leftLabel.Length + $HostName.Length + $spacerLength + $rightLabel.Length
+        $maxUserLength = [Math]::Max(0, $inner - $fixedLength)
+        if ($UserName.Length -gt $maxUserLength) { $UserName = $UserName.Substring(0, $maxUserLength) }
+
+        $pad = " " * [Math]::Max(0, $inner - $fixedLength - $UserName.Length)
+
+        Write-Host "| " -NoNewline -ForegroundColor Cyan
+        Write-Host $leftLabel -NoNewline -ForegroundColor Gray
+        Write-Host $HostName -NoNewline -ForegroundColor Cyan
+        Write-Host $spacer -NoNewline -ForegroundColor Gray
+        Write-Host $rightLabel -NoNewline -ForegroundColor Gray
+        Write-Host $UserName -NoNewline -ForegroundColor Cyan
+        Write-Host $pad -NoNewline -ForegroundColor Gray
+        Write-Host " |" -ForegroundColor Cyan
     }
+    else {
+        # 3-column layout with Width=80 (inner=76):
+        #   Col1 0-23  (24): "Host: " + up to 18 chars
+        #   Col2 24-51 (28): "User: " + up to 22 chars
+        #   Col3 52-75 (24): "OS: "   + up to 20 chars
+        $col2Start = 24
+        $col3Start = 52
 
-    $spacerLength = [Math]::Max(1, $rightLabelStart - ($leftLabel.Length + $HostName.Length))
-    $spacer = " " * $spacerLength
+        $label1 = "Host: "
+        $label2 = "User: "
+        $label3 = "OS: "
 
-    $fixedLength = $leftLabel.Length + $HostName.Length + $spacerLength + $rightLabel.Length
-    $maxUserLength = [Math]::Max(0, $inner - $fixedLength)
-    if ($UserName.Length -gt $maxUserLength) {
-        $UserName = $UserName.Substring(0, $maxUserLength)
+        # Strip "Windows " prefix to save space ("11 Pro", "Server 2022", etc.)
+        $osShort = $OSCaption -replace '^Windows\s+', ''
+
+        $max1 = [Math]::Max(0, $col2Start - $label1.Length)
+        if ($HostName.Length -gt $max1) { $HostName = $HostName.Substring(0, $max1) }
+        $spacer1 = " " * [Math]::Max(0, $col2Start - $label1.Length - $HostName.Length)
+
+        $max2 = [Math]::Max(0, ($col3Start - $col2Start) - $label2.Length)
+        if ($UserName.Length -gt $max2) { $UserName = $UserName.Substring(0, $max2) }
+        $spacer2 = " " * [Math]::Max(0, ($col3Start - $col2Start) - $label2.Length - $UserName.Length)
+
+        $max3 = [Math]::Max(0, $inner - $col3Start - $label3.Length)
+        if ($osShort.Length -gt $max3) { $osShort = $osShort.Substring(0, $max3) }
+        $pad = " " * [Math]::Max(0, $inner - $col3Start - $label3.Length - $osShort.Length)
+
+        Write-Host "| " -NoNewline -ForegroundColor Cyan
+        Write-Host $label1 -NoNewline -ForegroundColor Gray
+        Write-Host $HostName -NoNewline -ForegroundColor Cyan
+        Write-Host $spacer1 -NoNewline -ForegroundColor Gray
+        Write-Host $label2 -NoNewline -ForegroundColor Gray
+        Write-Host $UserName -NoNewline -ForegroundColor Cyan
+        Write-Host $spacer2 -NoNewline -ForegroundColor Gray
+        Write-Host $label3 -NoNewline -ForegroundColor Gray
+        Write-Host $osShort -NoNewline -ForegroundColor Cyan
+        Write-Host $pad -NoNewline -ForegroundColor Gray
+        Write-Host " |" -ForegroundColor Cyan
     }
-
-    $textLen = $fixedLength + $UserName.Length
-    $pad = " " * [Math]::Max(0, ($inner - $textLen))
-
-    Write-Host "| " -NoNewline -ForegroundColor Cyan
-    Write-Host $leftLabel -NoNewline -ForegroundColor Gray
-    Write-Host $HostName -NoNewline -ForegroundColor Cyan
-    Write-Host $spacer -NoNewline -ForegroundColor Gray
-    Write-Host $rightLabel -NoNewline -ForegroundColor Gray
-    Write-Host $UserName -NoNewline -ForegroundColor Cyan
-    Write-Host $pad -NoNewline -ForegroundColor Gray
-    Write-Host " |" -ForegroundColor Cyan
 }
 
 function Write-TimezoneDateLine {
@@ -822,12 +860,88 @@ function Write-TenantLine {
     Write-Host " |" -ForegroundColor Cyan
 }
 
+$script:OSInfoCache      = $null
+$script:ServerRolesCache = $null
+
+function Get-OSInfo {
+    if ($null -ne $script:OSInfoCache) { return $script:OSInfoCache }
+    try {
+        $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+        $caption = $os.Caption -replace '^Microsoft\s+', ''
+        $script:OSInfoCache = @{ Caption = $caption; IsServer = ($caption -match 'Server') }
+    }
+    catch {
+        $script:OSInfoCache = @{ Caption = 'Unknown'; IsServer = $false }
+    }
+    return $script:OSInfoCache
+}
+
+function Get-ServerRoles {
+    if ($null -ne $script:ServerRolesCache) { return $script:ServerRolesCache }
+    try {
+        $roles = @(Get-WindowsFeature -ErrorAction Stop |
+            Where-Object { $_.Installed -and $_.FeatureType -eq 'Role' } |
+            Select-Object -ExpandProperty DisplayName)
+        $script:ServerRolesCache = $roles
+    }
+    catch {
+        $script:ServerRolesCache = @()
+    }
+    return $script:ServerRolesCache
+}
+
+function Write-OSLine {
+    param(
+        [Parameter(Mandatory=$true)][string]$Caption,
+        [int]$Width = 64
+    )
+
+    $inner = $Width - 4
+    $label = "OS: "
+    $value = $Caption
+
+    $maxValueLength = [Math]::Max(0, $inner - $label.Length)
+    if ($value.Length -gt $maxValueLength) { $value = $value.Substring(0, $maxValueLength) }
+
+    $pad = " " * [Math]::Max(0, $inner - $label.Length - $value.Length)
+
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
+    Write-Host $label -NoNewline -ForegroundColor Gray
+    Write-Host $value -NoNewline -ForegroundColor Cyan
+    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Cyan
+}
+
+function Write-RolesLine {
+    param(
+        [Parameter(Mandatory=$true)][string[]]$Roles,
+        [int]$Width = 64
+    )
+
+    $inner = $Width - 4
+    $label = "Roles: "
+    $value = if ($Roles.Count -eq 0) { 'None' } else { $Roles -join ', ' }
+
+    $maxValueLength = [Math]::Max(0, $inner - $label.Length)
+    if ($value.Length -gt $maxValueLength) {
+        $value = $value.Substring(0, [Math]::Max(0, $maxValueLength - 3)) + '...'
+    }
+
+    $pad = " " * [Math]::Max(0, $inner - $label.Length - $value.Length)
+
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
+    Write-Host $label -NoNewline -ForegroundColor Gray
+    Write-Host $value -NoNewline -ForegroundColor Cyan
+    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Cyan
+}
+
 $script:AppHeaderDrawn = $false
 
 function Show-AppHeader {
     param(
         [Parameter(Mandatory=$true)][string]$Breadcrumb,
-        [int]$Width = 64
+        [int]$Width = 80
     )
 
     if (-not $script:AppHeaderDrawn) {
@@ -858,8 +972,10 @@ function Show-AppHeader {
     Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $Width "Yellow"
     Write-BoxLine ("Version: {0}" -f $version) $Width "Cyan"
 
-    # Host/User line with cyan values
-    Write-HostUserLine -HostName $hostName -UserName $userName -Width $Width
+    $osInfo = Get-OSInfo
+
+    # Host/User/OS line
+    Write-HostUserLine -HostName $hostName -UserName $userName -OSCaption $osInfo.Caption -Width $Width
 
     # Primary network line with cyan values
     Write-NetworkLine -IPAddress $networkInfo.IPAddress -Mode $networkInfo.Mode -Width $Width
@@ -878,6 +994,11 @@ function Show-AppHeader {
     $shouldShowTenantLine = ($normalizedJoinType -in @('Hybrid', 'Cloud')) -or ([string]$joinInfo.Text -match '^(Hybrid|Cloud)')
     if ($shouldShowTenantLine) {
         Write-TenantLine -Tenant $joinInfo.Tenant -Width $Width
+    }
+
+    if ($osInfo.IsServer) {
+        $serverRoles = Get-ServerRoles
+        Write-RolesLine -Roles $serverRoles -Width $Width
     }
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor Cyan
