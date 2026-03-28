@@ -371,6 +371,66 @@ function Read-MainMenuChoice {
     }
 }
 
+function Invoke-StartupAutoUpdate {
+    # Silent precondition checks — any failure just skips auto-update
+    if (-not (Test-GitInstalled)) { return }
+    $repoPath = Get-RepoPath
+    if (-not $repoPath) { return }
+    if (-not (Get-InternetStatus)) { return }
+
+    try {
+        git -C $repoPath fetch --quiet 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 0) { return }
+
+        $branch = (git -C $repoPath rev-parse --abbrev-ref HEAD 2>$null).Trim()
+        if (-not $branch) { return }
+
+        $counts = (git -C $repoPath rev-list --left-right --count "HEAD...origin/$branch" 2>$null).Trim()
+        if (-not $counts) { return }
+
+        $parts = $counts -split "`t"
+        if ($parts.Count -lt 2) { return }
+
+        $behind = 0
+        if (-not [int]::TryParse($parts[1], [ref]$behind) -or $behind -eq 0) { return }
+
+        # Skip if local changes exist — let user update manually via option 7
+        $localChanges = @(git -C $repoPath status --porcelain 2>$null)
+        if ($localChanges.Count -gt 0) { return }
+
+        Write-Host ""
+        Write-Host "Update found ($behind new commit(s)). Applying..." -ForegroundColor Cyan
+
+        git -C $repoPath pull --quiet 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Auto-update failed. Use [7] App Maintenance to update manually." -ForegroundColor Yellow
+            Start-Sleep -Seconds 2
+            return
+        }
+
+        $verFile = Join-Path $repoPath "VERSION.txt"
+        $newVer = if (Test-Path $verFile) { (Get-Content $verFile | Select-Object -First 1).Trim() } else { "unknown" }
+
+        Write-Host "Updated to $newVer. Relaunching..." -ForegroundColor Green
+        Start-Sleep -Milliseconds 800
+
+        $launcher = Join-Path (Split-Path -Parent $PSScriptRoot) "Launch-LabTools.ps1"
+        if (Test-Path $launcher) {
+            & $launcher
+            exit
+        }
+        else {
+            Write-Host "Launcher not found. Re-open the terminal to pick up the update." -ForegroundColor DarkYellow
+            Start-Sleep -Seconds 2
+        }
+    }
+    catch {
+        # Non-blocking — any error silently falls through to main menu
+    }
+}
+
+Invoke-StartupAutoUpdate
+
 $exit = $false
 $script:LastUpdateCacheBust = [datetime]::MinValue
 
