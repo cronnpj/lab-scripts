@@ -209,6 +209,7 @@ try {
             Write-Host "Relaunching..." -ForegroundColor Cyan
             Start-Sleep -Milliseconds 500
             & $launcher
+            exit
         }
         else {
             Write-Host "Launcher not found at: $launcher" -ForegroundColor Yellow
