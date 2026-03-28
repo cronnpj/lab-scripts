@@ -174,6 +174,7 @@ function Invoke-PostUpdateShortcuts {
 # =========
 try {
     $script:updateFailed = $false
+    $script:suppressFinalPause = $false
 
     Assert-IsAdmin
     Ensure-Git
@@ -208,6 +209,7 @@ try {
         if (Test-Path $launcher) {
             Write-Host "Relaunching..." -ForegroundColor Cyan
             Start-Sleep -Milliseconds 500
+            $script:suppressFinalPause = $true
             & $launcher
             exit
         }
@@ -233,18 +235,20 @@ catch {
     throw
 }
 finally {
-    # Suppress pause if running from menu (parent process is PowerShell, WindowsTerminal, or called from another script)
-    $isMenu = $false
-    try {
-        $parentPid = (Get-CimInstance Win32_Process -Filter "ProcessId = $PID" -ErrorAction Stop).ParentProcessId
-        $parentProc = (Get-CimInstance Win32_Process -Filter "ProcessId = $parentPid" -ErrorAction Stop).Name
-        if ($parentProc -match 'powershell|pwsh|code|terminal|menu') {
+    # Suppress pause if relaunching (process is about to exit) or running from menu
+    $isMenu = $script:suppressFinalPause
+    if (-not $isMenu) {
+        try {
+            $parentPid = (Get-CimInstance Win32_Process -Filter "ProcessId = $PID" -ErrorAction Stop).ParentProcessId
+            $parentProc = (Get-CimInstance Win32_Process -Filter "ProcessId = $parentPid" -ErrorAction Stop).Name
+            if ($parentProc -match 'powershell|pwsh|code|terminal|menu') {
+                $isMenu = $true
+            }
+        }
+        catch {
+            # If process detection fails, default to no pause (safe for menu-launched context)
             $isMenu = $true
         }
-    }
-    catch {
-        # If process detection fails, default to no pause (safe for menu-launched context)
-        $isMenu = $true
     }
     if (-not $isMenu) {
         Wait-MenuContinue
