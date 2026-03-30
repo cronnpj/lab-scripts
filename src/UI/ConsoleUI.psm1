@@ -879,9 +879,20 @@ function Get-OSInfo {
 function Get-ServerRoles {
     if ($null -ne $script:ServerRolesCache) { return $script:ServerRolesCache }
     try {
-        $roles = @(Get-WindowsFeature -ErrorAction Stop |
-            Where-Object { $_.Installed -and $_.FeatureType -eq 'Role' } |
-            Select-Object -ExpandProperty DisplayName)
+        $job = Start-Job -ScriptBlock {
+            $ProgressPreference = 'SilentlyContinue'
+            Get-WindowsFeature -ErrorAction Stop |
+                Where-Object { $_.Installed -and $_.FeatureType -eq 'Role' } |
+                Select-Object -ExpandProperty DisplayName
+        }
+        $completed = Wait-Job -Job $job -Timeout 10
+        if ($completed) {
+            $roles = @(Receive-Job -Job $job -ErrorAction SilentlyContinue)
+        } else {
+            Stop-Job -Job $job
+            $roles = @()
+        }
+        Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
         $script:ServerRolesCache = $roles
     }
     catch {
