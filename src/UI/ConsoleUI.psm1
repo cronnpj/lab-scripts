@@ -878,6 +878,7 @@ function Get-OSInfo {
 
 function Get-ServerRoles {
     if ($null -ne $script:ServerRolesCache) { return $script:ServerRolesCache }
+    $roles = @()
     try {
         $job = Start-Job -ScriptBlock {
             $ProgressPreference = 'SilentlyContinue'
@@ -887,17 +888,15 @@ function Get-ServerRoles {
         }
         $completed = Wait-Job -Job $job -Timeout 10
         if ($completed) {
-            $roles = @(Receive-Job -Job $job -ErrorAction SilentlyContinue)
+            $received = @(Receive-Job -Job $job -ErrorAction SilentlyContinue)
+            if ($null -ne $received) { $roles = $received }
         } else {
             Stop-Job -Job $job
-            $roles = @()
         }
         Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
-        $script:ServerRolesCache = $roles
     }
-    catch {
-        $script:ServerRolesCache = @()
-    }
+    catch {}
+    $script:ServerRolesCache = $roles
     return $script:ServerRolesCache
 }
 
@@ -1036,7 +1035,7 @@ function Show-AppHeader {
 
     if ($osInfo.IsServer) {
         $serverRoles = Get-ServerRoles
-        Write-RolesLine -Roles $serverRoles -Width $Width
+        Write-RolesLine -Roles ([string[]](if ($null -ne $serverRoles) { $serverRoles } else { @() })) -Width $Width
     }
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor Cyan
