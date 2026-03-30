@@ -689,7 +689,7 @@ function Show-DevOpsMenu {
     Write-Host "       Deploy and manage lab platform apps/workloads." -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  Lab Repository - Advanced Operations" -ForegroundColor Cyan
-    Write-MenuItem "16" "Open Lab Repository - Advanced Operations submenu"
+    Write-MenuItem "A"  "Open Lab Repository - Advanced Operations submenu"
     Write-Host "       Reset, worker-node operations, and advanced maintenance." -ForegroundColor DarkGray
     Write-Host ""
     Write-MenuItem "0"  "Back" "DarkGray"
@@ -1289,7 +1289,7 @@ do {
             }
         }
 
-        "16" {
+        "a" {
             Invoke-SubmenuSafe -SuccessText "Returned from Lab Advanced Operations submenu" -Action {
                 if (-not (Test-Path $script:LabAdvancedOpsMenuPath)) {
                     throw "Lab advanced operations submenu not found: $($script:LabAdvancedOpsMenuPath)"
@@ -1299,14 +1299,14 @@ do {
             }
         }
 
-        "161" {
+        "a1" {
             Invoke-ActionSafe -SuccessText "Wipe + rebuild executed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -AutoResetIfDirty:$true
                 Invoke-RepoTarget -RepoPath $script:RepoPath -TargetRelativePath $script:Target -Arguments @("-WipeAndRebuild","-Interactive")
             }
         }
 
-        "162" {
+        "a2" {
             Invoke-ActionSafe -SuccessText "Local generated files removed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -AutoResetIfDirty:$true
 
@@ -1321,7 +1321,7 @@ do {
             }
         }
 
-        "163" {
+        "a3" {
             Invoke-ActionSafe -SuccessText "Repo reset to origin completed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -AutoResetIfDirty:$true
                 if (-not (Test-Path (Join-Path $script:RepoPath ".git"))) { throw "Repo not found: $($script:RepoPath)" }
@@ -1329,7 +1329,7 @@ do {
             }
         }
 
-        "164" {
+        "a4" {
             Invoke-ActionSafe -SuccessText "Worker add operation completed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 if (-not (Test-Cmd talosctl)) { throw "talosctl not found. Install it from option [2]." }
@@ -1374,14 +1374,14 @@ do {
             }
         }
 
-        "165" {
+        "a5" {
             Invoke-ActionSafe -SuccessText "CITA web demo reset completed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 Remove-CitaWebDemo -RepoPath $script:RepoPath
             }
         }
 
-        "166" {
+        "a6" {
             Invoke-ActionSafe -SuccessText "Opened kubectl prompt" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch -SkipSync:$true -AllowDirty:$true
                 $kubeconfig = Assert-KubeconfigReady -RepoPath $script:RepoPath -RequireReachable -HintOption "[9]"
@@ -1417,7 +1417,7 @@ Write-Host 'Type exit to close this window.' -ForegroundColor DarkGray
         }
     }
 
-    if ([string]::IsNullOrWhiteSpace($RunOption) -and -not [string]::IsNullOrWhiteSpace($choice) -and ($choice -in @("91","92","93","94","95","96","97","161","162","163","164","165","166"))) {
+    if ([string]::IsNullOrWhiteSpace($RunOption) -and -not [string]::IsNullOrWhiteSpace($choice) -and ($choice -in @("91","92","93","94","95","96","97","a1","a2","a3","a4","a5","a6"))) {
         $back = $true
     }
 
