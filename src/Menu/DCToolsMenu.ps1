@@ -22,20 +22,21 @@ function Show-DCMenu {
     Write-MenuItem "3" "Install DHCP role"
     Write-MenuItem "4" "Install AD DS + DNS (typical DC prep)"  "Cyan"
     Write-MenuItem "5" "Install Core DC roles (AD DS | DNS | DHCP)"
+    Write-MenuItem "6" "Install IIS (Web Server)"
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-MenuKeysLine "1-5"
+    Write-MenuKeysLine "1-6"
     Write-Host ""
 }
 
 function Invoke-RoleInstall {
     param(
         [Parameter(Mandatory=$true)]
-        [ValidateSet("ADDS","DNS","DHCP","ADDS_DNS","CORE_DC")]
+        [ValidateSet("ADDS","DNS","DHCP","ADDS_DNS","CORE_DC","IIS")]
         [string]$Mode
     )
 
@@ -77,6 +78,7 @@ do {
         "3" { Invoke-RoleInstall -Mode DHCP }
         "4" { Invoke-RoleInstall -Mode ADDS_DNS }
         "5" { Invoke-RoleInstall -Mode CORE_DC }
+        "6" { Invoke-RoleInstall -Mode IIS }
         "0" { $back = $true }
         default {
             $script:lastStatusText  = "[Warning] Invalid selection"

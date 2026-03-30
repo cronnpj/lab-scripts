@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("ADDS","DNS","DHCP","ADDS_DNS","CORE_DC")]
+    [ValidateSet("ADDS","DNS","DHCP","ADDS_DNS","CORE_DC","IIS")]
     [string]$Mode
 )
 
@@ -45,6 +45,7 @@ switch ($Mode) {
         Install-FeatureSafe -Name "DNS"
         Install-FeatureSafe -Name "DHCP"
     }
+    "IIS"     { Install-FeatureSafe -Name "Web-Server" }
 }
 
 Write-Host ""
