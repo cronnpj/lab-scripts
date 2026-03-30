@@ -211,7 +211,7 @@ try {
             Start-Sleep -Milliseconds 500
             $script:suppressFinalPause = $true
             & $launcher
-            exit
+            [Environment]::Exit(0)
         }
         else {
             Write-Host "Launcher not found at: $launcher" -ForegroundColor Yellow
