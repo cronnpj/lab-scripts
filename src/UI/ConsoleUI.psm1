@@ -1035,7 +1035,8 @@ function Show-AppHeader {
 
     if ($osInfo.IsServer) {
         $serverRoles = Get-ServerRoles
-        Write-RolesLine -Roles ([string[]](if ($null -ne $serverRoles) { $serverRoles } else { @() })) -Width $Width
+        if ($null -eq $serverRoles) { $serverRoles = @() }
+        Write-RolesLine -Roles $serverRoles -Width $Width
     }
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor Cyan
