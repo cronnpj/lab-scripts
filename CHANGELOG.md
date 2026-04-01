@@ -2,6 +2,18 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.04.01.2 - 2026-04-01
+
+### New Feature — Copy CITA 120 Lab 9 Files to Public Desktop
+
+- Added [labs/120/CITA120_L9_webpage.zip](labs/120/CITA120_L9_webpage.zip) lab asset folder.
+- Added [src/Tasks/Client/Copy-CITA120L9Files.ps1](src/Tasks/Client/Copy-CITA120L9Files.ps1): copies `CITA120_L9_webpage.zip` from `labs/120/` to `C:\Users\Public\Desktop\`.
+- Added **L** option to Windows Client Tools > Utilities in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1): "Copy CITA 120 Lab 9 files to Public Desktop". Updated option count from 11 to 12 and the `Write-MenuKeysLine` hint.
+- Added `UL` entry to the global search catalog in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) with keywords: `cita 120 lab9 lab files copy desktop zip webpage`.
+
+### Version
+- Bumped [src/VERSION.txt](src/VERSION.txt) to `v2026.04.01.2`.
+
 ## v2026.04.01.1 - 2026-04-01
 
 ### New Feature — Apply CITA Desktop Wallpaper

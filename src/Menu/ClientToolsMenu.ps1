@@ -267,8 +267,8 @@ function Show-ClientMenu {
     Write-Host "      IP config, DNS flush, DHCP renew, connectivity checks" -ForegroundColor DarkGray
     Write-MenuItem "4" "System Actions         (4 options)"
     Write-Host "      Rename, timezone/clock sync, update services, SFC scan" -ForegroundColor DarkGray
-    Write-MenuItem "5" "Utilities              (11 options)"
-    Write-Host "      vmPing, Debloat, SDelete, Template prep, Horizon Tool, winget, winget upgrade --all, new terminal tab, VirtIO tools, Sysprep, desktop wallpaper" -ForegroundColor DarkGray
+    Write-MenuItem "5" "Utilities              (12 options)"
+    Write-Host "      vmPing, Debloat, SDelete, Template prep, Horizon Tool, winget, winget upgrade --all, new terminal tab, VirtIO tools, Sysprep, desktop wallpaper, CITA 120 lab files" -ForegroundColor DarkGray
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
@@ -350,10 +350,11 @@ function Show-UtilitiesMenu {
     Write-MenuItem "9" "Install VirtIO guest tools (Proxmox VM)"
     Write-MenuItem "S" "Run Sysprep (removes Winget first, then launches Sysprep)"
     Write-MenuItem "W" "Apply CITA desktop wallpaper (disables Spotlight)"
+    Write-MenuItem "L" "Copy CITA 120 Lab 9 files to Public Desktop"
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
-    Write-MenuKeysLine "1-9 · S · W"
+    Write-MenuKeysLine "1-9 · S · W · L"
     Write-Host ""
 }
 
@@ -371,6 +372,7 @@ $sdeleteScript      = Join-Path $PSScriptRoot "..\Tasks\Run-SDelete.ps1"
 $templatePrepScript = Join-Path $PSScriptRoot "..\Tasks\Run-TemplatePrepChecklist.ps1"
 $horizonOptScript   = Join-Path $PSScriptRoot "..\Tasks\Run-HorizonOptimizationTool.ps1"
 $wallpaperScript    = Join-Path $PSScriptRoot "..\Tasks\Client\Set-DesktopWallpaper.ps1"
+$cita120L9Script    = Join-Path $PSScriptRoot "..\Tasks\Client\Copy-CITA120L9Files.ps1"
 $vmPingPath         = Join-Path $PSScriptRoot "..\MISC\vmPing\vmPing.exe"
 
 $back = $false
@@ -551,6 +553,7 @@ function Invoke-UtilitiesMenu {
                 } -SuccessText "Sysprep launched"
             }
             "W" { Invoke-TaskSafe -Path $wallpaperScript -SuccessText "Desktop wallpaper applied" }
+            "L" { Invoke-TaskSafe -Path $cita120L9Script -SuccessText "CITA 120 Lab 9 files copied to Public Desktop" }
             "0"  { $backSub = $true }
             default {
                 $script:lastStatusText  = "[Warning] Invalid selection"
@@ -670,6 +673,7 @@ function Invoke-ClientRunOption {
             } -SuccessText "Sysprep launched"
         }
         "UW" { Invoke-TaskSafe -Path $wallpaperScript -SuccessText "Desktop wallpaper applied" }
+        "UL" { Invoke-TaskSafe -Path $cita120L9Script -SuccessText "CITA 120 Lab 9 files copied to Public Desktop" }
 
         default {
             $script:lastStatusText  = "[Warning] Invalid search action"
