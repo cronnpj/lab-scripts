@@ -2,6 +2,17 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.04.01.1 - 2026-04-01
+
+### New Feature — Apply CITA Desktop Wallpaper
+
+- Added [src/Tasks/Client/Set-DesktopWallpaper.ps1](src/Tasks/Client/Set-DesktopWallpaper.ps1): copies `CITADesktopBackground.png` from the repo to `%APPDATA%\CITA\` (so the path is stable when the repo isn't mounted), disables Windows Spotlight on the desktop via `ContentDeliveryManager` registry keys, sets `BackgroundType = 0` (Picture) to override Spotlight, and applies the wallpaper live via Win32 `SystemParametersInfo`.
+- Added **W** option to Windows Client Tools > Utilities in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1): "Apply CITA desktop wallpaper (disables Spotlight)". Updated option count from 10 to 11 and the `Write-MenuKeysLine` hint.
+- Added `UW` entry to the global search catalog in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) with keywords: `wallpaper desktop background spotlight cita image apply`.
+
+### Version
+- Bumped [src/VERSION.txt](src/VERSION.txt) to `v2026.04.01.1`.
+
 ## v2026.03.20.1 - 2026-03-20
 
 ### UI / Navigation — Persistent Header

@@ -267,8 +267,8 @@ function Show-ClientMenu {
     Write-Host "      IP config, DNS flush, DHCP renew, connectivity checks" -ForegroundColor DarkGray
     Write-MenuItem "4" "System Actions         (4 options)"
     Write-Host "      Rename, timezone/clock sync, update services, SFC scan" -ForegroundColor DarkGray
-    Write-MenuItem "5" "Utilities              (10 options)"
-    Write-Host "      vmPing, Debloat, SDelete, Template prep, Horizon Tool, winget, winget upgrade --all, new terminal tab, VirtIO tools, Sysprep" -ForegroundColor DarkGray
+    Write-MenuItem "5" "Utilities              (11 options)"
+    Write-Host "      vmPing, Debloat, SDelete, Template prep, Horizon Tool, winget, winget upgrade --all, new terminal tab, VirtIO tools, Sysprep, desktop wallpaper" -ForegroundColor DarkGray
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
@@ -349,10 +349,11 @@ function Show-UtilitiesMenu {
     Write-MenuItem "8" "Open new terminal tab"
     Write-MenuItem "9" "Install VirtIO guest tools (Proxmox VM)"
     Write-MenuItem "S" "Run Sysprep (removes Winget first, then launches Sysprep)"
+    Write-MenuItem "W" "Apply CITA desktop wallpaper (disables Spotlight)"
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
-    Write-MenuKeysLine "1-9 · S"
+    Write-MenuKeysLine "1-9 · S · W"
     Write-Host ""
 }
 
@@ -369,6 +370,7 @@ $win11DebloatScript = Join-Path $PSScriptRoot "..\Tasks\Run-Win11Debloat.ps1"
 $sdeleteScript      = Join-Path $PSScriptRoot "..\Tasks\Run-SDelete.ps1"
 $templatePrepScript = Join-Path $PSScriptRoot "..\Tasks\Run-TemplatePrepChecklist.ps1"
 $horizonOptScript   = Join-Path $PSScriptRoot "..\Tasks\Run-HorizonOptimizationTool.ps1"
+$wallpaperScript    = Join-Path $PSScriptRoot "..\Tasks\Client\Set-DesktopWallpaper.ps1"
 $vmPingPath         = Join-Path $PSScriptRoot "..\MISC\vmPing\vmPing.exe"
 
 $back = $false
@@ -548,6 +550,7 @@ function Invoke-UtilitiesMenu {
                     Start-Process -FilePath $sysprepExePath | Out-Null
                 } -SuccessText "Sysprep launched"
             }
+            "W" { Invoke-TaskSafe -Path $wallpaperScript -SuccessText "Desktop wallpaper applied" }
             "0"  { $backSub = $true }
             default {
                 $script:lastStatusText  = "[Warning] Invalid selection"
@@ -666,6 +669,7 @@ function Invoke-ClientRunOption {
                 Start-Process -FilePath $sysprepExePath | Out-Null
             } -SuccessText "Sysprep launched"
         }
+        "UW" { Invoke-TaskSafe -Path $wallpaperScript -SuccessText "Desktop wallpaper applied" }
 
         default {
             $script:lastStatusText  = "[Warning] Invalid search action"
