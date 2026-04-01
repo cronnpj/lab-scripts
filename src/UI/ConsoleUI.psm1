@@ -879,6 +879,8 @@ function Get-OSInfo {
 function Get-ServerRoles {
     if ($null -ne $script:ServerRolesCache) { return $script:ServerRolesCache }
     $roles = @()
+    $savedPref = $ProgressPreference
+    $ProgressPreference = 'SilentlyContinue'
     try {
         $job = Start-Job -ScriptBlock {
             $ProgressPreference = 'SilentlyContinue'
@@ -892,10 +894,17 @@ function Get-ServerRoles {
             if ($null -ne $received) { $roles = $received }
         } else {
             Stop-Job -Job $job
+            # Wait for the job to fully terminate and drain its streams
+            # so progress records don't bleed through to the console after we return.
+            Wait-Job -Job $job -Timeout 5 | Out-Null
+            Receive-Job -Job $job -ErrorAction SilentlyContinue | Out-Null
         }
         Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
     }
     catch {}
+    finally {
+        $ProgressPreference = $savedPref
+    }
     $script:ServerRolesCache = $roles
     return $script:ServerRolesCache
 }
