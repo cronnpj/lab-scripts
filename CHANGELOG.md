@@ -2,6 +2,19 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.04.01.3 - 2026-04-01
+
+### Refactor — Split Utilities into VM & Image Prep + Utilities
+
+- Promoted SDelete, VM template prep, Horizon Optimization Tool, VirtIO tools, and Sysprep out of Utilities into a new top-level category **VM & Image Prep** (category 5) in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1). These items share a cohesive VM build/golden-image workflow.
+- **Utilities** (now category 6) is trimmed to 7 items: vmPing, Win11Debloat, winget shell, winget upgrade --all, new terminal tab, desktop wallpaper, and lab files.
+- Added `Show-VMImagePrepMenu` and `Invoke-VMImagePrepMenu` functions with `V` prefix RunOptions (V1–V4, VS).
+- Updated `Invoke-ClientRunOption` in [src/Menu/ClientToolsMenu.ps1](src/Menu/ClientToolsMenu.ps1): added V-prefix cases; renumbered U3→winget shell, U4→winget upgrade, U5→new terminal tab (old U6–U8); removed stale U3–U5/U9/US entries.
+- Updated global search catalog in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1): replaced old Utility entries with V-prefix VM & Image Prep entries; updated U3–U5 to match new numbering.
+
+### Version
+- Bumped [src/VERSION.txt](src/VERSION.txt) to `v2026.04.01.3`.
+
 ## v2026.04.01.2 - 2026-04-01
 
 ### New Feature — Copy CITA 120 Lab 9 Files to Public Desktop

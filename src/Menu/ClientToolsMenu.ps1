@@ -267,15 +267,17 @@ function Show-ClientMenu {
     Write-Host "      IP config, DNS flush, DHCP renew, connectivity checks" -ForegroundColor DarkGray
     Write-MenuItem "4" "System Actions         (4 options)"
     Write-Host "      Rename, timezone/clock sync, update services, SFC scan" -ForegroundColor DarkGray
-    Write-MenuItem "5" "Utilities              (12 options)"
-    Write-Host "      vmPing, Debloat, SDelete, Template prep, Horizon Tool, winget, winget upgrade --all, new terminal tab, VirtIO tools, Sysprep, desktop wallpaper, CITA 120 lab files" -ForegroundColor DarkGray
+    Write-MenuItem "5" "VM & Image Prep        (5 options)"
+    Write-Host "      SDelete, template prep, Horizon Tool, VirtIO tools, Sysprep" -ForegroundColor DarkGray
+    Write-MenuItem "6" "Utilities              (7 options)"
+    Write-Host "      vmPing, Debloat, winget, winget upgrade --all, new terminal tab, wallpaper, lab files" -ForegroundColor DarkGray
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
     Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
-    Write-MenuKeysLine "1-5"
+    Write-MenuKeysLine "1-6"
     Write-Host ""
 }
 
@@ -336,35 +338,45 @@ function Show-SystemActionsMenu {
     Write-Host ""
 }
 
+function Show-VMImagePrepMenu {
+    Show-AppHeader -Breadcrumb "Main > Windows Client Tools > VM & Image Prep"
+
+    Write-MenuItem "1" "Run SDelete free-space overwrite"
+    Write-MenuItem "2" "Run VM template prep checklist"
+    Write-MenuItem "3" "Launch VMware Horizon OS Optimization Tool"
+    Write-MenuItem "4" "Install VirtIO guest tools (Proxmox VM)"
+    Write-MenuItem "S" "Run Sysprep (removes Winget first, then launches Sysprep)"
+    Write-Host ""
+    Write-MenuItem "0" "Back" "DarkGray"
+    Write-Host ""
+    Write-MenuKeysLine "1-4 · S"
+    Write-Host ""
+}
+
 function Show-UtilitiesMenu {
     Show-AppHeader -Breadcrumb "Main > Windows Client Tools > Utilities"
 
     Write-MenuItem "1" "Launch vmPing (MISC)"
     Write-MenuItem "2" "Run Win11Debloat (official upstream script)"
-    Write-MenuItem "3" "Run SDelete free-space overwrite"
-    Write-MenuItem "4" "Run VM template prep checklist"
-    Write-MenuItem "5" "Launch VMware Horizon OS Optimization Tool"
-    Write-MenuItem "6" "Open winget command shell"
-    Write-MenuItem "7" "Run winget upgrade --all"
-    Write-MenuItem "8" "Open new terminal tab"
-    Write-MenuItem "9" "Install VirtIO guest tools (Proxmox VM)"
-    Write-MenuItem "S" "Run Sysprep (removes Winget first, then launches Sysprep)"
+    Write-MenuItem "3" "Open winget command shell"
+    Write-MenuItem "4" "Run winget upgrade --all"
+    Write-MenuItem "5" "Open new terminal tab"
     Write-MenuItem "W" "Apply CITA desktop wallpaper (disables Spotlight)"
     Write-MenuItem "L" "Copy CITA 120 Lab 9 files to Public Desktop"
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
-    Write-MenuKeysLine "1-9 · S · W · L"
+    Write-MenuKeysLine "1-5 · W · L"
     Write-Host ""
 }
 
-# Task paths (unchanged from your original intent)
+# Task paths
 $joinDomainScript   = Join-Path $PSScriptRoot "..\Tasks\Join-Domain.ps1"
 $renameScript       = Join-Path $PSScriptRoot "..\Tasks\Rename-Computer.ps1"
 $timezoneScript     = Join-Path $PSScriptRoot "..\Tasks\Set-EasternTimeAndResync.ps1"
 
-$joinStatusScript         = Join-Path $PSScriptRoot "..\Tasks\Client\Get-JoinStatus.ps1"
-$autopilotScript          = Join-Path $PSScriptRoot "..\Tasks\Client\Register-AutopilotDevice.ps1"
+$joinStatusScript   = Join-Path $PSScriptRoot "..\Tasks\Client\Get-JoinStatus.ps1"
+$autopilotScript    = Join-Path $PSScriptRoot "..\Tasks\Client\Register-AutopilotDevice.ps1"
 $gpoReportScript    = Join-Path $PSScriptRoot "..\Tasks\Client\GPO-Report.ps1"
 $testConnScript     = Join-Path $PSScriptRoot "..\Tasks\Client\Test-Connectivity.ps1"
 $win11DebloatScript = Join-Path $PSScriptRoot "..\Tasks\Run-Win11Debloat.ps1"
@@ -490,46 +502,17 @@ function Invoke-SystemActionsMenu {
     } while (-not $backSub)
 }
 
-function Invoke-UtilitiesMenu {
+function Invoke-VMImagePrepMenu {
     $backSub = $false
     do {
-        Show-UtilitiesMenu
+        Show-VMImagePrepMenu
         $choice = Read-MenuChoice
 
         switch ($choice) {
-            "1" {
-                Invoke-ActionSafe -Action {
-                    if (-not (Test-Path $vmPingPath)) {
-                        throw "vmPing.exe not found at '$vmPingPath'. Place vmPing.exe in src\\MISC\\vmPing\\ and try again."
-                    }
-
-                    Ensure-VmPingDesktopShortcuts -VmPingExePath $vmPingPath
-
-                    Start-Process -FilePath $vmPingPath
-                } -SuccessText "vmPing launched"
-            }
-            "2" { Invoke-TaskSafe -Path $win11DebloatScript -SuccessText "Win11Debloat flow completed" -ShowPause:$false }
-            "3" { Invoke-TaskSafe -Path $sdeleteScript -SuccessText "SDelete flow completed" -ShowPause:$false }
-            "4" { Invoke-TaskSafe -Path $templatePrepScript -SuccessText "Template prep checklist completed" -ShowPause:$false }
-            "5" { Invoke-TaskSafe -Path $horizonOptScript -SuccessText "Horizon Optimization Tool flow completed" -ShowPause:$false }
-            "6" {
-                Invoke-ActionSafe -Action {
-                    Open-WingetShell
-                } -SuccessText "Winget shell opened"
-            }
-            "7" {
-                Invoke-ActionSafe -Action {
-                    Clear-Host
-                    Assert-WingetAvailable
-                    winget upgrade --all --scope machine
-                } -SuccessText "winget upgrade --all completed"
-            }
-            "8" {
-                Invoke-ActionSafe -Action {
-                    Open-NewTerminalTabOrWindow
-                } -SuccessText "Terminal tab/window opened"
-            }
-            "9" {
+            "1" { Invoke-TaskSafe -Path $sdeleteScript -SuccessText "SDelete flow completed" -ShowPause:$false }
+            "2" { Invoke-TaskSafe -Path $templatePrepScript -SuccessText "Template prep checklist completed" -ShowPause:$false }
+            "3" { Invoke-TaskSafe -Path $horizonOptScript -SuccessText "Horizon Optimization Tool flow completed" -ShowPause:$false }
+            "4" {
                 Invoke-ActionSafe -Action {
                     Clear-Host
                     Assert-WingetAvailable
@@ -551,6 +534,52 @@ function Invoke-UtilitiesMenu {
                     Write-Host "Use: Enter System Out-of-Box Experience (OOBE) + Generalize + Shutdown." -ForegroundColor DarkGray
                     Start-Process -FilePath $sysprepExePath | Out-Null
                 } -SuccessText "Sysprep launched"
+            }
+            "0"  { $backSub = $true }
+            default {
+                $script:lastStatusText  = "[Warning] Invalid selection"
+                $script:lastStatusColor = "Yellow"
+                Start-Sleep 1
+            }
+        }
+    } while (-not $backSub)
+}
+
+function Invoke-UtilitiesMenu {
+    $backSub = $false
+    do {
+        Show-UtilitiesMenu
+        $choice = Read-MenuChoice
+
+        switch ($choice) {
+            "1" {
+                Invoke-ActionSafe -Action {
+                    if (-not (Test-Path $vmPingPath)) {
+                        throw "vmPing.exe not found at '$vmPingPath'. Place vmPing.exe in src\\MISC\\vmPing\\ and try again."
+                    }
+
+                    Ensure-VmPingDesktopShortcuts -VmPingExePath $vmPingPath
+
+                    Start-Process -FilePath $vmPingPath
+                } -SuccessText "vmPing launched"
+            }
+            "2" { Invoke-TaskSafe -Path $win11DebloatScript -SuccessText "Win11Debloat flow completed" -ShowPause:$false }
+            "3" {
+                Invoke-ActionSafe -Action {
+                    Open-WingetShell
+                } -SuccessText "Winget shell opened"
+            }
+            "4" {
+                Invoke-ActionSafe -Action {
+                    Clear-Host
+                    Assert-WingetAvailable
+                    winget upgrade --all --scope machine
+                } -SuccessText "winget upgrade --all completed"
+            }
+            "5" {
+                Invoke-ActionSafe -Action {
+                    Open-NewTerminalTabOrWindow
+                } -SuccessText "Terminal tab/window opened"
             }
             "W" { Invoke-TaskSafe -Path $wallpaperScript -SuccessText "Desktop wallpaper applied" }
             "L" { Invoke-TaskSafe -Path $cita120L9Script -SuccessText "CITA 120 Lab 9 files copied to Public Desktop" }
@@ -617,46 +646,17 @@ function Invoke-ClientRunOption {
         }
         "S4" { Invoke-ActionSafe -Action { Clear-Host; sfc /scannow } -SuccessText "SFC completed (or started)" }
 
-        "U1" {
-            Invoke-ActionSafe -Action {
-                if (-not (Test-Path $vmPingPath)) {
-                    throw "vmPing.exe not found at '$vmPingPath'. Place vmPing.exe in src\\MISC\\vmPing\\ and try again."
-                }
-
-                Ensure-VmPingDesktopShortcuts -VmPingExePath $vmPingPath
-
-                Start-Process -FilePath $vmPingPath
-            } -SuccessText "vmPing launched"
-        }
-        "U2" { Invoke-TaskSafe -Path $win11DebloatScript -SuccessText "Win11Debloat flow completed" -ShowPause:$false }
-        "U3" { Invoke-TaskSafe -Path $sdeleteScript -SuccessText "SDelete flow completed" -ShowPause:$false }
-        "U4" { Invoke-TaskSafe -Path $templatePrepScript -SuccessText "Template prep checklist completed" -ShowPause:$false }
-        "U5" { Invoke-TaskSafe -Path $horizonOptScript -SuccessText "Horizon Optimization Tool flow completed" -ShowPause:$false }
-        "U6" {
-            Invoke-ActionSafe -Action {
-                Open-WingetShell
-            } -SuccessText "Winget shell opened"
-        }
-        "U7" {
-            Invoke-ActionSafe -Action {
-                Clear-Host
-                Assert-WingetAvailable
-                winget upgrade --all --scope machine
-            } -SuccessText "winget upgrade --all completed"
-        }
-        "U8" {
-            Invoke-ActionSafe -Action {
-                Open-NewTerminalTabOrWindow
-            } -SuccessText "Terminal tab/window opened"
-        }
-        "U9" {
+        "V1" { Invoke-TaskSafe -Path $sdeleteScript -SuccessText "SDelete flow completed" -ShowPause:$false }
+        "V2" { Invoke-TaskSafe -Path $templatePrepScript -SuccessText "Template prep checklist completed" -ShowPause:$false }
+        "V3" { Invoke-TaskSafe -Path $horizonOptScript -SuccessText "Horizon Optimization Tool flow completed" -ShowPause:$false }
+        "V4" {
             Invoke-ActionSafe -Action {
                 Clear-Host
                 Assert-WingetAvailable
                 winget install RedHat.VirtIO --source winget --scope machine
             } -SuccessText "VirtIO guest tools install completed"
         }
-        "US" {
+        "VS" {
             Invoke-ActionSafe -Action {
                 Clear-Host
                 $sysprepExePath = Join-Path $env:WINDIR "System32\Sysprep\Sysprep.exe"
@@ -671,6 +671,36 @@ function Invoke-ClientRunOption {
                 Write-Host "Use: Enter System Out-of-Box Experience (OOBE) + Generalize + Shutdown." -ForegroundColor DarkGray
                 Start-Process -FilePath $sysprepExePath | Out-Null
             } -SuccessText "Sysprep launched"
+        }
+
+        "U1" {
+            Invoke-ActionSafe -Action {
+                if (-not (Test-Path $vmPingPath)) {
+                    throw "vmPing.exe not found at '$vmPingPath'. Place vmPing.exe in src\\MISC\\vmPing\\ and try again."
+                }
+
+                Ensure-VmPingDesktopShortcuts -VmPingExePath $vmPingPath
+
+                Start-Process -FilePath $vmPingPath
+            } -SuccessText "vmPing launched"
+        }
+        "U2" { Invoke-TaskSafe -Path $win11DebloatScript -SuccessText "Win11Debloat flow completed" -ShowPause:$false }
+        "U3" {
+            Invoke-ActionSafe -Action {
+                Open-WingetShell
+            } -SuccessText "Winget shell opened"
+        }
+        "U4" {
+            Invoke-ActionSafe -Action {
+                Clear-Host
+                Assert-WingetAvailable
+                winget upgrade --all --scope machine
+            } -SuccessText "winget upgrade --all completed"
+        }
+        "U5" {
+            Invoke-ActionSafe -Action {
+                Open-NewTerminalTabOrWindow
+            } -SuccessText "Terminal tab/window opened"
         }
         "UW" { Invoke-TaskSafe -Path $wallpaperScript -SuccessText "Desktop wallpaper applied" }
         "UL" { Invoke-TaskSafe -Path $cita120L9Script -SuccessText "CITA 120 Lab 9 files copied to Public Desktop" }
@@ -698,7 +728,8 @@ do {
         "2"  { Invoke-PolicyManagementMenu }
         "3"  { Invoke-NetworkToolsMenu }
         "4"  { Invoke-SystemActionsMenu }
-        "5"  { Invoke-UtilitiesMenu }
+        "5"  { Invoke-VMImagePrepMenu }
+        "6"  { Invoke-UtilitiesMenu }
 
         "0"  { $back = $true }
         default {
