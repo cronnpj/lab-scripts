@@ -860,11 +860,13 @@ function Write-TenantLine {
     Write-Host " |" -ForegroundColor Cyan
 }
 
-$script:OSInfoCache         = $null
-$script:ServerRolesCache    = $null   # $null = not ready; [string[]] = ready (may be empty)
-$script:ServerRolesJob      = $null
-$script:ServerRolesDeadline = [datetime]::MinValue
-$script:ServerRolesTimedOut = $false
+$script:OSInfoCache              = $null
+$script:ServerRolesCache         = $null   # $null = not ready; [string[]] = ready (may be empty)
+$script:ServerRolesPowerShell    = $null   # [System.Management.Automation.PowerShell]
+$script:ServerRolesRunspace      = $null   # [System.Management.Automation.Runspaces.Runspace]
+$script:ServerRolesAsyncResult   = $null   # IAsyncResult from BeginInvoke
+$script:ServerRolesDeadline      = [datetime]::MinValue
+$script:ServerRolesTimedOut      = $false
 
 function Get-OSInfo {
     if ($null -ne $script:OSInfoCache) { return $script:OSInfoCache }
@@ -883,35 +885,51 @@ function Get-ServerRoles {
     # Cache hit — already resolved (roles found, empty, or timed out)
     if ($null -ne $script:ServerRolesCache) { return $script:ServerRolesCache }
 
-    # No job started yet — kick it off and return $null so the caller shows "Loading..."
-    if ($null -eq $script:ServerRolesJob) {
-        $script:ServerRolesJob = Start-Job -ScriptBlock {
+    # No fetch started yet — open a runspace and begin async invoke.
+    # Using a runspace instead of Start-Job so that Get-WindowsFeature's
+    # Write-Progress calls are captured in the runspace's own streams
+    # rather than leaking to the parent console as a progress bar.
+    if ($null -eq $script:ServerRolesPowerShell) {
+        $script:ServerRolesRunspace = [System.Management.Automation.Runspaces.RunspaceFactory]::CreateRunspace()
+        $script:ServerRolesRunspace.Open()
+        $script:ServerRolesPowerShell = [System.Management.Automation.PowerShell]::Create()
+        $script:ServerRolesPowerShell.Runspace = $script:ServerRolesRunspace
+        $script:ServerRolesPowerShell.AddScript({
             $ProgressPreference = 'SilentlyContinue'
             Get-WindowsFeature -ErrorAction Stop |
                 Where-Object { $_.Installed -and $_.FeatureType -eq 'Role' } |
                 Select-Object -ExpandProperty DisplayName
-        }
-        $script:ServerRolesDeadline = [datetime]::Now.AddSeconds(15)
+        }) | Out-Null
+        $script:ServerRolesAsyncResult = $script:ServerRolesPowerShell.BeginInvoke()
+        $script:ServerRolesDeadline    = [datetime]::Now.AddSeconds(15)
         return $null
     }
 
-    # Job completed or failed — collect results and cache
-    if ($script:ServerRolesJob.State -in @('Completed', 'Failed')) {
-        $received = @(Receive-Job -Job $script:ServerRolesJob -ErrorAction SilentlyContinue)
-        Remove-Job -Job $script:ServerRolesJob -Force -ErrorAction SilentlyContinue
-        $script:ServerRolesJob   = $null
-        $script:ServerRolesCache = $received
+    # Fetch completed — collect results, dispose, and cache
+    if ($script:ServerRolesAsyncResult.IsCompleted) {
+        try {
+            $result = @($script:ServerRolesPowerShell.EndInvoke($script:ServerRolesAsyncResult) |
+                        ForEach-Object { [string]$_ })
+        } catch { $result = @() }
+        $script:ServerRolesPowerShell.Dispose()
+        $script:ServerRolesRunspace.Dispose()
+        $script:ServerRolesPowerShell  = $null
+        $script:ServerRolesRunspace    = $null
+        $script:ServerRolesAsyncResult = $null
+        $script:ServerRolesCache       = $result
         return $script:ServerRolesCache
     }
 
-    # Deadline exceeded — abandon job and mark timed out
+    # Deadline exceeded — stop, dispose, and mark timed out
     if ([datetime]::Now -gt $script:ServerRolesDeadline) {
-        Stop-Job    -Job $script:ServerRolesJob -ErrorAction SilentlyContinue
-        Receive-Job -Job $script:ServerRolesJob -ErrorAction SilentlyContinue | Out-Null
-        Remove-Job  -Job $script:ServerRolesJob -Force -ErrorAction SilentlyContinue
-        $script:ServerRolesJob      = $null
-        $script:ServerRolesTimedOut = $true
-        $script:ServerRolesCache    = @()
+        $script:ServerRolesPowerShell.Stop()
+        $script:ServerRolesPowerShell.Dispose()
+        $script:ServerRolesRunspace.Dispose()
+        $script:ServerRolesPowerShell  = $null
+        $script:ServerRolesRunspace    = $null
+        $script:ServerRolesAsyncResult = $null
+        $script:ServerRolesTimedOut    = $true
+        $script:ServerRolesCache       = @()
         return $script:ServerRolesCache
     }
 
