@@ -860,8 +860,11 @@ function Write-TenantLine {
     Write-Host " |" -ForegroundColor Cyan
 }
 
-$script:OSInfoCache      = $null
-$script:ServerRolesCache = $null
+$script:OSInfoCache         = $null
+$script:ServerRolesCache    = $null   # $null = not ready; [string[]] = ready (may be empty)
+$script:ServerRolesJob      = $null
+$script:ServerRolesDeadline = [datetime]::MinValue
+$script:ServerRolesTimedOut = $false
 
 function Get-OSInfo {
     if ($null -ne $script:OSInfoCache) { return $script:OSInfoCache }
@@ -877,36 +880,43 @@ function Get-OSInfo {
 }
 
 function Get-ServerRoles {
+    # Cache hit — already resolved (roles found, empty, or timed out)
     if ($null -ne $script:ServerRolesCache) { return $script:ServerRolesCache }
-    $roles = @()
-    $savedPref = $ProgressPreference
-    $ProgressPreference = 'SilentlyContinue'
-    try {
-        $job = Start-Job -ScriptBlock {
+
+    # No job started yet — kick it off and return $null so the caller shows "Loading..."
+    if ($null -eq $script:ServerRolesJob) {
+        $script:ServerRolesJob = Start-Job -ScriptBlock {
             $ProgressPreference = 'SilentlyContinue'
             Get-WindowsFeature -ErrorAction Stop |
                 Where-Object { $_.Installed -and $_.FeatureType -eq 'Role' } |
                 Select-Object -ExpandProperty DisplayName
         }
-        $completed = Wait-Job -Job $job -Timeout 10
-        if ($completed) {
-            $received = @(Receive-Job -Job $job -ErrorAction SilentlyContinue)
-            if ($null -ne $received) { $roles = $received }
-        } else {
-            Stop-Job -Job $job
-            # Wait for the job to fully terminate and drain its streams
-            # so progress records don't bleed through to the console after we return.
-            Wait-Job -Job $job -Timeout 5 | Out-Null
-            Receive-Job -Job $job -ErrorAction SilentlyContinue | Out-Null
-        }
-        Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
+        $script:ServerRolesDeadline = [datetime]::Now.AddSeconds(15)
+        return $null
     }
-    catch {}
-    finally {
-        $ProgressPreference = $savedPref
+
+    # Job completed or failed — collect results and cache
+    if ($script:ServerRolesJob.State -in @('Completed', 'Failed')) {
+        $received = @(Receive-Job -Job $script:ServerRolesJob -ErrorAction SilentlyContinue)
+        Remove-Job -Job $script:ServerRolesJob -Force -ErrorAction SilentlyContinue
+        $script:ServerRolesJob   = $null
+        $script:ServerRolesCache = $received
+        return $script:ServerRolesCache
     }
-    $script:ServerRolesCache = $roles
-    return $script:ServerRolesCache
+
+    # Deadline exceeded — abandon job and mark timed out
+    if ([datetime]::Now -gt $script:ServerRolesDeadline) {
+        Stop-Job    -Job $script:ServerRolesJob -ErrorAction SilentlyContinue
+        Receive-Job -Job $script:ServerRolesJob -ErrorAction SilentlyContinue | Out-Null
+        Remove-Job  -Job $script:ServerRolesJob -Force -ErrorAction SilentlyContinue
+        $script:ServerRolesJob      = $null
+        $script:ServerRolesTimedOut = $true
+        $script:ServerRolesCache    = @()
+        return $script:ServerRolesCache
+    }
+
+    # Still running — caller shows "Loading..."
+    return $null
 }
 
 function Write-OSLine {
@@ -927,6 +937,32 @@ function Write-OSLine {
     Write-Host "| " -NoNewline -ForegroundColor Cyan
     Write-Host $label -NoNewline -ForegroundColor Gray
     Write-Host $value -NoNewline -ForegroundColor Cyan
+    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Cyan
+}
+
+function Write-RolesLinePending {
+    param([int]$Width = 80)
+    $inner = $Width - 4
+    $label = "Roles: "
+    $text  = "Loading..."
+    $pad   = " " * [Math]::Max(0, $inner - $label.Length - $text.Length)
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
+    Write-Host $label -NoNewline -ForegroundColor Gray
+    Write-Host $text -NoNewline -ForegroundColor DarkYellow
+    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Cyan
+}
+
+function Write-RolesLineTimedOut {
+    param([int]$Width = 80)
+    $inner = $Width - 4
+    $label = "Roles: "
+    $text  = "(check timed out)"
+    $pad   = " " * [Math]::Max(0, $inner - $label.Length - $text.Length)
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
+    Write-Host $label -NoNewline -ForegroundColor Gray
+    Write-Host $text -NoNewline -ForegroundColor DarkYellow
     Write-Host $pad -NoNewline -ForegroundColor Gray
     Write-Host " |" -ForegroundColor Cyan
 }
@@ -1029,8 +1065,13 @@ function Show-AppHeader {
 
     if ($osInfo.IsServer) {
         $serverRoles = Get-ServerRoles
-        if ($null -eq $serverRoles) { $serverRoles = @() }
-        Write-RolesLine -Roles $serverRoles -Width $Width
+        if ($null -eq $serverRoles) {
+            Write-RolesLinePending -Width $Width
+        } elseif ($script:ServerRolesTimedOut) {
+            Write-RolesLineTimedOut -Width $Width
+        } else {
+            Write-RolesLine -Roles $serverRoles -Width $Width
+        }
     }
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor Cyan
