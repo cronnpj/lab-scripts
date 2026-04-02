@@ -88,10 +88,10 @@ function Show-CurrentContext {
 function Show-DevOpsLabInstallOpsMenu {
     param(
         [string]$StatusText = "Ready",
-        [string]$StatusColor = "DarkGray"
+        [string]$StatusColor = "Green"
     )
 
-    Show-AppHeader -Breadcrumb "Main > DevOps / CLI Tools > Lab Repository - Install Operations"
+    Show-AppHeader -Breadcrumb "Main > DevOps / CLI Tools > Lab Repository - Install Operations" -StatusText $StatusText -StatusColor $StatusColor
     Show-CurrentContext -RepoPath $script:RepoPath
 
     Write-Host "  Lab Repository - Install Operations" -ForegroundColor Cyan
@@ -113,12 +113,11 @@ function Show-DevOpsLabInstallOpsMenu {
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
-    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
     Write-Host ""
 }
 
 $script:lastStatusText  = "[Ready] Ready"
-$script:lastStatusColor = "DarkGray"
+$script:lastStatusColor = "Green"
 $script:MainMenuPath = Join-Path $PSScriptRoot "DevOpsToolsMenu.ps1"
 $script:RepoPath = Resolve-DevOpsRepoPath -TargetRelativePath $script:RepoTarget
 

@@ -4,6 +4,9 @@ $ErrorActionPreference = "SilentlyContinue"
 # Import shared UI helpers
 Import-Module (Join-Path $PSScriptRoot "..\UI\ConsoleUI.psm1") -Force
 
+# Register global search so Ctrl+S works from any menu
+Register-GlobalSearchCallback { Invoke-GlobalSearch }
+
 function Test-GitInstalled {
     return [bool](Get-Command git -ErrorAction SilentlyContinue)
 }
@@ -165,7 +168,7 @@ function Show-MainMenu {
     $statusObj = Get-StatusLine -Status $updateStatus
     $updateAvailable = ($updateStatus -eq "UPDATE_AVAILABLE")
 
-    Show-AppHeader -Breadcrumb "Main Menu"
+    Show-AppHeader -Breadcrumb "Main Menu" -StatusText $statusObj.Text -StatusColor $statusObj.Color
 
     Write-MenuItem "1" "Server Tools"                 "Cyan"
     Write-MenuItem "2" "Domain Controller Tools"      "Cyan"
@@ -174,7 +177,6 @@ function Show-MainMenu {
     Write-MenuItem "5" "Troubleshooting & Validation"  "Yellow"
     Write-MenuItem "6" "DevOps & Automation"           "Magenta"
     Write-MenuItem "7" "App Maintenance & Updates"     "White"
-    Write-MenuItem "S" "Global Search"                 "White"
     if ($updateAvailable) {
         Write-MenuItem "U" "Update Lab Tools from GitHub" "Yellow"
     }
@@ -184,12 +186,9 @@ function Show-MainMenu {
     Write-MenuItem "0" "Exit"                          "DarkGray"
     Write-Host ""
 
-    Write-StatusLine -StatusText $statusObj.Text -StatusColor $statusObj.Color
-
     # Build keys line dynamically based on active shortcuts
     $keyParts = [System.Collections.Generic.List[hashtable]]::new()
     $keyParts.Add(@{ Key = "1-7"; Label = " Select" })
-    $keyParts.Add(@{ Key = "S";   Label = " Search" })
     if ($updateAvailable)            { $keyParts.Add(@{ Key = "U"; Label = " Update" }) }
     if ($graphState.ShowGraphConnect) { $keyParts.Add(@{ Key = "G"; Label = " Graph"  }) }
     $keyParts.Add(@{ Key = "0"; Label = " Exit" })

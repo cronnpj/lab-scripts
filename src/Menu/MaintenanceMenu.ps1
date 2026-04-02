@@ -55,10 +55,10 @@ function Invoke-TaskSafe {
 function Show-MaintenanceMenu {
     param(
         [string]$StatusText = "[Ready] Ready",
-        [string]$StatusColor = "DarkGray"
+        [string]$StatusColor = "Green"
     )
 
-    Show-AppHeader -Breadcrumb "Main > App Maintenance & Updates"
+    Show-AppHeader -Breadcrumb "Main > App Maintenance & Updates" -StatusText $StatusText -StatusColor $StatusColor
 
     Write-MenuItem "1" "Update Lab Tools from GitHub" "Green"
     Write-MenuItem "2" "Create / Repair Lab Tools shortcuts"
@@ -70,7 +70,6 @@ function Show-MaintenanceMenu {
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
-    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
     Write-MenuKeysLine "1-6"
     Write-Host ""
@@ -83,7 +82,7 @@ $installPowerShell7Script = Join-Path $PSScriptRoot "..\Tasks\Install-PowerShell
 $installPowerShell7OnlyScript = Join-Path $PSScriptRoot "..\Tasks\Install-PowerShell7Only.ps1"
 $back = $false
 $script:lastStatusText  = "[Ready] Ready"
-$script:lastStatusColor = "DarkGray"
+$script:lastStatusColor = "Green"
 
 do {
     Show-MaintenanceMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor

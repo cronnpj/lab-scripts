@@ -12,10 +12,10 @@ function Wait-MenuContinue {
 function Show-DCMenu {
     param(
         [string]$StatusText = "[Ready] Ready",
-        [string]$StatusColor = "DarkGray"
+        [string]$StatusColor = "Green"
     )
 
-    Show-AppHeader -Breadcrumb "Main > Domain Controller Tools"
+    Show-AppHeader -Breadcrumb "Main > Domain Controller Tools" -StatusText $StatusText -StatusColor $StatusColor
 
     Write-MenuItem "1" "Install AD DS role (no promotion)"
     Write-MenuItem "2" "Install DNS role"
@@ -27,7 +27,6 @@ function Show-DCMenu {
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
-    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
     Write-MenuKeysLine "1-6"
     Write-Host ""
@@ -66,7 +65,7 @@ $rolesScript = Join-Path $PSScriptRoot "..\Tasks\Install-Roles.ps1"
 
 $back = $false
 $script:lastStatusText  = "[Ready] Ready"
-$script:lastStatusColor = "DarkGray"
+$script:lastStatusColor = "Green"
 
 do {
     Show-DCMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor

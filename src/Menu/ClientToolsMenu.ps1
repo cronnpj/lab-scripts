@@ -254,10 +254,10 @@ $s.Save()
 function Show-ClientMenu {
     param(
         [string]$StatusText = "Ready",
-        [string]$StatusColor = "DarkGray"
+        [string]$StatusColor = "Green"
     )
 
-    Show-AppHeader -Breadcrumb "Main > Windows Client Tools"
+    Show-AppHeader -Breadcrumb "Main > Windows Client Tools" -StatusText $StatusText -StatusColor $StatusColor
 
     Write-MenuItem "1" "Identity & Enrollment   (6 options)"
     Write-Host "      Domain join, join status, work/school enrollment, Intune sync, Autopilot registration" -ForegroundColor DarkGray
@@ -275,7 +275,6 @@ function Show-ClientMenu {
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
-    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
     Write-MenuKeysLine "1-6"
     Write-Host ""
@@ -389,7 +388,7 @@ $vmPingPath         = Join-Path $PSScriptRoot "..\MISC\vmPing\vmPing.exe"
 
 $back = $false
 $script:lastStatusText  = "[Ready] Ready"
-$script:lastStatusColor = "DarkGray"
+$script:lastStatusColor = "Green"
 
 function Invoke-IdentityEnrollmentMenu {
     $backSub = $false

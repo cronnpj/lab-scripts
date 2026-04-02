@@ -158,10 +158,10 @@ function Show-CurrentContext {
 function Show-DevOpsInstallUpdateMenu {
     param(
         [string]$StatusText  = "Ready",
-        [string]$StatusColor = "DarkGray"
+        [string]$StatusColor = "Green"
     )
 
-    Show-AppHeader -Breadcrumb "Main > DevOps / CLI Tools > Install / Update Tools"
+    Show-AppHeader -Breadcrumb "Main > DevOps / CLI Tools > Install / Update Tools" -StatusText $StatusText -StatusColor $StatusColor
     Show-CurrentContext -RepoPath $script:RepoPath
 
     Write-Host "  Install / Update Tools" -ForegroundColor Cyan
@@ -179,12 +179,11 @@ function Show-DevOpsInstallUpdateMenu {
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
-    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
     Write-Host ""
 }
 
 $script:lastStatusText  = "[Ready] Ready"
-$script:lastStatusColor = "DarkGray"
+$script:lastStatusColor = "Green"
 $script:RepoPath = Resolve-DevOpsRepoPath -TargetRelativePath $script:RepoTarget
 
 $back = $false

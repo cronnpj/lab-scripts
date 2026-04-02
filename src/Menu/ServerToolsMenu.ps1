@@ -47,10 +47,10 @@ function Invoke-TaskSafe {
 function Show-ServerToolsMenu {
     param(
         [string]$StatusText = "[Ready] Ready",
-        [string]$StatusColor = "DarkGray"
+        [string]$StatusColor = "Green"
     )
 
-    Show-AppHeader -Breadcrumb "Main > Server Tools"
+    Show-AppHeader -Breadcrumb "Main > Server Tools" -StatusText $StatusText -StatusColor $StatusColor
 
     Write-MenuItem "1" "Rename computer"
     Write-MenuItem "2" "Configure static IP"
@@ -59,7 +59,6 @@ function Show-ServerToolsMenu {
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
-    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
     Write-MenuKeysLine "1-3"
     Write-Host ""
@@ -67,7 +66,7 @@ function Show-ServerToolsMenu {
 
 $back = $false
 $script:lastStatusText  = "[Ready] Ready"
-$script:lastStatusColor = "DarkGray"
+$script:lastStatusColor = "Green"
 
 $renameScript    = Join-Path $PSScriptRoot "..\Tasks\Rename-Computer.ps1"
 $staticIPScript  = Join-Path $PSScriptRoot "..\Tasks\Set-StaticIP.ps1"

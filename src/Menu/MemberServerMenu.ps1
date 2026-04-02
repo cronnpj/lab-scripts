@@ -47,10 +47,10 @@ function Invoke-TaskSafe {
 function Show-MemberServerMenu {
     param(
         [string]$StatusText = "[Ready] Ready",
-        [string]$StatusColor = "DarkGray"
+        [string]$StatusColor = "Green"
     )
 
-    Show-AppHeader -Breadcrumb "Main > Member Server Tools"
+    Show-AppHeader -Breadcrumb "Main > Member Server Tools" -StatusText $StatusText -StatusColor $StatusColor
 
     Write-MenuItem "1" "Join existing domain"
     Write-MenuItem "2" "Set timezone to Eastern + resync clock"
@@ -58,7 +58,6 @@ function Show-MemberServerMenu {
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
-    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
     Write-MenuKeysLine "1-2"
     Write-Host ""
@@ -69,7 +68,7 @@ $timezoneScript   = Join-Path $PSScriptRoot "..\Tasks\Set-EasternTimeAndResync.p
 
 $back = $false
 $script:lastStatusText  = "[Ready] Ready"
-$script:lastStatusColor = "DarkGray"
+$script:lastStatusColor = "Green"
 
 do {
     Show-MemberServerMenu -StatusText $script:lastStatusText -StatusColor $script:lastStatusColor

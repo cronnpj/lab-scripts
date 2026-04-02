@@ -51,10 +51,10 @@ function Invoke-TaskSafe {
 function Show-TroubleshootingMenu {
     param(
         [string]$StatusText = "[Ready] Ready",
-        [string]$StatusColor = "DarkGray"
+        [string]$StatusColor = "Green"
     )
 
-    Show-AppHeader -Breadcrumb "Main > Troubleshooting & Validation"
+    Show-AppHeader -Breadcrumb "Main > Troubleshooting & Validation" -StatusText $StatusText -StatusColor $StatusColor
 
     Write-MenuItem "1" "Show server role install status"
     Write-MenuItem "2" "System snapshot"
@@ -62,7 +62,6 @@ function Show-TroubleshootingMenu {
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
 
-    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
 
     Write-MenuKeysLine "1-2"
     Write-Host ""
@@ -73,7 +72,7 @@ $snapshotScript      = Join-Path $PSScriptRoot "..\Tasks\System-Snapshot.ps1"
 
 $back = $false
 $script:lastStatusText  = "[Ready] Ready"
-$script:lastStatusColor = "DarkGray"
+$script:lastStatusColor = "Green"
 
 if (-not [string]::IsNullOrWhiteSpace($RunOption)) {
     switch ($RunOption) {

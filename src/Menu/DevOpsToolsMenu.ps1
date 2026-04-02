@@ -631,7 +631,7 @@ $script:LabInstallOpsMenuPath = Join-Path $PSScriptRoot "DevOpsLabInstallOpsMenu
 $script:LabAdvancedOpsMenuPath = Join-Path $PSScriptRoot "DevOpsLabAdvancedOpsMenu.ps1"
 
 $script:lastStatusText  = "[Ready] Ready"
-$script:lastStatusColor = "DarkGray"
+$script:lastStatusColor = "Green"
 
 function Show-CurrentContext {
     param([Parameter(Mandatory)][string]$RepoPath)
@@ -670,10 +670,10 @@ function Show-CurrentContext {
 function Show-DevOpsMenu {
     param(
         [string]$StatusText  = "Ready",
-        [string]$StatusColor = "DarkGray"
+        [string]$StatusColor = "Green"
     )
 
-    Show-AppHeader -Breadcrumb "Main > DevOps / CLI Tools"
+    Show-AppHeader -Breadcrumb "Main > DevOps / CLI Tools" -StatusText $StatusText -StatusColor $StatusColor
     Show-CurrentContext -RepoPath $script:RepoPath
 
     Write-Host "  Install / Update Tools" -ForegroundColor Cyan
@@ -695,7 +695,6 @@ function Show-DevOpsMenu {
     Write-MenuItem "0"  "Back" "DarkGray"
     Write-Host ""
 
-    Write-StatusLine -StatusText $StatusText -StatusColor $StatusColor
     Write-Host ""
 }
 
