@@ -979,28 +979,13 @@ function Write-RolesLine {
     }
 }
 
-$script:AppHeaderDrawn = $false
-
 function Show-AppHeader {
     param(
         [Parameter(Mandatory=$true)][string]$Breadcrumb,
         [int]$Width = 80
     )
 
-    if (-not $script:AppHeaderDrawn) {
-        # First draw this session: start with a clean screen
-        Clear-Host
-        $script:AppHeaderDrawn = $true
-    }
-    else {
-        # Subsequent draws: scroll viewport to top and overwrite header in place.
-        # ESC[2J erases the visible screen (not scrollback) before rewriting, clearing
-        # any wide output (e.g. winget tables) that extended beyond column 80.
-        try { $host.UI.RawUI.WindowPosition = [System.Management.Automation.Host.Coordinates]::new(0, 0) } catch {}
-        [Console]::SetCursorPosition(0, 0)
-        [Console]::Write([char]27 + "[2J")
-        [Console]::SetCursorPosition(0, 0)
-    }
+    Clear-Host
 
     $version  = Get-AppVersion
     $hostName = $env:COMPUTERNAME
@@ -1050,21 +1035,12 @@ function Show-AppHeader {
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor Cyan
 
-    # Clear everything below the header box to end of screen.
-    # Removes old menu items, old command output — whatever was there before.
-    [Console]::Write([char]27 + "[J")
-
     Write-Host ""
     Write-Host "Navigation: " -NoNewline -ForegroundColor DarkGray
     Write-Host $Breadcrumb -ForegroundColor Cyan
     Write-Host ""
 }
 
-function Reset-AppHeader {
-    # Forces a full Clear-Host on the next Show-AppHeader call.
-    # Call this if the screen state is unknown (e.g., after an external process runs).
-    $script:AppHeaderDrawn = $false
-}
 
 function Write-MenuItem {
     param(
@@ -1143,5 +1119,5 @@ function Clear-JoinDisplayInfoCache {
     $script:JoinDisplayInfoCacheTime = [datetime]::MinValue
 }
 
-Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache, Read-MenuChoice, Reset-AppHeader, Get-InternetStatus
+Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache, Read-MenuChoice, Get-InternetStatus
 
