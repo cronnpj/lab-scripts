@@ -969,7 +969,7 @@ function Write-RolesLineTimedOut {
 
 function Write-RolesLine {
     param(
-        [Parameter(Mandatory=$true)][string[]]$Roles,
+        [AllowEmptyCollection()][Parameter(Mandatory=$true)][string[]]$Roles,
         [int]$Width = 80
     )
 
