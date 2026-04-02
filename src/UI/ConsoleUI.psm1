@@ -1033,10 +1033,21 @@ function Write-RolesLine {
     }
 }
 
+$script:GlobalSearchCallback  = $null
+$script:AppFooterStatusText  = ""
+$script:AppFooterStatusColor = "DarkGray"
+
+function Register-GlobalSearchCallback {
+    param([Parameter(Mandatory=$true)][scriptblock]$Callback)
+    $script:GlobalSearchCallback = $Callback
+}
+
 function Show-AppHeader {
     param(
         [Parameter(Mandatory=$true)][string]$Breadcrumb,
-        [int]$Width = 80
+        [int]$Width = 80,
+        [string]$StatusText  = "",
+        [string]$StatusColor = "DarkGray"
     )
 
     Clear-Host
@@ -1061,6 +1072,10 @@ function Show-AppHeader {
 
     # Host/User/OS line
     Write-HostUserLine -HostName $hostName -UserName $userName -OSCaption $osInfo.Caption -Width $Width
+
+    # Store status for the footer — updated each time Show-AppHeader is called
+    $script:AppFooterStatusText  = $StatusText
+    $script:AppFooterStatusColor = $StatusColor
 
     # Primary network line with cyan values
     Write-NetworkLine -IPAddress $networkInfo.IPAddress -Mode $networkInfo.Mode -Width $Width
@@ -1161,27 +1176,33 @@ function Get-CurrentJoinType {
 }
 
 function Write-AppFooter {
-    # Draws a pinned footer at the bottom of the visible window showing global
-    # Ctrl+key power shortcuts, then restores the cursor to where it was.
+    # Draws a pinned 3-row footer at the bottom of the visible window:
+    #   Row 1: cyan separator
+    #   Row 2: global Ctrl+key shortcuts
+    #   Row 3: last status text
+    # Cursor is restored to its original position after drawing.
     param([int]$Width = 80)
     try {
         $windowHeight = $host.UI.RawUI.WindowSize.Height
-        if ($windowHeight -lt 6) { return }
+        if ($windowHeight -lt 7) { return }
 
         $savedTop  = [Console]::CursorTop
         $savedLeft = [Console]::CursorLeft
 
-        $separatorRow = $windowHeight - 3
-        $shortcutRow  = $windowHeight - 2
+        $separatorRow = $windowHeight - 4
+        $shortcutRow  = $windowHeight - 3
+        $statusRow    = $windowHeight - 2
 
         # Only draw if footer rows are below current cursor (room exists)
         if ($separatorRow -le $savedTop) { return }
 
         [Console]::SetCursorPosition(0, $separatorRow)
-        Write-Host ("-" * $Width) -ForegroundColor DarkGray
+        Write-Host ("-" * $Width) -ForegroundColor Cyan
 
         [Console]::SetCursorPosition(0, $shortcutRow)
         Write-Host "  " -NoNewline
+        Write-Host "^S" -NoNewline -ForegroundColor Yellow
+        Write-Host " Search  |  " -NoNewline -ForegroundColor DarkGray
         Write-Host "^R" -NoNewline -ForegroundColor Yellow
         Write-Host " Reboot  " -NoNewline -ForegroundColor DarkGray
         Write-Host "^P" -NoNewline -ForegroundColor Yellow
@@ -1190,6 +1211,21 @@ function Write-AppFooter {
         Write-Host " Lock  " -NoNewline -ForegroundColor DarkGray
         Write-Host "^T" -NoNewline -ForegroundColor Yellow
         Write-Host " Task Mgr" -ForegroundColor DarkGray
+
+        [Console]::SetCursorPosition(0, $statusRow)
+        $statusText  = $script:AppFooterStatusText
+        $statusColor = $script:AppFooterStatusColor
+        if ([string]::IsNullOrWhiteSpace($statusText)) {
+            Write-Host (' ' * $Width) -NoNewline
+        } else {
+            Write-Host "  " -NoNewline
+            Write-Host "Status: " -NoNewline -ForegroundColor DarkGray
+            $maxLen  = $Width - 12
+            if ($statusText.Length -gt $maxLen) { $statusText = $statusText.Substring(0, $maxLen) }
+            $pad = ' ' * ($Width - 10 - $statusText.Length)
+            Write-Host $statusText -NoNewline -ForegroundColor $statusColor
+            Write-Host $pad -NoNewline
+        }
 
         [Console]::SetCursorPosition($savedLeft, $savedTop)
     } catch {}
@@ -1253,6 +1289,12 @@ function Invoke-PowerShortcut {
             try { Start-Process taskmgr.exe } catch {}
             return $true
         }
+        'S' {
+            if ($null -ne $script:GlobalSearchCallback) {
+                & $script:GlobalSearchCallback
+            }
+            return $true
+        }
     }
     return $false
 }
@@ -1281,5 +1323,5 @@ function Clear-JoinDisplayInfoCache {
     $script:JoinDisplayInfoCacheTime = [datetime]::MinValue
 }
 
-Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache, Read-MenuChoice, Get-InternetStatus, Write-AppFooter, Invoke-PowerShortcut
+Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache, Read-MenuChoice, Get-InternetStatus, Write-AppFooter, Invoke-PowerShortcut, Register-GlobalSearchCallback
 
