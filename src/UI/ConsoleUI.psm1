@@ -1160,12 +1160,115 @@ function Get-CurrentJoinType {
     return 'Unknown'
 }
 
+function Write-AppFooter {
+    # Draws a pinned footer at the bottom of the visible window showing global
+    # Ctrl+key power shortcuts, then restores the cursor to where it was.
+    param([int]$Width = 80)
+    try {
+        $windowHeight = $host.UI.RawUI.WindowSize.Height
+        if ($windowHeight -lt 6) { return }
+
+        $savedTop  = [Console]::CursorTop
+        $savedLeft = [Console]::CursorLeft
+
+        $separatorRow = $windowHeight - 3
+        $shortcutRow  = $windowHeight - 2
+
+        # Only draw if footer rows are below current cursor (room exists)
+        if ($separatorRow -le $savedTop) { return }
+
+        [Console]::SetCursorPosition(0, $separatorRow)
+        Write-Host ("-" * $Width) -ForegroundColor DarkGray
+
+        [Console]::SetCursorPosition(0, $shortcutRow)
+        Write-Host "  " -NoNewline
+        Write-Host "^R" -NoNewline -ForegroundColor Yellow
+        Write-Host " Reboot  " -NoNewline -ForegroundColor DarkGray
+        Write-Host "^P" -NoNewline -ForegroundColor Yellow
+        Write-Host " Shutdown  " -NoNewline -ForegroundColor DarkGray
+        Write-Host "^L" -NoNewline -ForegroundColor Yellow
+        Write-Host " Lock  " -NoNewline -ForegroundColor DarkGray
+        Write-Host "^T" -NoNewline -ForegroundColor Yellow
+        Write-Host " Task Mgr" -ForegroundColor DarkGray
+
+        [Console]::SetCursorPosition($savedLeft, $savedTop)
+    } catch {}
+}
+
+function Read-PowerConfirmation {
+    param([string]$Action)
+    $savedTop = [Console]::CursorTop
+    Write-Host ""
+    Write-Host "  $Action this machine? Press " -NoNewline -ForegroundColor Yellow
+    Write-Host "Y" -NoNewline -ForegroundColor Red
+    Write-Host " to confirm or any other key to cancel: " -NoNewline -ForegroundColor Yellow
+
+    $confirmed = $false
+    while ($true) {
+        if ([Console]::KeyAvailable) {
+            $key = [Console]::ReadKey($true)
+            $confirmed = ($key.KeyChar.ToString().ToLower() -eq 'y')
+            break
+        }
+        Start-Sleep -Milliseconds 100
+    }
+
+    # Clear the confirmation line
+    $clearedTop = [Console]::CursorTop
+    for ($row = $savedTop; $row -le $clearedTop; $row++) {
+        [Console]::SetCursorPosition(0, $row)
+        Write-Host (' ' * 80) -NoNewline
+    }
+    [Console]::SetCursorPosition(0, $savedTop)
+
+    return $confirmed
+}
+
+function Invoke-PowerShortcut {
+    # Called from Read-MenuChoice and Read-MainMenuChoice with the raw ConsoleKeyInfo.
+    # Returns $true if the key was a handled Ctrl+shortcut, $false otherwise.
+    param([Parameter(Mandatory=$true)][System.ConsoleKeyInfo]$Key)
+
+    $isCtrl = ($Key.Modifiers -band [System.ConsoleModifiers]::Control) -ne 0
+    if (-not $isCtrl) { return $false }
+
+    switch ($Key.Key.ToString()) {
+        'R' {
+            if (Read-PowerConfirmation -Action 'Reboot') {
+                try { Restart-Computer -Force } catch { Write-Host "  Reboot failed: $($_.Exception.Message)" -ForegroundColor Red; Start-Sleep 2 }
+            }
+            return $true
+        }
+        'P' {
+            if (Read-PowerConfirmation -Action 'Shut down') {
+                try { Stop-Computer -Force } catch { Write-Host "  Shutdown failed: $($_.Exception.Message)" -ForegroundColor Red; Start-Sleep 2 }
+            }
+            return $true
+        }
+        'L' {
+            try { rundll32.exe user32.dll,LockWorkStation } catch {}
+            return $true
+        }
+        'T' {
+            try { Start-Process taskmgr.exe } catch {}
+            return $true
+        }
+    }
+    return $false
+}
+
 function Read-MenuChoice {
-    # Single-keypress input — no Enter required. Consistent across all menus.
+    # Single-keypress input. Ctrl+R/P/L/T are intercepted globally as power shortcuts.
+    Write-AppFooter
     Write-Host "Select an option: " -NoNewline
     while ($true) {
         if ([Console]::KeyAvailable) {
             $key = [Console]::ReadKey($true)
+            if (Invoke-PowerShortcut -Key $key) {
+                Write-AppFooter
+                Write-Host "Select an option: " -NoNewline
+                continue
+            }
             Write-Host $key.KeyChar
             return $key.KeyChar.ToString()
         }
@@ -1178,5 +1281,5 @@ function Clear-JoinDisplayInfoCache {
     $script:JoinDisplayInfoCacheTime = [datetime]::MinValue
 }
 
-Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache, Read-MenuChoice, Get-InternetStatus
+Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache, Read-MenuChoice, Get-InternetStatus, Write-AppFooter, Invoke-PowerShortcut
 

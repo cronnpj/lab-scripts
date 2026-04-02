@@ -355,14 +355,21 @@ function Invoke-GlobalSearch {
 function Read-MainMenuChoice {
     # Polls for a keypress every 500ms. Returns the character pressed immediately
     # (no Enter needed), or $null after the refresh interval to trigger a menu re-render.
+    # Ctrl+R/P/L/T are intercepted as global power shortcuts via Invoke-PowerShortcut.
     param([int]$RefreshIntervalSeconds = 300)
 
+    Write-AppFooter
     Write-Host "Select an option: " -NoNewline
 
     $refreshAt = [datetime]::Now.AddSeconds($RefreshIntervalSeconds)
     while ($true) {
         if ([Console]::KeyAvailable) {
             $key = [Console]::ReadKey($true)
+            if (Invoke-PowerShortcut -Key $key) {
+                Write-AppFooter
+                Write-Host "Select an option: " -NoNewline
+                continue
+            }
             Write-Host $key.KeyChar  # echo the character
             return $key.KeyChar.ToString()
         }
