@@ -238,39 +238,51 @@ function Write-NetworkLine {
     param(
         [Parameter(Mandatory=$true)][string]$IPAddress,
         [Parameter(Mandatory=$true)][string]$Mode,
-        [int]$Width = 64
+        [string]$UptimeStr = '',
+        [int]$Width = 80
     )
 
-    $inner = $Width - 4
+    # 3-column layout mirroring Write-HostUserLine:
+    #   Col1 0-23  (24): "IP: "     + value
+    #   Col2 24-50 (27): "Mode: "   + value
+    #   Col3 51+       : "Uptime: " + value  (only when UptimeStr provided)
+    $inner      = $Width - 4
+    $col2Start  = 24
+    $col3Start  = 51
 
-    $leftLabel = "IP: "
-    $rightLabel = "Mode: "
-    $rightLabelStart = 24
+    $label1 = "IP: "
+    $label2 = "Mode: "
 
-    $maxIpLength = [Math]::Max(0, $rightLabelStart - $leftLabel.Length)
-    if ($IPAddress.Length -gt $maxIpLength) {
-        $IPAddress = $IPAddress.Substring(0, $maxIpLength)
-    }
+    $max1 = [Math]::Max(0, $col2Start - $label1.Length)
+    if ($IPAddress.Length -gt $max1) { $IPAddress = $IPAddress.Substring(0, $max1) }
+    $spacer1 = " " * [Math]::Max(1, $col2Start - $label1.Length - $IPAddress.Length)
 
-    $spacerLength = [Math]::Max(1, $rightLabelStart - ($leftLabel.Length + $IPAddress.Length))
-    $spacer = " " * $spacerLength
-
-    $fixedLength = $leftLabel.Length + $IPAddress.Length + $spacerLength + $rightLabel.Length
-    $maxModeLength = [Math]::Max(0, $inner - $fixedLength)
-    if ($Mode.Length -gt $maxModeLength) {
-        $Mode = $Mode.Substring(0, $maxModeLength)
-    }
-
-    $textLen = $fixedLength + $Mode.Length
-    $pad = " " * [Math]::Max(0, ($inner - $textLen))
+    $max2 = [Math]::Max(0, $col3Start - $col2Start - $label2.Length)
+    if ($Mode.Length -gt $max2) { $Mode = $Mode.Substring(0, $max2) }
+    $spacer2 = " " * [Math]::Max(0, $col3Start - $col2Start - $label2.Length - $Mode.Length)
 
     Write-Host "| " -NoNewline -ForegroundColor Cyan
-    Write-Host $leftLabel -NoNewline -ForegroundColor Gray
+    Write-Host $label1 -NoNewline -ForegroundColor Gray
     Write-Host $IPAddress -NoNewline -ForegroundColor Cyan
-    Write-Host $spacer -NoNewline -ForegroundColor Gray
-    Write-Host $rightLabel -NoNewline -ForegroundColor Gray
+    Write-Host $spacer1 -NoNewline
+    Write-Host $label2 -NoNewline -ForegroundColor Gray
     Write-Host $Mode -NoNewline -ForegroundColor Cyan
-    Write-Host $pad -NoNewline -ForegroundColor Gray
+
+    if (-not [string]::IsNullOrWhiteSpace($UptimeStr)) {
+        $label3 = "Uptime: "
+        $max3   = [Math]::Max(0, $inner - $col3Start - $label3.Length)
+        if ($UptimeStr.Length -gt $max3) { $UptimeStr = $UptimeStr.Substring(0, $max3) }
+        $pad = " " * [Math]::Max(0, $inner - $col3Start - $label3.Length - $UptimeStr.Length)
+        Write-Host $spacer2 -NoNewline
+        Write-Host $label3 -NoNewline -ForegroundColor Gray
+        Write-Host $UptimeStr -NoNewline -ForegroundColor Cyan
+        Write-Host $pad -NoNewline
+    } else {
+        $pad = " " * [Math]::Max(0, $inner - $col2Start - $label2.Length - $Mode.Length)
+        Write-Host $spacer2 -NoNewline
+        Write-Host $pad -NoNewline
+    }
+
     Write-Host " |" -ForegroundColor Cyan
 }
 
@@ -1113,15 +1125,27 @@ function Show-AppHeader {
     # Host/User/OS line
     Write-HostUserLine -HostName $hostName -UserName $userName -OSCaption $osInfo.Caption -Width $Width
 
-    # Uptime line
-    Write-UptimeLine -Width $Width
+    # Compute uptime from cached boot time
+    $uptimeStr = ''
+    try {
+        $lastBoot = $osInfo.LastBootUpTime
+        if ($null -ne $lastBoot) {
+            $uptime = (Get-Date) - $lastBoot
+            $days  = [int]$uptime.TotalDays
+            $hours = $uptime.Hours
+            $mins  = $uptime.Minutes
+            if ($days -gt 0)       { $uptimeStr = "${days}d ${hours}h ${mins}m" }
+            elseif ($hours -gt 0)  { $uptimeStr = "${hours}h ${mins}m" }
+            else                   { $uptimeStr = "${mins}m" }
+        }
+    } catch {}
 
     # Store status for the footer — updated each time Show-AppHeader is called
     $script:AppFooterStatusText  = $StatusText
     $script:AppFooterStatusColor = $StatusColor
 
-    # Primary network line with cyan values
-    Write-NetworkLine -IPAddress $networkInfo.IPAddress -Mode $networkInfo.Mode -Width $Width
+    # Primary network line — uptime shown in third column (under OS)
+    Write-NetworkLine -IPAddress $networkInfo.IPAddress -Mode $networkInfo.Mode -UptimeStr $uptimeStr -Width $Width
 
     # Internet + join status line
     Write-InternetDomainLine -IsConnected $internetConnected -JoinInfo $joinLineInfo -Width $Width
