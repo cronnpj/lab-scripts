@@ -95,8 +95,7 @@ if (-not (Test-IsElevated)) {
 function New-LabShortcut {
     param(
         [Parameter(Mandatory=$true)][string]$ShortcutPath,
-        [Parameter(Mandatory=$true)][string]$LauncherPath,
-        [Parameter(Mandatory=$true)][string]$HostExecutablePath,
+        [Parameter(Mandatory=$true)][string]$VbsPath,
         [Parameter(Mandatory=$true)][string]$WorkingDirectory,
         [Parameter(Mandatory=$true)][string]$IconLocation
     )
@@ -109,51 +108,28 @@ function New-LabShortcut {
     $wsh = New-Object -ComObject WScript.Shell
     $shortcut = $wsh.CreateShortcut($ShortcutPath)
 
-    $shortcut.TargetPath = $HostExecutablePath
-    $escapedHostPath = $HostExecutablePath.Replace("'", "''")
-    $escapedLauncherPath = $LauncherPath.Replace("'", "''")
-    $escapedWorkingDirectory = $WorkingDirectory.Replace("'", "''")
-
-    # The shortcut launches a non-elevated PowerShell stub that immediately
-    # re-launches the real launcher elevated via -Verb RunAs.  The stub is:
-    #
-    #   $hostExe     = '<path to pwsh.exe or powershell.exe>'
-    #   $launcher    = '<path to Launch-LabTools.ps1>'
-    #   $workingDir  = '<repo root>'
-    #   Start-Process -FilePath $hostExe \
-    #       -ArgumentList @('-NoLogo','-ExecutionPolicy','Bypass','-File',$launcher) \
-    #       -WorkingDirectory $workingDir -Verb RunAs
-    #
-    # -EncodedCommand is used here only because Windows shortcut .Arguments
-    # fields do not reliably survive round-trips with complex quoted strings.
-    # The command being encoded is the four lines above — nothing else.
-    $elevationWrapper = @"
-`$hostExe = '$escapedHostPath'
-`$launcher = '$escapedLauncherPath'
-`$workingDir = '$escapedWorkingDirectory'
-Start-Process -FilePath `$hostExe -ArgumentList @('-NoLogo', '-ExecutionPolicy', 'Bypass', '-File', `$launcher) -WorkingDirectory `$workingDir -Verb RunAs
-"@
-
-    $encodedWrapper = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($elevationWrapper))
-    $launcherArgs = "-NoLogo -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand $encodedWrapper"
-    $shortcut.Arguments = $launcherArgs
+    # Target wscript.exe (GUI subsystem — no console window) which invokes
+    # Launch-Elevated.vbs.  The VBS calls Shell.Application.ShellExecute with
+    # "runas" to trigger UAC directly, so no stub console window ever appears.
+    $shortcut.TargetPath  = "$env:SystemRoot\System32\wscript.exe"
+    $shortcut.Arguments   = "`"$VbsPath`""
     $shortcut.WorkingDirectory = $WorkingDirectory
     $shortcut.WindowStyle = 1
-    $shortcut.Description = "Launch CITA Lab Tools (PowerShell 7 preferred)"
+    $shortcut.Description = "Launch CITA Lab Tools"
     $shortcut.IconLocation = $IconLocation
     $shortcut.Save()
 }
 
 $workingDir = $srcRoot
+$vbsPath = Join-Path $srcRoot "Launch-Elevated.vbs"
 $preferredHostPath = Get-PreferredShortcutHostPath
 $createPublicDesktopShortcuts = $true
 $defaultIconLocation = "$preferredHostPath,0"
 $shortcutIconLocation = $defaultIconLocation
 $isElevated = Test-IsElevated
 
-Write-Host "Shortcut host selected: $preferredHostPath" -ForegroundColor Cyan
-if ($preferredHostPath -match '\\WindowsPowerShell\\v1\.0\\powershell\.exe$') {
-    Write-Host "Warning: PowerShell 7 was not discovered. Shortcut will use Windows PowerShell." -ForegroundColor DarkYellow
+if (-not (Test-Path $vbsPath)) {
+    throw "Elevation shim not found: $vbsPath"
 }
 
 if (Test-Path $configPath) {
@@ -291,7 +267,7 @@ foreach ($location in $locations) {
         $shortcutPath = Join-Path $location.Path $shortcutName
 
         try {
-            New-LabShortcut -ShortcutPath $shortcutPath -LauncherPath $launcherPath -HostExecutablePath $preferredHostPath -WorkingDirectory $workingDir -IconLocation $shortcutIconLocation
+            New-LabShortcut -ShortcutPath $shortcutPath -VbsPath $vbsPath -WorkingDirectory $workingDir -IconLocation $shortcutIconLocation
             $created += "[$($location.Label)] $shortcutPath"
         }
         catch {
