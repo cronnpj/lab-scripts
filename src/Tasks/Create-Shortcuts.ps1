@@ -135,7 +135,7 @@ Start-Process -FilePath `$hostExe -ArgumentList @('-NoLogo', '-ExecutionPolicy',
 "@
 
     $encodedWrapper = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($elevationWrapper))
-    $launcherArgs = "-NoLogo -NoProfile -ExecutionPolicy Bypass -EncodedCommand $encodedWrapper"
+    $launcherArgs = "-NoLogo -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand $encodedWrapper"
     $shortcut.Arguments = $launcherArgs
     $shortcut.WorkingDirectory = $WorkingDirectory
     $shortcut.WindowStyle = 1
