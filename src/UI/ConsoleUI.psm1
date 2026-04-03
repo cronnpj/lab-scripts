@@ -1268,17 +1268,17 @@ function Write-AppFooter {
 
         [Console]::SetCursorPosition(0, $shortcutRow)
         Write-Host "  " -NoNewline
-        Write-Host "^S" -NoNewline -ForegroundColor Yellow
+        Write-Host "S" -NoNewline -ForegroundColor Yellow
         Write-Host " Search  |  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "^R" -NoNewline -ForegroundColor Yellow
+        Write-Host "R" -NoNewline -ForegroundColor Yellow
         Write-Host " Reboot  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "^P" -NoNewline -ForegroundColor Yellow
+        Write-Host "P" -NoNewline -ForegroundColor Yellow
         Write-Host " Shutdown  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "^L" -NoNewline -ForegroundColor Yellow
+        Write-Host "L" -NoNewline -ForegroundColor Yellow
         Write-Host " Lock  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "^T" -NoNewline -ForegroundColor Yellow
+        Write-Host "T" -NoNewline -ForegroundColor Yellow
         Write-Host " Task Mgr  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "^N" -NoNewline -ForegroundColor Yellow
+        Write-Host "N" -NoNewline -ForegroundColor Yellow
         Write-Host " New Tab" -ForegroundColor DarkGray
 
         [Console]::SetCursorPosition(0, $statusRow)
@@ -1301,10 +1301,10 @@ function Write-AppFooter {
 }
 
 function Read-PowerConfirmation {
-    param([string]$Action)
+    param([string]$Prompt)
     $savedTop = [Console]::CursorTop
     Write-Host ""
-    Write-Host "  $Action this machine? Press " -NoNewline -ForegroundColor Yellow
+    Write-Host "  $Prompt Press " -NoNewline -ForegroundColor Yellow
     Write-Host "Y" -NoNewline -ForegroundColor Red
     Write-Host " to confirm or any other key to cancel: " -NoNewline -ForegroundColor Yellow
 
@@ -1331,53 +1331,60 @@ function Read-PowerConfirmation {
 
 function Invoke-PowerShortcut {
     # Called from Read-MenuChoice and Read-MainMenuChoice with the raw ConsoleKeyInfo.
-    # Returns $true if the key was a handled Ctrl+shortcut, $false otherwise.
+    # Intercepts S/R/P/L/T/N (with or without Ctrl) as global shortcuts.
+    # All actions require Y confirmation before executing.
+    # Returns $true if the key was a handled shortcut, $false otherwise.
     param([Parameter(Mandatory=$true)][System.ConsoleKeyInfo]$Key)
-
-    $isCtrl = ($Key.Modifiers -band [System.ConsoleModifiers]::Control) -ne 0
-    if (-not $isCtrl) { return $false }
 
     switch ($Key.Key.ToString()) {
         'R' {
-            if (Read-PowerConfirmation -Action 'Reboot') {
+            if (Read-PowerConfirmation -Prompt 'Reboot this machine?') {
                 try { Restart-Computer -Force } catch { Write-Host "  Reboot failed: $($_.Exception.Message)" -ForegroundColor Red; Start-Sleep 2 }
             }
             return $true
         }
         'P' {
-            if (Read-PowerConfirmation -Action 'Shut down') {
+            if (Read-PowerConfirmation -Prompt 'Shut down this machine?') {
                 try { Stop-Computer -Force } catch { Write-Host "  Shutdown failed: $($_.Exception.Message)" -ForegroundColor Red; Start-Sleep 2 }
             }
             return $true
         }
         'L' {
-            try { rundll32.exe user32.dll,LockWorkStation } catch {}
+            if (Read-PowerConfirmation -Prompt 'Lock this machine?') {
+                try { rundll32.exe user32.dll,LockWorkStation } catch {}
+            }
             return $true
         }
         'T' {
-            try { Start-Process taskmgr.exe } catch {}
+            if (Read-PowerConfirmation -Prompt 'Open Task Manager?') {
+                try { Start-Process taskmgr.exe } catch {}
+            }
             return $true
         }
         'S' {
-            if ($null -ne $script:GlobalSearchCallback) {
-                & $script:GlobalSearchCallback
+            if (Read-PowerConfirmation -Prompt 'Open search?') {
+                if ($null -ne $script:GlobalSearchCallback) {
+                    & $script:GlobalSearchCallback
+                }
             }
             return $true
         }
         'N' {
-            try {
-                $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
-                if ($wt) {
-                    Start-Process -FilePath $wt.Source -ArgumentList @("-w", "0", "new-tab")
-                } else {
-                    $pwsh = Get-Command pwsh.exe -ErrorAction SilentlyContinue
-                    if ($pwsh) {
-                        Start-Process -FilePath $pwsh.Source -ArgumentList @("-NoLogo")
+            if (Read-PowerConfirmation -Prompt 'Open new terminal tab?') {
+                try {
+                    $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
+                    if ($wt) {
+                        Start-Process -FilePath $wt.Source -ArgumentList @("-w", "0", "new-tab")
                     } else {
-                        Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList @("-NoLogo")
+                        $pwsh = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+                        if ($pwsh) {
+                            Start-Process -FilePath $pwsh.Source -ArgumentList @("-NoLogo")
+                        } else {
+                            Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList @("-NoLogo")
+                        }
                     }
-                }
-            } catch {}
+                } catch {}
+            }
             return $true
         }
     }
@@ -1385,7 +1392,7 @@ function Invoke-PowerShortcut {
 }
 
 function Read-MenuChoice {
-    # Single-keypress input. Ctrl+R/P/L/T are intercepted globally as power shortcuts.
+    # Single-keypress input. S/R/P/L/T/N are intercepted globally as shortcuts (confirmation required).
     Write-AppFooter
     Write-Host "Select an option: " -NoNewline
     while ($true) {
