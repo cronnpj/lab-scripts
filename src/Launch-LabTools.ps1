@@ -50,6 +50,15 @@ if ($launchInWindowsTerminal) {
                 "-File", $mainMenuPath
             )
 
+            # Hide the intermediate pwsh window before handing off to WT
+            try {
+                Add-Type -Name WinApi -Namespace LabTools -MemberDefinition @'
+                    [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
+                    [DllImport("user32.dll")]   public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+'@
+                [LabTools.WinApi]::ShowWindow([LabTools.WinApi]::GetConsoleWindow(), 0)
+            } catch {}
+
             Start-Process -FilePath $wt.Source -ArgumentList $wtArgs
             return
         }
