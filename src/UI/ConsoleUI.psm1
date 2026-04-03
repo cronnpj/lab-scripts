@@ -1279,7 +1279,9 @@ function Write-AppFooter {
         Write-Host "T" -NoNewline -ForegroundColor Yellow
         Write-Host " Task Mgr  " -NoNewline -ForegroundColor DarkGray
         Write-Host "N" -NoNewline -ForegroundColor Yellow
-        Write-Host " New Tab" -ForegroundColor DarkGray
+        Write-Host " New Tab  " -NoNewline -ForegroundColor DarkGray
+        Write-Host "X" -NoNewline -ForegroundColor Yellow
+        Write-Host " Exit" -ForegroundColor DarkGray
 
         [Console]::SetCursorPosition(0, $statusRow)
         $statusText  = $script:AppFooterStatusText
@@ -1384,6 +1386,12 @@ function Invoke-PowerShortcut {
                         }
                     }
                 } catch {}
+            }
+            return $true
+        }
+        'X' {
+            if (Read-PowerConfirmation -Prompt 'Exit Lab Tools?') {
+                exit
             }
             return $true
         }

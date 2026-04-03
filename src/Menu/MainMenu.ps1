@@ -183,7 +183,6 @@ function Show-MainMenu {
     if ($graphState.ShowGraphConnect) {
         Write-MenuItem "G" "Connect Microsoft Graph for Tenant info" "Magenta"
     }
-    Write-MenuItem "0" "Exit"                          "DarkGray"
     Write-Host ""
 
     # Build keys line dynamically based on active shortcuts
@@ -191,7 +190,6 @@ function Show-MainMenu {
     $keyParts.Add(@{ Key = "1-7"; Label = " Select" })
     if ($updateAvailable)            { $keyParts.Add(@{ Key = "U"; Label = " Update" }) }
     if ($graphState.ShowGraphConnect) { $keyParts.Add(@{ Key = "G"; Label = " Graph"  }) }
-    $keyParts.Add(@{ Key = "0"; Label = " Exit" })
 
     Write-Host "Keys: " -NoNewline -ForegroundColor DarkGray
     for ($i = 0; $i -lt $keyParts.Count; $i++) {
@@ -440,10 +438,9 @@ function Invoke-StartupAutoUpdate {
 
 Invoke-StartupAutoUpdate
 
-$exit = $false
 $script:LastUpdateCacheBust = [datetime]::MinValue
 
-do {
+while ($true) {
     $menuState = Show-MainMenu
 
     $choice = $null
@@ -491,10 +488,8 @@ do {
                 Start-Sleep -Milliseconds 300
             }
         }
-        "0" { $exit = $true }
         default { Start-Sleep -Milliseconds 300 }
     }
-
-} while (-not $exit)
+}
 
 Clear-Host
