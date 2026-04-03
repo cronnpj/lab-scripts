@@ -344,11 +344,11 @@ function Show-VMImagePrepMenu {
     Write-MenuItem "2" "Run VM template prep checklist"
     Write-MenuItem "3" "Launch VMware Horizon OS Optimization Tool"
     Write-MenuItem "4" "Install VirtIO guest tools (Proxmox VM)"
-    Write-MenuItem "S" "Run Sysprep (removes Winget first, then launches Sysprep)"
+    Write-MenuItem "5" "Run Sysprep (removes Winget first, then launches Sysprep)"
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
-    Write-MenuKeysLine "1-4 · S"
+    Write-MenuKeysLine "1-5"
     Write-Host ""
 }
 
@@ -360,12 +360,12 @@ function Show-UtilitiesMenu {
     Write-MenuItem "3" "Open winget command shell"
     Write-MenuItem "4" "Run winget upgrade --all"
     Write-MenuItem "5" "Open new terminal tab"
-    Write-MenuItem "W" "Apply CITA desktop wallpaper (disables Spotlight)"
-    Write-MenuItem "L" "Copy CITA 120 Lab 9 files to Public Desktop"
+    Write-MenuItem "6" "Apply CITA desktop wallpaper (disables Spotlight)"
+    Write-MenuItem "7" "Copy CITA 120 Lab 9 files to Public Desktop"
     Write-Host ""
     Write-MenuItem "0" "Back" "DarkGray"
     Write-Host ""
-    Write-MenuKeysLine "1-5 · W · L"
+    Write-MenuKeysLine "1-7"
     Write-Host ""
 }
 
@@ -518,7 +518,7 @@ function Invoke-VMImagePrepMenu {
                     winget install RedHat.VirtIO --source winget --scope machine
                 } -SuccessText "VirtIO guest tools install completed"
             }
-            "S" {
+            "5" {
                 Invoke-ActionSafe -Action {
                     Clear-Host
                     $sysprepExePath = Join-Path $env:WINDIR "System32\Sysprep\Sysprep.exe"
@@ -580,8 +580,8 @@ function Invoke-UtilitiesMenu {
                     Open-NewTerminalTabOrWindow
                 } -SuccessText "Terminal tab/window opened"
             }
-            "W" { Invoke-TaskSafe -Path $wallpaperScript -SuccessText "Desktop wallpaper applied" }
-            "L" { Invoke-TaskSafe -Path $cita120L9Script -SuccessText "CITA 120 Lab 9 files copied to Public Desktop" }
+            "6" { Invoke-TaskSafe -Path $wallpaperScript -SuccessText "Desktop wallpaper applied" }
+            "7" { Invoke-TaskSafe -Path $cita120L9Script -SuccessText "CITA 120 Lab 9 files copied to Public Desktop" }
             "0"  { $backSub = $true }
             default {
                 $script:lastStatusText  = "[Warning] Invalid selection"
@@ -655,7 +655,7 @@ function Invoke-ClientRunOption {
                 winget install RedHat.VirtIO --source winget --scope machine
             } -SuccessText "VirtIO guest tools install completed"
         }
-        "VS" {
+        "V5" {
             Invoke-ActionSafe -Action {
                 Clear-Host
                 $sysprepExePath = Join-Path $env:WINDIR "System32\Sysprep\Sysprep.exe"
@@ -701,8 +701,8 @@ function Invoke-ClientRunOption {
                 Open-NewTerminalTabOrWindow
             } -SuccessText "Terminal tab/window opened"
         }
-        "UW" { Invoke-TaskSafe -Path $wallpaperScript -SuccessText "Desktop wallpaper applied" }
-        "UL" { Invoke-TaskSafe -Path $cita120L9Script -SuccessText "CITA 120 Lab 9 files copied to Public Desktop" }
+        "U6" { Invoke-TaskSafe -Path $wallpaperScript -SuccessText "Desktop wallpaper applied" }
+        "U7" { Invoke-TaskSafe -Path $cita120L9Script -SuccessText "CITA 120 Lab 9 files copied to Public Desktop" }
 
         default {
             $script:lastStatusText  = "[Warning] Invalid search action"
