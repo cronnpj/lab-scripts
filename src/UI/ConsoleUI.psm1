@@ -138,6 +138,42 @@ function Write-TimezoneDateLine {
     Write-Host " |" -ForegroundColor Cyan
 }
 
+function Write-UptimeLine {
+    param([int]$Width = 80)
+
+    $inner = $Width - 4
+    $label = "Uptime: "
+
+    try {
+        $osInfo = Get-OSInfo
+        $lastBoot = $osInfo.LastBootUpTime
+        if ($null -eq $lastBoot) { throw "no boot time" }
+        $uptime = (Get-Date) - $lastBoot
+        $days   = [int]$uptime.TotalDays
+        $hours  = $uptime.Hours
+        $mins   = $uptime.Minutes
+
+        if ($days -gt 0) {
+            $uptimeStr = "${days}d ${hours}h ${mins}m"
+        } elseif ($hours -gt 0) {
+            $uptimeStr = "${hours}h ${mins}m"
+        } else {
+            $uptimeStr = "${mins}m"
+        }
+    }
+    catch {
+        $uptimeStr = "Unknown"
+    }
+
+    $pad = " " * [Math]::Max(0, $inner - $label.Length - $uptimeStr.Length)
+
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
+    Write-Host $label -NoNewline -ForegroundColor Gray
+    Write-Host $uptimeStr -NoNewline -ForegroundColor Cyan
+    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host " |" -ForegroundColor Cyan
+}
+
 function Get-PrimaryNetworkInfo {
     try {
         $candidates = @()
@@ -873,7 +909,7 @@ function Get-OSInfo {
     try {
         $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
         $caption = $os.Caption -replace '^Microsoft\s+', ''
-        $script:OSInfoCache = @{ Caption = $caption; IsServer = ($caption -match 'Server') }
+        $script:OSInfoCache = @{ Caption = $caption; IsServer = ($caption -match 'Server'); LastBootUpTime = $os.LastBootUpTime }
     }
     catch {
         $script:OSInfoCache = @{ Caption = 'Unknown'; IsServer = $false }
@@ -1073,6 +1109,9 @@ function Show-AppHeader {
     # Host/User/OS line
     Write-HostUserLine -HostName $hostName -UserName $userName -OSCaption $osInfo.Caption -Width $Width
 
+    # Uptime line
+    Write-UptimeLine -Width $Width
+
     # Store status for the footer — updated each time Show-AppHeader is called
     $script:AppFooterStatusText  = $StatusText
     $script:AppFooterStatusColor = $StatusColor
@@ -1210,7 +1249,9 @@ function Write-AppFooter {
         Write-Host "^L" -NoNewline -ForegroundColor Yellow
         Write-Host " Lock  " -NoNewline -ForegroundColor DarkGray
         Write-Host "^T" -NoNewline -ForegroundColor Yellow
-        Write-Host " Task Mgr" -ForegroundColor DarkGray
+        Write-Host " Task Mgr  " -NoNewline -ForegroundColor DarkGray
+        Write-Host "^N" -NoNewline -ForegroundColor Yellow
+        Write-Host " New Tab" -ForegroundColor DarkGray
 
         [Console]::SetCursorPosition(0, $statusRow)
         $statusText  = $script:AppFooterStatusText
@@ -1295,6 +1336,22 @@ function Invoke-PowerShortcut {
             }
             return $true
         }
+        'N' {
+            try {
+                $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
+                if ($wt) {
+                    Start-Process -FilePath $wt.Source -ArgumentList @("-w", "0", "new-tab")
+                } else {
+                    $pwsh = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+                    if ($pwsh) {
+                        Start-Process -FilePath $pwsh.Source -ArgumentList @("-NoLogo")
+                    } else {
+                        Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList @("-NoLogo")
+                    }
+                }
+            } catch {}
+            return $true
+        }
     }
     return $false
 }
@@ -1323,5 +1380,5 @@ function Clear-JoinDisplayInfoCache {
     $script:JoinDisplayInfoCacheTime = [datetime]::MinValue
 }
 
-Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache, Read-MenuChoice, Get-InternetStatus, Write-AppFooter, Invoke-PowerShortcut, Register-GlobalSearchCallback
+Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Write-UptimeLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache, Read-MenuChoice, Get-InternetStatus, Write-AppFooter, Invoke-PowerShortcut, Register-GlobalSearchCallback
 
