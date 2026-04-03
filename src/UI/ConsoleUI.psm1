@@ -141,8 +141,10 @@ function Write-TimezoneDateLine {
 function Write-UptimeLine {
     param([int]$Width = 80)
 
-    $inner = $Width - 4
-    $label = "Uptime: "
+    # Aligns with the OS column (col3Start = 51) in Write-HostUserLine
+    $inner      = $Width - 4
+    $col3Start  = 51
+    $label      = "Uptime: "
 
     try {
         $osInfo = Get-OSInfo
@@ -165,12 +167,14 @@ function Write-UptimeLine {
         $uptimeStr = "Unknown"
     }
 
-    $pad = " " * [Math]::Max(0, $inner - $label.Length - $uptimeStr.Length)
+    $leftPad = " " * $col3Start
+    $pad     = " " * [Math]::Max(0, $inner - $col3Start - $label.Length - $uptimeStr.Length)
 
     Write-Host "| " -NoNewline -ForegroundColor Cyan
+    Write-Host $leftPad -NoNewline
     Write-Host $label -NoNewline -ForegroundColor Gray
     Write-Host $uptimeStr -NoNewline -ForegroundColor Cyan
-    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host $pad -NoNewline
     Write-Host " |" -ForegroundColor Cyan
 }
 
