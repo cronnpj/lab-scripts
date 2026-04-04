@@ -30,7 +30,7 @@ function Write-HostUserLine {
         [Parameter(Mandatory=$true)][string]$HostName,
         [Parameter(Mandatory=$true)][string]$UserName,
         [string]$OSCaption = '',
-        [int]$Width = 80
+        [int]$Width = 90
     )
 
     # inside width for text area (excluding "| " and " |")
@@ -40,7 +40,7 @@ function Write-HostUserLine {
         # 2-column layout
         $leftLabel = "Host: "
         $rightLabel = "User: "
-        $rightLabelStart = 24
+        $rightLabelStart = 26
 
         $maxHostLength = [Math]::Max(0, $rightLabelStart - $leftLabel.Length)
         if ($HostName.Length -gt $maxHostLength) { $HostName = $HostName.Substring(0, $maxHostLength) }
@@ -64,12 +64,12 @@ function Write-HostUserLine {
         Write-Host " |" -ForegroundColor Cyan
     }
     else {
-        # 3-column layout with Width=80 (inner=76):
-        #   Col1 0-23  (24): "Host: " + up to 18 chars
-        #   Col2 24-50 (27): "User: " + up to 21 chars
-        #   Col3 51-75 (25): "OS: "   + up to 21 chars
-        $col2Start = 24
-        $col3Start = 51
+        # 3-column layout with Width=90 (inner=86):
+        #   Col1 0-25  (26): "Host: " + up to 20 chars
+        #   Col2 26-54 (29): "User: " + up to 23 chars
+        #   Col3 55-85 (31): "OS: "   + up to 27 chars
+        $col2Start = 26
+        $col3Start = 55
 
         $label1 = "Host: "
         $label2 = "User: "
@@ -139,11 +139,11 @@ function Write-TimezoneDateLine {
 }
 
 function Write-UptimeLine {
-    param([int]$Width = 80)
+    param([int]$Width = 90)
 
-    # Aligns with the OS column (col3Start = 51) in Write-HostUserLine
+    # Aligns with the OS column (col3Start = 55) in Write-HostUserLine
     $inner      = $Width - 4
-    $col3Start  = 51
+    $col3Start  = 55
     $label      = "Uptime: "
 
     try {
@@ -207,14 +207,21 @@ function Get-PrimaryNetworkInfo {
                 $mode = if ($ipv4Props.IsDhcpEnabled) { 'DHCP' } else { 'Static' }
             }
 
-            $hasGateway = ($ipProps.GatewayAddresses |
+            $gwAddr = $ipProps.GatewayAddresses |
                 Where-Object { $_.Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork } |
-                Measure-Object).Count -gt 0
+                Select-Object -First 1
+            $gwStr = if ($null -ne $gwAddr) { $gwAddr.Address.IPAddressToString } else { '' }
+
+            $dnsAddrs = @($ipProps.DnsAddresses |
+                Where-Object { $_.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork } |
+                ForEach-Object { $_.IPAddressToString })
 
             $candidates += [PSCustomObject]@{
                 IPAddress  = $ipv4.Address.IPAddressToString
                 Mode       = $mode
-                HasGateway = $hasGateway
+                HasGateway = ($null -ne $gwAddr)
+                Gateway    = $gwStr
+                DnsServers = $dnsAddrs
             }
         }
 
@@ -223,14 +230,19 @@ function Get-PrimaryNetworkInfo {
             Select-Object -First 1
 
         if (-not $primary) {
-            return @{ IPAddress = 'N/A'; Mode = 'Unknown' }
+            return @{ IPAddress = 'N/A'; Mode = 'Unknown'; Gateway = 'N/A'; DnsServers = @() }
         }
 
-        return @{ IPAddress = $primary.IPAddress; Mode = $primary.Mode }
+        return @{
+            IPAddress  = $primary.IPAddress
+            Mode       = $primary.Mode
+            Gateway    = if ([string]::IsNullOrEmpty($primary.Gateway)) { 'N/A' } else { $primary.Gateway }
+            DnsServers = $primary.DnsServers
+        }
     }
     catch {
         Write-Verbose "Get-PrimaryNetworkInfo: $_"
-        return @{ IPAddress = 'N/A'; Mode = 'Unknown' }
+        return @{ IPAddress = 'N/A'; Mode = 'Unknown'; Gateway = 'N/A'; DnsServers = @() }
     }
 }
 
@@ -239,16 +251,16 @@ function Write-NetworkLine {
         [Parameter(Mandatory=$true)][string]$IPAddress,
         [Parameter(Mandatory=$true)][string]$Mode,
         [string]$UptimeStr = '',
-        [int]$Width = 80
+        [int]$Width = 90
     )
 
     # 3-column layout mirroring Write-HostUserLine:
-    #   Col1 0-23  (24): "IP: "     + value
-    #   Col2 24-50 (27): "Mode: "   + value
-    #   Col3 51+       : "Uptime: " + value  (only when UptimeStr provided)
+    #   Col1 0-25  (26): "IP: "     + value
+    #   Col2 26-54 (29): "Mode: "   + value
+    #   Col3 55+       : "Uptime: " + value  (only when UptimeStr provided)
     $inner      = $Width - 4
-    $col2Start  = 24
-    $col3Start  = 51
+    $col2Start  = 26
+    $col3Start  = 55
 
     $label1 = "IP: "
     $label2 = "Mode: "
@@ -849,48 +861,107 @@ function Write-DomainLine {
     Write-Host " |" -ForegroundColor Cyan
 }
 
-function Write-InternetDomainLine {
+function Write-GwJoinInternetLine {
     param(
-        [Parameter(Mandatory=$true)][bool]$IsConnected,
+        [Parameter(Mandatory=$true)][string]$Gateway,
         [Parameter(Mandatory=$true)][hashtable]$JoinInfo,
-        [int]$Width = 64
+        [Parameter(Mandatory=$true)][bool]$IsConnected,
+        [int]$Width = 90
     )
 
-    $inner = $Width - 4
-    $leftLabel = "Internet: "
-    $leftValue = if ($IsConnected) { [char]0x2714 } else { [char]0x2716 }
-    $leftColor = if ($IsConnected) { "Green" } else { "Red" }
+    $inner     = $Width - 4
+    $col2Start = 26
+    $col3Start = 55
 
-    $rightLabel = "Join: "
-    $rightValue = $JoinInfo.Text
-    $rightColor = $JoinInfo.Color
+    $label1 = "GW: "
+    $label2 = "Join: "
+    $label3 = "Internet: "
+    $value3 = if ($IsConnected) { [char]0x2714 } else { [char]0x2716 }
+    $color3 = if ($IsConnected) { "Green" } else { "Red" }
 
-    $rightLabelStart = 24
-    $spacerLength = [Math]::Max(1, $rightLabelStart - ($leftLabel.Length + $leftValue.Length))
-    $spacer = " " * $spacerLength
-    $fixedLength = $leftLabel.Length + $leftValue.Length + $spacerLength + $rightLabel.Length
-    $maxRightLength = [Math]::Max(0, $inner - $fixedLength)
-    if ($rightValue.Length -gt $maxRightLength) {
-        $rightValue = $rightValue.Substring(0, $maxRightLength)
-    }
+    $max1 = [Math]::Max(0, $col2Start - $label1.Length)
+    if ($Gateway.Length -gt $max1) { $Gateway = $Gateway.Substring(0, $max1) }
+    $spacer1 = " " * [Math]::Max(0, $col2Start - $label1.Length - $Gateway.Length)
 
-    $textLen = $fixedLength + $rightValue.Length
-    $pad = " " * [Math]::Max(0, ($inner - $textLen))
+    $joinVal = $JoinInfo.Text
+    $max2 = [Math]::Max(0, $col3Start - $col2Start - $label2.Length)
+    if ($joinVal.Length -gt $max2) { $joinVal = $joinVal.Substring(0, $max2) }
+    $spacer2 = " " * [Math]::Max(0, $col3Start - $col2Start - $label2.Length - $joinVal.Length)
+
+    $pad = " " * [Math]::Max(0, $inner - $col3Start - $label3.Length - $value3.Length)
 
     Write-Host "| " -NoNewline -ForegroundColor Cyan
-    Write-Host $leftLabel -NoNewline -ForegroundColor Gray
-    Write-Host $leftValue -NoNewline -ForegroundColor $leftColor
-    Write-Host $spacer -NoNewline -ForegroundColor Gray
-    Write-Host $rightLabel -NoNewline -ForegroundColor Gray
-    Write-Host $rightValue -NoNewline -ForegroundColor $rightColor
-    Write-Host $pad -NoNewline -ForegroundColor Gray
+    Write-Host $label1 -NoNewline -ForegroundColor Gray
+    Write-Host $Gateway -NoNewline -ForegroundColor Cyan
+    Write-Host $spacer1 -NoNewline
+    Write-Host $label2 -NoNewline -ForegroundColor Gray
+    Write-Host $joinVal -NoNewline -ForegroundColor $JoinInfo.Color
+    Write-Host $spacer2 -NoNewline
+    Write-Host $label3 -NoNewline -ForegroundColor Gray
+    Write-Host $value3 -NoNewline -ForegroundColor $color3
+    Write-Host $pad -NoNewline
+    Write-Host " |" -ForegroundColor Cyan
+}
+
+function Write-DnsTzDateLine {
+    param(
+        [string[]]$DnsServers = @(),
+        [int]$Width = 90
+    )
+
+    $inner     = $Width - 4
+    $col2Start = 26
+    $col3Start = 55
+
+    # Col1: DNS
+    $label1 = "DNS: "
+    if ($null -eq $DnsServers -or $DnsServers.Count -eq 0) {
+        $dnsVal = 'N/A'
+    } elseif ($DnsServers.Count -eq 1) {
+        $dnsVal = $DnsServers[0]
+    } else {
+        $dnsVal = "{0} (+{1})" -f $DnsServers[0], ($DnsServers.Count - 1)
+    }
+    $max1 = [Math]::Max(0, $col2Start - $label1.Length)
+    if ($dnsVal.Length -gt $max1) { $dnsVal = $dnsVal.Substring(0, $max1) }
+    $spacer1 = " " * [Math]::Max(0, $col2Start - $label1.Length - $dnsVal.Length)
+
+    # Col2: TZ
+    $label2 = "TZ: "
+    $offset = [System.TimeZoneInfo]::Local.BaseUtcOffset
+    $tzStr = if ($offset.TotalSeconds -ge 0) {
+        "UTC+{0:D2}:{1:D2}" -f $offset.Hours, $offset.Minutes
+    } else {
+        "UTC-{0:D2}:{1:D2}" -f [Math]::Abs($offset.Hours), [Math]::Abs($offset.Minutes)
+    }
+    $max2 = [Math]::Max(0, $col3Start - $col2Start - $label2.Length)
+    if ($tzStr.Length -gt $max2) { $tzStr = $tzStr.Substring(0, $max2) }
+    $spacer2 = " " * [Math]::Max(0, $col3Start - $col2Start - $label2.Length - $tzStr.Length)
+
+    # Col3: Date
+    $label3 = "Date: "
+    $dateStr = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $max3 = [Math]::Max(0, $inner - $col3Start - $label3.Length)
+    if ($dateStr.Length -gt $max3) { $dateStr = $dateStr.Substring(0, $max3) }
+    $pad = " " * [Math]::Max(0, $inner - $col3Start - $label3.Length - $dateStr.Length)
+
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
+    Write-Host $label1 -NoNewline -ForegroundColor Gray
+    Write-Host $dnsVal -NoNewline -ForegroundColor Cyan
+    Write-Host $spacer1 -NoNewline
+    Write-Host $label2 -NoNewline -ForegroundColor Gray
+    Write-Host $tzStr -NoNewline -ForegroundColor Cyan
+    Write-Host $spacer2 -NoNewline
+    Write-Host $label3 -NoNewline -ForegroundColor Gray
+    Write-Host $dateStr -NoNewline -ForegroundColor Cyan
+    Write-Host $pad -NoNewline
     Write-Host " |" -ForegroundColor Cyan
 }
 
 function Write-TenantLine {
     param(
         [Parameter(Mandatory=$true)][string]$Tenant,
-        [int]$Width = 64
+        [int]$Width = 90
     )
 
     $inner = $Width - 4
@@ -1012,7 +1083,7 @@ function Write-OSLine {
 }
 
 function Write-RolesLinePending {
-    param([int]$Width = 80)
+    param([int]$Width = 90)
     $inner = $Width - 4
     $label = "Roles: "
     $text  = "Loading..."
@@ -1025,7 +1096,7 @@ function Write-RolesLinePending {
 }
 
 function Write-RolesLineTimedOut {
-    param([int]$Width = 80)
+    param([int]$Width = 90)
     $inner = $Width - 4
     $label = "Roles: "
     $text  = "(check timed out)"
@@ -1040,7 +1111,7 @@ function Write-RolesLineTimedOut {
 function Write-RolesLine {
     param(
         [AllowEmptyCollection()][Parameter(Mandatory=$true)][string[]]$Roles,
-        [int]$Width = 80
+        [int]$Width = 90
     )
 
     $inner     = $Width - 4       # usable chars between "| " and " |"
@@ -1097,7 +1168,7 @@ function Register-GlobalSearchCallback {
 function Show-AppHeader {
     param(
         [Parameter(Mandatory=$true)][string]$Breadcrumb,
-        [int]$Width = 80,
+        [int]$Width = 90,
         [string]$StatusText  = "",
         [string]$StatusColor = "DarkGray"
     )
@@ -1118,7 +1189,15 @@ function Show-AppHeader {
 
     Write-Host ("+" + ("-" * ($Width - 2)) + "+") -ForegroundColor Cyan
     Write-BoxLine "CITA Lab Tools - Infrastructure Assistant" $Width "Yellow"
-    Write-BoxLine ("Version: {0}" -f $version) $Width "Cyan"
+    $versionInner = $Width - 4
+    $versionLabel = "Version: "
+    $versionValue = $version
+    $versionPad   = " " * [Math]::Max(0, $versionInner - $versionLabel.Length - $versionValue.Length)
+    Write-Host "| " -NoNewline -ForegroundColor Cyan
+    Write-Host $versionLabel -NoNewline -ForegroundColor Gray
+    Write-Host $versionValue -NoNewline -ForegroundColor Cyan
+    Write-Host $versionPad -NoNewline
+    Write-Host " |" -ForegroundColor Cyan
 
     $osInfo = Get-OSInfo
 
@@ -1147,16 +1226,16 @@ function Show-AppHeader {
     # Primary network line — uptime shown in third column (under OS)
     Write-NetworkLine -IPAddress $networkInfo.IPAddress -Mode $networkInfo.Mode -UptimeStr $uptimeStr -Width $Width
 
-    # Internet + join status line
-    Write-InternetDomainLine -IsConnected $internetConnected -JoinInfo $joinLineInfo -Width $Width
+    # GW / Join / Internet line
+    Write-GwJoinInternetLine -Gateway $networkInfo.Gateway -JoinInfo $joinLineInfo -IsConnected $internetConnected -Width $Width
 
     $normalizedJoinType = ''
     if ($joinInfo.ContainsKey('JoinType') -and $null -ne $joinInfo.JoinType) {
         $normalizedJoinType = ([string]$joinInfo.JoinType).Trim()
     }
 
-    # Timezone/Date line with cyan values
-    Write-TimezoneDateLine -Width $Width
+    # DNS / TZ / Date line
+    Write-DnsTzDateLine -DnsServers $networkInfo.DnsServers -Width $Width
 
     $shouldShowTenantLine = (($normalizedJoinType -in @('Hybrid', 'Cloud')) -or ([string]$joinInfo.Text -match '^(Hybrid|Cloud)')) -and -not [string]::IsNullOrWhiteSpace($joinInfo.Tenant)
     if ($shouldShowTenantLine) {
@@ -1248,7 +1327,7 @@ function Write-AppFooter {
     #   Row 2: global Ctrl+key shortcuts
     #   Row 3: last status text
     # Cursor is restored to its original position after drawing.
-    param([int]$Width = 80)
+    param([int]$Width = 90)
     try {
         $windowHeight = $host.UI.RawUI.WindowSize.Height
         if ($windowHeight -lt 7) { return }
@@ -1324,7 +1403,7 @@ function Read-PowerConfirmation {
     $clearedTop = [Console]::CursorTop
     for ($row = $savedTop; $row -le $clearedTop; $row++) {
         [Console]::SetCursorPosition(0, $row)
-        Write-Host (' ' * 80) -NoNewline
+        Write-Host (' ' * 90) -NoNewline
     }
     [Console]::SetCursorPosition(0, $savedTop)
 
