@@ -1470,7 +1470,7 @@ function Invoke-PowerShortcut {
         }
         'X' {
             if (Read-PowerConfirmation -Prompt 'Exit Lab Tools?') {
-                exit
+                [System.Environment]::Exit(0)
             }
             return $true
         }
