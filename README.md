@@ -9,6 +9,7 @@
 ![NGINX Ingress](https://img.shields.io/badge/NGINX-Ingress-009639?style=for-the-badge&logo=nginx&logoColor=white)
 ![Portainer](https://img.shields.io/badge/Portainer-Management-13BEF9?style=for-the-badge)
 ![Lab](https://img.shields.io/badge/Lab-Infrastructure%20Automation-34C759?style=for-the-badge)
+![SUNY Morrisville](https://img.shields.io/badge/SUNY%20Morrisville-003087?style=for-the-badge)
 
 PowerShell scripts and helpers for provisioning and managing lab environments.
 
