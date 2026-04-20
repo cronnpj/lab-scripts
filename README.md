@@ -9,7 +9,7 @@
 ![NGINX Ingress](https://img.shields.io/badge/NGINX-Ingress-009639?style=for-the-badge&logo=nginx&logoColor=white)
 ![Portainer](https://img.shields.io/badge/Portainer-Management-13BEF9?style=for-the-badge)
 ![Lab](https://img.shields.io/badge/Lab-Infrastructure%20Automation-34C759?style=for-the-badge)
-![SUNY Morrisville](https://img.shields.io/badge/SUNY%20Morrisville-003087?style=for-the-badge)
+![SUNY Morrisville](https://img.shields.io/badge/SUNY%20Morrisville-003087?style=for-the-badge&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAACSUlEQVR4nFVSS4iNYRh+nvf/zpwzc373mJAipQkpio1iIWVJzJRSKEouqxm3haazoIgsZUEckYYFWSosZKHIQhTlkinCDM5czjlzzvc++o9LPIvvfRfP816+5yX+oL/fUCp5R7lvA2BLjRjJ13WtzlBomBfzzYlKZXDyd5RKAiD7K1zyglkwt5RSF6SZ9Zz2eZuWhwS7vC3XmRXGQHdL0yJjoDtBz42Ylg9udLFK+UfQugVVAH424wq4nrvi0/EdZ55kfPsjmlLuXeDQIgvNJwBniPhBqGamItxf5hu6niBZll7oXZzxWx3Tq0e70GjuhjEHUnDcA7UawDdJbyhMisSzQvuM143a8DESNy29cngTYtwrYoTENYu6Orr95G0AX+EYNqAoQzUh1zdiZb/gb1lrvDLJV4l4CGXVOVfU0vTSoS0Cp8k012E1QYmox6NbTxwXMFLZfXbYCNYIrGHCFIUw1aGiCrl1lHeY8A6CkVaDrAv3+wObGmy/0rsyePTzIYR5lXz9OXpOVSeVD+1Uo/nRgbdG1MjoECCws/ihuodpYXpSbU78suM30ssH12aORvBTcNZlygMacnA+Pb4f23nmQbF8ZP9YYcU5tuwA0F6Z32k5bRZQBIMsIdGMiYyjBsxRkuQV4y1JC9snNPDrcnpuRAs4ALLTkiQwcDz7ZQT7Qmpc7kbgLt1l4OyhDx1jrVEnX+xd6W2hD44HzCVVEEOChr3RrEIWYZHj204/+3etkD3KhVmiPXLGO9WtJwb/JfwH9RtY8iz9CS9ZIdoTIJtuAAAAAElFTkSuQmCC&logoColor=white)
 
 PowerShell scripts and helpers for provisioning and managing lab environments.
 
