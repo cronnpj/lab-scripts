@@ -104,18 +104,23 @@ $gw      = Prompt-NonEmpty "Default gateway" $defaultGateway
 
 # DNS default: if DC, use itself; otherwise use DC (.2) unless the user overrides
 $defaultDns = if ($role.Trim() -eq "1") { $ip } else { "192.168.1.2" }
-$dnsInput = Prompt-NonEmpty "DNS server" $defaultDns
+$dnsInput  = Prompt-NonEmpty "DNS server (primary)" $defaultDns
+$dns2Raw   = Read-Host "DNS server (secondary, leave blank to skip)"
+$dns2Input = $dns2Raw.Trim()
 
 Assert-ValidIPv4 "IP address" $ip
 Assert-ValidIPv4 "Default gateway" $gw
-Assert-ValidIPv4 "DNS server" $dnsInput
+Assert-ValidIPv4 "DNS server (primary)" $dnsInput
+if ($dns2Input -ne "") { Assert-ValidIPv4 "DNS server (secondary)" $dns2Input }
+
+$dnsServers = if ($dns2Input -ne "") { @($dnsInput, $dns2Input) } else { @($dnsInput) }
 
 Write-Host ""
 Write-Host "Summary:"
 Write-Host " Adapter: $($adapter.Name)"
 Write-Host " IP:      $ip/$prefix"
 Write-Host " Gateway: $gw"
-Write-Host " DNS:     $dnsInput"
+Write-Host " DNS:     $($dnsServers -join ', ')"
 Write-Host ""
 
 $confirm = Read-Host "Apply these settings? (Y/N)"
@@ -173,8 +178,8 @@ Set-NetIPInterface -InterfaceIndex $ifIndex -Dhcp Disabled -ErrorAction Stop
 Write-LabLog "StaticIP: Setting IP $ip/$prefix GW $gw"
 New-NetIPAddress -InterfaceIndex $ifIndex -IPAddress $ip -PrefixLength $prefix -DefaultGateway $gw -ErrorAction Stop -WarningAction SilentlyContinue | Out-Null
 
-Write-LabLog "StaticIP: Setting DNS server(s): $dnsInput"
-Set-DnsClientServerAddress -InterfaceIndex $ifIndex -ServerAddresses @($dnsInput) -ErrorAction Stop
+Write-LabLog "StaticIP: Setting DNS server(s): $($dnsServers -join ', ')"
+Set-DnsClientServerAddress -InterfaceIndex $ifIndex -ServerAddresses $dnsServers -ErrorAction Stop
 
 # Bounce adapter to apply cleanly
 Write-LabLog "StaticIP: Restarting adapter $($adapter.Name)"
