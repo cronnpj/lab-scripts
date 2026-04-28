@@ -59,7 +59,7 @@ function Invoke-ActionSafe {
     try {
         $script:lastStatusText  = "[Running] Executing action..."
         $script:lastStatusColor = "Cyan"
-        Clear-AppFooter
+        Clear-Host
         & $Action
         $script:lastStatusText  = "[Ready] $SuccessText"
         $script:lastStatusColor = "Green"

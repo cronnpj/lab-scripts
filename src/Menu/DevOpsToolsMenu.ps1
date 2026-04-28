@@ -53,7 +53,7 @@ function Invoke-ActionSafe {
 
     try {
         Set-Status -Text "[Running] Executing action..." -Color "Cyan"
-        Clear-AppFooter
+        Clear-Host
         & $Action
         Set-Status -Text "[Ready] $SuccessText" -Color "Green"
     }
