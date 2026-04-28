@@ -207,7 +207,7 @@ function Fail-WithWipeInstructions([string]$Details) {
 
 function New-CleanOverridesDir {
   New-Item -ItemType Directory -Force -Path $OverridesDir | Out-Null
-  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $OverridesDir "*")
+  Get-ChildItem -Path $OverridesDir -Exclude "README.md" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
   Remove-Item -Force -ErrorAction SilentlyContinue $Kubeconfig
 }
 
