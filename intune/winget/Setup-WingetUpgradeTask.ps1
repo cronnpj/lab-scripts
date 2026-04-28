@@ -18,11 +18,12 @@ $logFile = "$logDir\upgrade.log"
 
 Add-Content -Path $logFile -Value "`n=== $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') ==="
 
-# Resolve winget — works reliably in user context
-$wingetExe = Get-ChildItem "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*\winget.exe" `
-    -ErrorAction SilentlyContinue |
-    Sort-Object FullName -Descending |
-    Select-Object -First 1 -ExpandProperty FullName
+# Resolve winget via PATH first, then fall back to where.exe
+# Avoids WindowsApps ACL which blocks enumeration for non-SYSTEM accounts
+$wingetExe = (Get-Command winget -ErrorAction SilentlyContinue)?.Source
+if (-not $wingetExe) {
+    $wingetExe = where.exe winget 2>$null | Select-Object -First 1
+}
 
 if (-not $wingetExe) {
     Add-Content -Path $logFile -Value "ERROR: winget.exe not found"
@@ -53,11 +54,11 @@ $settings = New-ScheduledTaskSettingsSet `
     -RunOnlyIfNetworkAvailable $true `
     -StartWhenAvailable $true
 
-# Run as logged-on user (any member of the Users group) instead of SYSTEM
-# This is required for winget to authenticate to package sources correctly
+# RunLevel Limited avoids needing elevation to register the task when running as logged-on user.
+# Winget upgrades work without elevation for most packages.
 $principal = New-ScheduledTaskPrincipal `
     -GroupId "BUILTIN\Users" `
-    -RunLevel Highest
+    -RunLevel Limited
 
 Register-ScheduledTask `
     -TaskName   $taskName `
