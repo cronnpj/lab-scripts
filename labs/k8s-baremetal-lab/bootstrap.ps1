@@ -82,9 +82,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 # PS 7.4+ throws on non-zero native exit before $LASTEXITCODE can be checked; disable it.
-if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -ErrorAction SilentlyContinue) {
-  $global:PSNativeCommandUseErrorActionPreference = $false
-}
+$PSNativeCommandUseErrorActionPreference = $false
 
 # -------------------------
 # Paths (repo-relative)
