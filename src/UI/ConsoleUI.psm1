@@ -1321,6 +1321,24 @@ function Get-CurrentJoinType {
     return 'Unknown'
 }
 
+function Clear-AppFooter {
+    param([int]$Width = 90)
+    try {
+        $windowHeight = $host.UI.RawUI.WindowSize.Height
+        if ($windowHeight -lt 7) { return }
+
+        $savedTop  = [Console]::CursorTop
+        $savedLeft = [Console]::CursorLeft
+
+        foreach ($row in @($windowHeight - 4, $windowHeight - 3, $windowHeight - 2)) {
+            [Console]::SetCursorPosition(0, $row)
+            Write-Host (' ' * $Width) -NoNewline
+        }
+
+        [Console]::SetCursorPosition($savedLeft, $savedTop)
+    } catch {}
+}
+
 function Write-AppFooter {
     # Draws a pinned 3-row footer at the bottom of the visible window:
     #   Row 1: cyan separator
@@ -1502,5 +1520,5 @@ function Clear-JoinDisplayInfoCache {
     $script:JoinDisplayInfoCacheTime = [datetime]::MinValue
 }
 
-Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Write-UptimeLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache, Read-MenuChoice, Get-InternetStatus, Write-AppFooter, Invoke-PowerShortcut, Register-GlobalSearchCallback
+Export-ModuleMember -Function Get-AppVersion, Write-BoxLine, Write-TimezoneDateLine, Write-UptimeLine, Show-AppHeader, Write-StatusLine, Get-CurrentJoinType, Write-MenuItem, Write-MenuKeysLine, Clear-JoinDisplayInfoCache, Read-MenuChoice, Get-InternetStatus, Write-AppFooter, Clear-AppFooter, Invoke-PowerShortcut, Register-GlobalSearchCallback
 
