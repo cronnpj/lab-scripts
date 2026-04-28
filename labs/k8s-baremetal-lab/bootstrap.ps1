@@ -960,7 +960,7 @@ Wait-ForPort $ControlPlaneIP 50000 $TimeoutTalosApiSeconds "Talos API"
 
 Show-Header "Generating Talos configs (fresh PKI)" "Yellow"
 New-CleanOverridesDir
-& talosctl gen config $ClusterName "https://${ControlPlaneIP}:6443" --output-dir $OverridesDir --force | Out-Null
+& talosctl gen config $ClusterName "https://${ControlPlaneIP}:6443" --output-dir $OverridesDir --kubernetes-version 1.35.0 --force | Out-Null
 
 if (-not (Test-Path (Join-Path $OverridesDir "controlplane.yaml"))) { throw "controlplane.yaml missing." }
 if (-not (Test-Path (Join-Path $OverridesDir "worker.yaml")))      { throw "worker.yaml missing." }
