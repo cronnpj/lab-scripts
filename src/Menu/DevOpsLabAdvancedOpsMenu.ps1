@@ -115,12 +115,12 @@ $script:MainMenuPath = Join-Path $PSScriptRoot "DevOpsToolsMenu.ps1"
 $script:RepoPath = Resolve-DevOpsRepoPath -TargetRelativePath $script:RepoTarget
 
 $optionMap = @{
-    "1" = "161"
-    "2" = "162"
-    "3" = "163"
-    "4" = "164"
-    "5" = "165"
-    "6" = "166"
+    "1" = "a1"
+    "2" = "a2"
+    "3" = "a3"
+    "4" = "a4"
+    "5" = "a5"
+    "6" = "a6"
 }
 
 $back = $false

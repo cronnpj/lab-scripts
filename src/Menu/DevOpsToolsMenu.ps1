@@ -842,7 +842,7 @@ do {
                 $kubeconfig = Resolve-KubeconfigPath -RepoPath $script:RepoPath
                 $clusterExists = $false
 
-                if (Test-Path $kubeconfig) {
+                if ($kubeconfig -and (Test-Path $kubeconfig)) {
                     $nativePrefVar = Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -ErrorAction SilentlyContinue
                     $hadNativePref = ($null -ne $nativePrefVar)
                     $previousNativePref = $false
