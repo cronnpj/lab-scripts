@@ -423,7 +423,8 @@ function Invoke-StartupAutoUpdate {
 
         $launcher = Join-Path (Split-Path -Parent $PSScriptRoot) "Launch-LabTools.ps1"
         if (Test-Path $launcher) {
-            & $launcher
+            $shell = if (Get-Command pwsh.exe -ErrorAction SilentlyContinue) { "pwsh.exe" } else { "powershell.exe" }
+            Start-Process -FilePath $shell -ArgumentList @("-NoLogo", "-ExecutionPolicy", "Bypass", "-File", $launcher)
             exit
         }
         else {

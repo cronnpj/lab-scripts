@@ -219,7 +219,10 @@ try {
             Write-Host "Relaunching..." -ForegroundColor Cyan
             Start-Sleep -Milliseconds 500
             $script:suppressFinalPause = $true
-            & $launcher
+            # Spawn an independent process so the new session gets fresh code.
+            # & $launcher would nest inside the current session and leave stale code loaded.
+            $shell = if (Get-Command pwsh.exe -ErrorAction SilentlyContinue) { "pwsh.exe" } else { "powershell.exe" }
+            Start-Process -FilePath $shell -ArgumentList @("-NoLogo", "-ExecutionPolicy", "Bypass", "-File", $launcher)
             [Environment]::Exit(0)
         }
         else {
