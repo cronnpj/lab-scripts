@@ -37,9 +37,18 @@ function Repair-KnownLabDrift([string]$Path) {
     )
 
     foreach ($knownTrackedPath in $knownTrackedPaths) {
-        git -C $Path restore --worktree --staged --source=HEAD -- $knownTrackedPath 2>$null | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            git -C $Path checkout -- $knownTrackedPath 2>$null | Out-Null
+        try {
+            # Skip if the file doesn't exist in HEAD on this machine (older repo state)
+            git -C $Path cat-file -e "HEAD:$knownTrackedPath" 2>$null | Out-Null
+            if ($LASTEXITCODE -ne 0) { continue }
+
+            $prev = $ErrorActionPreference
+            $ErrorActionPreference = "SilentlyContinue"
+            git -C $Path restore --worktree --staged --source=HEAD -- $knownTrackedPath 2>$null | Out-Null
+            $ErrorActionPreference = $prev
+        }
+        catch {
+            # Non-blocking: drift repair is best-effort
         }
     }
 }
