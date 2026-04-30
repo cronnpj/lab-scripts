@@ -8,7 +8,7 @@ Assumptions (lab standard):
 - IMPORTANT: The Win11 VM clock/timezone MUST be correct (TLS cert validity depends on it).
 
 Defaults:
-  CP  = 192.168.1.3
+  CP1 = 192.168.1.3 (HA: -ControlPlaneIPs @("192.168.1.3","192.168.1.4"))
   W1  = 192.168.1.5
   W2  = 192.168.1.6
   VIP = 192.168.1.200
@@ -24,7 +24,7 @@ Usage:
   .\bootstrap.ps1 -WipeAndRebuild -Interactive
 
 Key flags:
-  -Interactive      Prompt for CP/Workers/VIP (supports variable number of workers)
+  -Interactive      Prompt for CPs/Workers/VIP (supports variable number of CPs and workers)
   -WipeAndRebuild   Best-effort student reset: remove local generated files, re-gen PKI, re-apply configs, re-bootstrap, re-install add-ons
   -AddonsOnly       Only do add-ons (assumes kubeconfig exists and cluster is reachable)
   -InstallMetalLB   Install/repair MetalLB + VIP pool
@@ -46,7 +46,7 @@ Notes:
 [CmdletBinding()]
 param(
   [string]  $ClusterName    = "cita360",
-  [string]  $ControlPlaneIP = "192.168.1.3",
+  [string[]]$ControlPlaneIPs = @("192.168.1.3"),
   [string[]]$WorkerIPs      = @("192.168.1.5","192.168.1.6"),
   [string]  $VipIP          = "192.168.1.200",
   [string]  $VipPoolRange   = "192.168.1.200-192.168.1.220",

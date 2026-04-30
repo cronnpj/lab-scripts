@@ -24,9 +24,12 @@ function Get-InstalledPwshPath {
         return $pwsh.Source
     }
 
-    $defaultPath = "C:\Program Files\PowerShell\7\pwsh.exe"
-    if (Test-Path $defaultPath) {
-        return $defaultPath
+    $candidates = @(
+        "C:\Program Files\PowerShell\7\pwsh.exe",
+        (Join-Path $env:LOCALAPPDATA "Programs\PowerShell\7\pwsh.exe")
+    )
+    foreach ($p in $candidates) {
+        if (Test-Path $p) { return $p }
     }
 
     return $null
@@ -38,23 +41,29 @@ function Install-WithWinget {
         throw "winget.exe was not found. Install App Installer from Microsoft Store, then run this task again."
     }
 
-    $args = @(
+    $baseArgs = @(
         "install",
         "--id", "Microsoft.PowerShell",
         "--exact",
         "--source", "winget",
-        "--scope", "machine",
         "--accept-package-agreements",
         "--accept-source-agreements",
         "--silent"
     )
 
-    Write-Host "Installing PowerShell 7 via winget..." -ForegroundColor Cyan
-    $proc = Start-Process -FilePath $winget.Source -ArgumentList $args -Wait -PassThru -NoNewWindow
+    Write-Host "Installing PowerShell 7 via winget (machine scope)..." -ForegroundColor Cyan
+    $proc = Start-Process -FilePath $winget.Source -ArgumentList ($baseArgs + @("--scope", "machine")) -Wait -PassThru -NoNewWindow
 
-    if ($proc.ExitCode -notin @(0, 3010, 1641)) {
-        throw "winget install failed with exit code $($proc.ExitCode)."
+    if ($proc.ExitCode -in @(0, 3010, 1641)) { return }
+
+    # 0x8A150013 = system configuration does not support machine-scope install (managed/locked machines)
+    if ($proc.ExitCode -eq -1978334957) {
+        Write-Host "Machine-scope install blocked by system policy. Retrying with user scope..." -ForegroundColor Yellow
+        $proc = Start-Process -FilePath $winget.Source -ArgumentList ($baseArgs + @("--scope", "user")) -Wait -PassThru -NoNewWindow
+        if ($proc.ExitCode -in @(0, 3010, 1641)) { return }
     }
+
+    throw "winget install failed with exit code $($proc.ExitCode)."
 }
 
 try {
