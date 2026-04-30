@@ -890,7 +890,7 @@ do {
                     throw "Invalid ingress selection: $ingressChoice"
                 }
 
-                $bootstrapArgs = @("-ControlPlaneIPs", $controlPlaneIp, "-WorkerIPs") + $workerIps + @("-InstallMetalLB")
+                $bootstrapArgs = @("-ControlPlaneIPs", $controlPlaneIp, "-WorkerIPs", ($workerIps -join ","), "-InstallMetalLB")
                 if ($ingressChoice -eq "E" -or $ingressChoice -eq "R") {
                     $bootstrapArgs += "-InstallIngress"
                 }
