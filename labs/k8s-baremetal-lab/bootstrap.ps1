@@ -219,11 +219,23 @@ function Set-TalosContext {
   & talosctl config node $ControlPlaneIP      | Out-Null
 }
 
+function Invoke-Talosctl {
+  # Wraps talosctl with SilentlyContinue so PS5.1 NativeCommandError never
+  # fires before our own $LASTEXITCODE checks can run.
+  param([Parameter(ValueFromRemainingArguments=$true)][string[]]$TalosArgs)
+  $prev = $ErrorActionPreference
+  $ErrorActionPreference = "SilentlyContinue"
+  $out = & talosctl @TalosArgs 2>&1
+  $script:_talosExit = $LASTEXITCODE
+  $ErrorActionPreference = $prev
+  return $out
+}
+
 function Talos-Apply([string]$NodeIP,[string]$FilePath) {
   Write-Host "Applying config to ${NodeIP} ..." -ForegroundColor Gray
-  $out = & talosctl apply-config --insecure --nodes $NodeIP --endpoints $NodeIP --file $FilePath 2>&1
+  $out = Invoke-Talosctl apply-config --insecure --nodes $NodeIP --endpoints $NodeIP --file $FilePath
 
-  if ($LASTEXITCODE -ne 0) {
+  if ($script:_talosExit -ne 0) {
     $txt = ($out | Out-String)
     if ($txt -match "x509:" -or $txt -match "unknown authority" -or $txt -match "failed to verify certificate" -or $txt -match "expired certificate") {
       Fail-WithWipeInstructions $txt
@@ -247,8 +259,8 @@ If you intentionally kept node state, use a secure talosconfig workflow instead 
       Write-Host "apply-config hit transient connection error on ${NodeIP}; waiting for Talos API and retrying..." -ForegroundColor Yellow
       Wait-ForPort $NodeIP 50000 120 "Talos API (apply retry)"
       Start-Sleep -Seconds 3
-      $out2 = & talosctl apply-config --insecure --nodes $NodeIP --endpoints $NodeIP --file $FilePath 2>&1
-      if ($LASTEXITCODE -eq 0) { return }
+      $out2 = Invoke-Talosctl apply-config --insecure --nodes $NodeIP --endpoints $NodeIP --file $FilePath
+      if ($script:_talosExit -eq 0) { return }
       throw "apply-config failed for ${NodeIP} after retry:`n$($out2 | Out-String)"
     }
     throw "apply-config failed for ${NodeIP}:`n$txt"
@@ -257,18 +269,16 @@ If you intentionally kept node state, use a secure talosconfig workflow instead 
 
 function Talos-Bootstrap {
   Write-Host "Bootstrapping etcd/Kubernetes on control plane..." -ForegroundColor Gray
-  $out = & talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP 2>&1
+  $out = Invoke-Talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP
 
-  if ($LASTEXITCODE -ne 0) {
+  if ($script:_talosExit -ne 0) {
     $txt = ($out | Out-String)
 
     if ($txt -match "not yet valid") {
       Write-Host "Bootstrap hit certificate not-yet-valid window; waiting 15s and retrying once..." -ForegroundColor Yellow
       Start-Sleep -Seconds 15
-      $outRetry = & talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP 2>&1
-      if ($LASTEXITCODE -eq 0) {
-        return
-      }
+      $outRetry = Invoke-Talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP
+      if ($script:_talosExit -eq 0) { return }
       $txt = ($outRetry | Out-String)
     }
 
@@ -276,14 +286,13 @@ function Talos-Bootstrap {
       Fail-WithWipeInstructions $txt
     }
 
-    if ($txt -match "connectex:" -or $txt -match "connection refused" -or $txt -match "No connection could be made") {
+    if ($txt -match "connectex:" -or $txt -match "connection refused" -or $txt -match "wsarecv:" -or $txt -match "No connection could be made") {
       Write-Host "Bootstrap hit connection issue; waiting for Talos API to settle and retrying once..." -ForegroundColor Yellow
       Wait-ForPort $ControlPlaneIP 50000 180 "Talos API (post-apply)"
       Start-Sleep -Seconds 5
-      $out2 = & talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP 2>&1
-      if ($LASTEXITCODE -ne 0) {
-        $txt2 = ($out2 | Out-String)
-        throw "bootstrap failed after retry:`n$txt2"
+      $out2 = Invoke-Talosctl bootstrap --nodes $ControlPlaneIP --endpoints $ControlPlaneIP
+      if ($script:_talosExit -ne 0) {
+        throw "bootstrap failed after retry:`n$($out2 | Out-String)"
       }
       return
     }
@@ -294,18 +303,16 @@ function Talos-Bootstrap {
 
 function Talos-Kubeconfig {
   Write-Host "Fetching kubeconfig..." -ForegroundColor Gray
-  $out = & talosctl kubeconfig $Kubeconfig --nodes $ControlPlaneIP --endpoints $ControlPlaneIP --force 2>&1
+  $out = Invoke-Talosctl kubeconfig $Kubeconfig --nodes $ControlPlaneIP --endpoints $ControlPlaneIP --force
 
-  if ($LASTEXITCODE -ne 0) {
+  if ($script:_talosExit -ne 0) {
     $txt = ($out | Out-String)
 
     if ($txt -match "not yet valid") {
       Write-Host "kubeconfig hit certificate not-yet-valid window; waiting 15s and retrying once..." -ForegroundColor Yellow
       Start-Sleep -Seconds 15
-      $outRetry = & talosctl kubeconfig $Kubeconfig --nodes $ControlPlaneIP --endpoints $ControlPlaneIP --force 2>&1
-      if ($LASTEXITCODE -eq 0) {
-        return
-      }
+      $outRetry = Invoke-Talosctl kubeconfig $Kubeconfig --nodes $ControlPlaneIP --endpoints $ControlPlaneIP --force
+      if ($script:_talosExit -eq 0) { return }
       $txt = ($outRetry | Out-String)
     }
 
