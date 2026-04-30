@@ -927,6 +927,13 @@ if ($InstallIngress) {
 }
 Write-Host ""
 
+$confirm = (Read-Host "Does this look correct? [Y/N]").Trim().ToUpper()
+if ($confirm -ne "Y") {
+  Write-Host "Aborted. Re-run bootstrap with correct values." -ForegroundColor Yellow
+  return
+}
+Write-Host ""
+
 $ResolvedPortainerHost = $null
 if ($PortainerOnly -or $InstallPortainer) {
   if ($PortainerLoadBalancer -and -not [string]::IsNullOrWhiteSpace($PortainerDomain)) {
