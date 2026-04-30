@@ -45,12 +45,23 @@ function Install-WingetPackage {
         throw "winget not found. Install App Installer (Microsoft Store) or ensure winget is available."
     }
 
-    try { winget source update | Out-Null } catch {}
+    $baseArgs = @("-e", "--id", $Id,
+        "--accept-package-agreements", "--accept-source-agreements", "--silent")
 
-    winget install -e --id $Id --scope machine --accept-package-agreements --accept-source-agreements
-    if ($LASTEXITCODE -ne 0) {
-        throw "winget install failed for id: $Id"
+    Write-Host "Installing $Id (machine scope)..." -ForegroundColor Cyan
+    $proc = Start-Process -FilePath $winget -ArgumentList ($baseArgs + @("--scope", "machine")) `
+        -Wait -PassThru -NoNewWindow
+    if ($proc.ExitCode -in @(0, 3010, 1641)) { return }
+
+    # 0x8A150013 = machine-scope blocked by system policy
+    if ($proc.ExitCode -eq -1978334957) {
+        Write-Host "Machine-scope blocked by policy. Retrying with user scope..." -ForegroundColor Yellow
+        $proc = Start-Process -FilePath $winget -ArgumentList ($baseArgs + @("--scope", "user")) `
+            -Wait -PassThru -NoNewWindow
+        if ($proc.ExitCode -in @(0, 3010, 1641)) { return }
     }
+
+    throw "winget install failed for '$Id' with exit code $($proc.ExitCode)."
 }
 
 function Invoke-ActionSafe {
@@ -204,7 +215,15 @@ while (-not $back) {
         "1" {
             Invoke-ActionSafe -SuccessText "Winget upgrade completed" -Action {
                 Assert-Admin
-                winget upgrade --all --scope machine --accept-package-agreements --accept-source-agreements
+                $winget = Get-WingetPath
+                if (-not $winget) { throw "winget not found." }
+                $proc = Start-Process -FilePath $winget `
+                    -ArgumentList @("upgrade", "--all", "--scope", "machine",
+                        "--accept-package-agreements", "--accept-source-agreements", "--silent") `
+                    -Wait -PassThru -NoNewWindow
+                if ($proc.ExitCode -notin @(0, 3010, 1641)) {
+                    Write-Host "winget upgrade exited with code $($proc.ExitCode) (some packages may have been skipped)." -ForegroundColor Yellow
+                }
             }
         }
         "2" {
