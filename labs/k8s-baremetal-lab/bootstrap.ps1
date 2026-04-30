@@ -903,7 +903,10 @@ if ($Interactive) {
   $VipIP           = Read-NonEmpty "VIP (MetalLB) IP" $VipIP
 }
 
-$ControlPlaneIP = $ControlPlaneIPs[0]
+# Normalize: PS5.1 -File mode passes comma-joined arrays as a single string
+$ControlPlaneIPs = @($ControlPlaneIPs | ForEach-Object { $_ -split '\s*,\s*' } | Where-Object { $_ -ne '' })
+$WorkerIPs       = @($WorkerIPs       | ForEach-Object { $_ -split '\s*,\s*' } | Where-Object { $_ -ne '' })
+$ControlPlaneIP  = $ControlPlaneIPs[0]
 
 # Defaults for add-on selectors
 if (-not ($InstallMetalLB -or $InstallIngress -or $InstallApp -or $InstallPortainer)) {
