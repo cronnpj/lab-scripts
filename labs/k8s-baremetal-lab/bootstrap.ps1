@@ -242,6 +242,15 @@ Recovery steps:
 If you intentionally kept node state, use a secure talosconfig workflow instead of insecure apply.
 "@
     }
+    # Transient connection drop during boot — wait for port and retry once
+    if ($txt -match "wsarecv:" -or $txt -match "connection was aborted" -or $txt -match "connectex:" -or $txt -match "connection refused") {
+      Write-Host "apply-config hit transient connection error on ${NodeIP}; waiting for Talos API and retrying..." -ForegroundColor Yellow
+      Wait-ForPort $NodeIP 50000 120 "Talos API (apply retry)"
+      Start-Sleep -Seconds 3
+      $out2 = & talosctl apply-config --insecure --nodes $NodeIP --endpoints $NodeIP --file $FilePath 2>&1
+      if ($LASTEXITCODE -eq 0) { return }
+      throw "apply-config failed for ${NodeIP} after retry:`n$($out2 | Out-String)"
+    }
     throw "apply-config failed for ${NodeIP}:`n$txt"
   }
 }
