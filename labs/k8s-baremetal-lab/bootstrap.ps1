@@ -215,8 +215,8 @@ function New-CleanOverridesDir {
 
 function Set-TalosContext {
   $env:TALOSCONFIG = $TalosConfig
-  & talosctl config endpoint $ControlPlaneIP | Out-Null
-  & talosctl config node $ControlPlaneIP     | Out-Null
+  & talosctl config endpoint @ControlPlaneIPs | Out-Null
+  & talosctl config node $ControlPlaneIP      | Out-Null
 }
 
 function Talos-Apply([string]$NodeIP,[string]$FilePath) {
@@ -325,6 +325,20 @@ function Read-NonEmpty([string]$Prompt,[string]$Default="") {
     }
     return $v.Trim()
   }
+}
+
+function Read-ControlPlaneIPs([string[]]$DefaultCPs) {
+  Write-Host ""
+  Write-Host "Enter control plane IPs (one per line). Press Enter on a blank line to finish." -ForegroundColor Gray
+  Write-Host "Default: $($DefaultCPs -join ', ')" -ForegroundColor DarkGray
+  $list = New-Object System.Collections.Generic.List[string]
+  while ($true) {
+    $ip = Read-Host "Control Plane IP"
+    if ([string]::IsNullOrWhiteSpace($ip)) { break }
+    $list.Add($ip.Trim())
+  }
+  if ($list.Count -eq 0) { return $DefaultCPs }
+  return $list.ToArray()
 }
 
 function Read-WorkerIPs([string[]]$DefaultWorkers) {
@@ -793,12 +807,14 @@ function Install-Portainer {
 
     Write-Host ""
     Write-Host "Portainer install complete (IP mode)" -ForegroundColor Green
-    Write-Host "Control Plane IP: $ControlPlaneIP" -ForegroundColor Cyan
+    Write-Host "Control Plane IP(s): $($ControlPlaneIPs -join ', ')" -ForegroundColor Cyan
     Write-Host "Portainer NodePort: $nodePort" -ForegroundColor Cyan
     Write-Host "Primary URL: ${scheme}://${ControlPlaneIP}:$nodePort" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Portainer URL(s) (IP mode):" -ForegroundColor Cyan
-    Write-Host "  ${scheme}://${ControlPlaneIP}:$nodePort" -ForegroundColor Cyan
+    foreach ($cp in $ControlPlaneIPs) {
+      Write-Host "  ${scheme}://${cp}:$nodePort" -ForegroundColor Cyan
+    }
     foreach ($w in $WorkerIPs) {
       Write-Host "  ${scheme}://${w}:$nodePort" -ForegroundColor Cyan
     }
@@ -865,11 +881,13 @@ Write-Host ""
 
 if ($Interactive) {
   Show-Header "Interactive mode" "Yellow"
-  $ClusterName    = Read-NonEmpty "Cluster name" $ClusterName
-  $ControlPlaneIP = Read-NonEmpty "Control plane IP" $ControlPlaneIP
-  $WorkerIPs      = Read-WorkerIPs $WorkerIPs
-  $VipIP          = Read-NonEmpty "VIP (MetalLB) IP" $VipIP
+  $ClusterName     = Read-NonEmpty "Cluster name" $ClusterName
+  $ControlPlaneIPs = Read-ControlPlaneIPs $ControlPlaneIPs
+  $WorkerIPs       = Read-WorkerIPs $WorkerIPs
+  $VipIP           = Read-NonEmpty "VIP (MetalLB) IP" $VipIP
 }
+
+$ControlPlaneIP = $ControlPlaneIPs[0]
 
 # Defaults for add-on selectors
 if (-not ($InstallMetalLB -or $InstallIngress -or $InstallApp -or $InstallPortainer)) {
@@ -882,9 +900,9 @@ Assert-Command talosctl
 Assert-Command kubectl
 Assert-Command helm
 
-Write-Host "ClusterName:    $ClusterName"
-Write-Host "ControlPlaneIP: $ControlPlaneIP"
-Write-Host "Workers:        $($WorkerIPs -join ', ')"
+Write-Host "ClusterName:     $ClusterName"
+Write-Host "ControlPlaneIPs: $($ControlPlaneIPs -join ', ')"
+Write-Host "Workers:         $($WorkerIPs -join ', ')"
 Write-Host "VIP (MetalLB):  $VipIP"
 Write-Host "Pool Range:     $VipPoolRange"
 if ($InstallIngress) {
@@ -954,15 +972,16 @@ if ($WipeAndRebuild) {
 }
 
 # Full bootstrap
-Assert-Reachable $ControlPlaneIP "Control Plane"
+foreach ($cp in $ControlPlaneIPs) { Assert-Reachable $cp "Control Plane" }
 foreach ($w in $WorkerIPs) { Assert-Reachable $w "Worker" }
 
-Show-Header "Waiting for Talos API (50000) on control plane" "Yellow"
-Wait-ForPort $ControlPlaneIP 50000 $TimeoutTalosApiSeconds "Talos API"
+Show-Header "Waiting for Talos API (50000) on control plane(s)" "Yellow"
+foreach ($cp in $ControlPlaneIPs) { Wait-ForPort $cp 50000 $TimeoutTalosApiSeconds "Talos API ($cp)" }
 
 Show-Header "Generating Talos configs (fresh PKI)" "Yellow"
 New-CleanOverridesDir
-& talosctl gen config $ClusterName "https://${ControlPlaneIP}:6443" --output-dir $OverridesDir --kubernetes-version 1.35.0 --force | Out-Null
+$ApiEndpoint = if ($ControlPlaneIPs.Count -gt 1) { "https://${VipIP}:6443" } else { "https://${ControlPlaneIP}:6443" }
+& talosctl gen config $ClusterName $ApiEndpoint --output-dir $OverridesDir --kubernetes-version 1.35.0 --force | Out-Null
 
 if (-not (Test-Path (Join-Path $OverridesDir "controlplane.yaml"))) { throw "controlplane.yaml missing." }
 if (-not (Test-Path (Join-Path $OverridesDir "worker.yaml")))      { throw "worker.yaml missing." }
@@ -973,11 +992,11 @@ Set-TalosContext
 if (-not $SkipApply) {
   Show-Header "Applying configs (maintenance API uses --insecure)" "Yellow"
 
-  Talos-Apply $ControlPlaneIP (Join-Path $OverridesDir "controlplane.yaml")
+  foreach ($cp in $ControlPlaneIPs) { Talos-Apply $cp (Join-Path $OverridesDir "controlplane.yaml") }
   foreach ($w in $WorkerIPs) { Talos-Apply $w (Join-Path $OverridesDir "worker.yaml") }
 
   Show-Header "Waiting for Talos API to restart after apply-config" "Yellow"
-  Wait-ForPortDownThenUp $ControlPlaneIP 50000 240 "Talos API restart (CP)"
+  foreach ($cp in $ControlPlaneIPs) { Wait-ForPortDownThenUp $cp 50000 240 "Talos API restart ($cp)" }
 } else {
   Show-Header "Skipping apply-config (SkipApply set)" "DarkYellow"
 }
