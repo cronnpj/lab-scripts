@@ -45,7 +45,7 @@ function Install-WingetPackage {
         throw "winget not found. Install App Installer (Microsoft Store) or ensure winget is available."
     }
 
-    $baseArgs = @("-e", "--id", $Id,
+    $baseArgs = @("install", "--exact", "--id", $Id,
         "--accept-package-agreements", "--accept-source-agreements", "--silent")
 
     Write-Host "Installing $Id (machine scope)..." -ForegroundColor Cyan
