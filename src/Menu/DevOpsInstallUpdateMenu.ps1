@@ -51,14 +51,17 @@ function Install-WingetPackage {
     Write-Host "Installing $Id (machine scope)..." -ForegroundColor Cyan
     $proc = Start-Process -FilePath $winget -ArgumentList ($baseArgs + @("--scope", "machine")) `
         -Wait -PassThru -NoNewWindow
-    if ($proc.ExitCode -in @(0, 3010, 1641)) { return }
+    # 0x8A15010B = no upgrade available (already at latest) — treat as success
+    $successCodes = @(0, 3010, 1641, -1978335189)
+
+    if ($proc.ExitCode -in $successCodes) { return }
 
     # 0x8A150013 = machine-scope blocked by system policy
     if ($proc.ExitCode -eq -1978334957) {
         Write-Host "Machine-scope blocked by policy. Retrying with user scope..." -ForegroundColor Yellow
         $proc = Start-Process -FilePath $winget -ArgumentList ($baseArgs + @("--scope", "user")) `
             -Wait -PassThru -NoNewWindow
-        if ($proc.ExitCode -in @(0, 3010, 1641)) { return }
+        if ($proc.ExitCode -in $successCodes) { return }
     }
 
     throw "winget install failed for '$Id' with exit code $($proc.ExitCode)."
