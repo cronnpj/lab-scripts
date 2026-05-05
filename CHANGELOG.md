@@ -2,6 +2,18 @@
 
 All notable changes to this repository are documented in this file.
 
+## v2026.05.05.1 - 2026-05-05
+
+### New Feature — Add Control Plane Node to Existing Cluster
+
+- Added `Resolve-ControlPlaneConfigPath` function to [src/Menu/DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1): resolves `controlplane.yaml` from the same candidate paths used by `Resolve-WorkerConfigPath`.
+- Added `"a7"` handler to [src/Menu/DevOpsToolsMenu.ps1](src/Menu/DevOpsToolsMenu.ps1): prompts for a control plane IP, validates reachability, and applies `controlplane.yaml` via `talosctl apply-config --insecure`. Follows the same flow as the existing worker add (`"a4"`).
+- Added menu item `[7] Add new control plane node to existing cluster` to [src/Menu/DevOpsLabAdvancedOpsMenu.ps1](src/Menu/DevOpsLabAdvancedOpsMenu.ps1) and wired it to option map entry `"7" = "a7"`.
+- Added `"a7"` entry to the global search catalog in [src/Menu/MainMenu.ps1](src/Menu/MainMenu.ps1) with keywords: `control plane node talos join cluster ha`.
+
+### Version
+- Bumped [src/VERSION.txt](src/VERSION.txt) to `v2026.05.05.1`.
+
 ## v2026.04.01.3 - 2026-04-01
 
 ### Refactor — Split Utilities into VM & Image Prep + Utilities

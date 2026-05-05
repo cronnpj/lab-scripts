@@ -98,6 +98,8 @@ function Show-DevOpsLabAdvancedOpsMenu {
     Write-Host "      Hard reset repo state to remote branch HEAD." -ForegroundColor DarkGray
     Write-MenuItem "4" "Add new worker node to existing cluster"
     Write-Host "      Join an additional Talos worker to the cluster." -ForegroundColor DarkGray
+    Write-MenuItem "7" "Add new control plane node to existing cluster"
+    Write-Host "      Join an additional Talos control plane to the cluster." -ForegroundColor DarkGray
     Write-MenuItem "5" "Reset CITA Web Demo only (delete namespace cita-web)"
     Write-Host "      Remove demo namespace without rebuilding cluster." -ForegroundColor DarkGray
     Write-MenuItem "6" "Open kubectl prompt (new window, repo kubeconfig)"
@@ -121,6 +123,7 @@ $optionMap = @{
     "4" = "a4"
     "5" = "a5"
     "6" = "a6"
+    "7" = "a7"
 }
 
 $back = $false
@@ -136,6 +139,7 @@ while (-not $back) {
         "4" { }
         "5" { }
         "6" { }
+        "7" { }
         default {
             $script:lastStatusText  = "[Warning] Invalid selection"
             $script:lastStatusColor = "Yellow"

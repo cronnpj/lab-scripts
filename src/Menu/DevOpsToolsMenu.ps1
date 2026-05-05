@@ -428,6 +428,23 @@ function Resolve-WorkerConfigPath {
     return $candidates[0]
 }
 
+function Resolve-ControlPlaneConfigPath {
+    param([Parameter(Mandatory)][string]$RepoPath)
+
+    $candidates = @(
+        (Join-Path $RepoPath "labs\k8s-baremetal-lab\01-talos\student-overrides\controlplane.yaml"),
+        (Join-Path $RepoPath "01-talos\student-overrides\controlplane.yaml"),
+        "C:\CITA\LabTools\labs\k8s-baremetal-lab\01-talos\student-overrides\controlplane.yaml",
+        "C:\CITA\LabTools\01-talos\student-overrides\controlplane.yaml"
+    )
+
+    foreach ($path in $candidates) {
+        if (Test-Path $path) { return $path }
+    }
+
+    return $candidates[0]
+}
+
 function Assert-RepoReady {
     [CmdletBinding()]
     param(
@@ -1378,6 +1395,51 @@ do {
             Invoke-ActionSafe -SuccessText "CITA web demo reset completed" -Action {
                 Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
                 Remove-CitaWebDemo -RepoPath $script:RepoPath
+            }
+        }
+
+        "a7" {
+            Invoke-ActionSafe -SuccessText "Control plane add operation completed" -Action {
+                Initialize-RepoPrereqs -RepoUrl $script:RepoUrl -RepoPath $script:RepoPath -Branch $script:Branch
+                if (-not (Test-Cmd talosctl)) { throw "talosctl not found. Install it from option [2]." }
+
+                $cpIp = (Read-Host "Enter NEW control plane IP address").Trim()
+                if ([string]::IsNullOrWhiteSpace($cpIp)) { throw "Control plane IP cannot be blank." }
+
+                $cpCfg = Resolve-ControlPlaneConfigPath -RepoPath $script:RepoPath
+                if (-not (Test-Path $cpCfg)) {
+                    throw "controlplane.yaml not found at: $cpCfg`nRun option [9] first to generate Talos configs."
+                }
+
+                Write-Host "Checking control plane reachability: $cpIp" -ForegroundColor Gray
+                if (-not (Test-Connection -ComputerName $cpIp -Count 1 -Quiet)) {
+                    throw "Control plane node is not reachable: $cpIp"
+                }
+
+                Write-Host "Applying control plane config to $cpIp (Talos maintenance API)..." -ForegroundColor Yellow
+                & talosctl apply-config --insecure --nodes $cpIp --endpoints $cpIp --file $cpCfg
+                if ($LASTEXITCODE -ne 0) {
+                    throw "talosctl apply-config failed for control plane: $cpIp"
+                }
+
+                $talosconfig = Resolve-TalosConfigPath -RepoPath $script:RepoPath
+                if (Test-Path $talosconfig) {
+                    Write-Host "Using talosconfig: $talosconfig" -ForegroundColor DarkGray
+                }
+
+                $kubeconfig = $null
+                $hasKubectl = Test-Cmd kubectl
+                if ($hasKubectl) {
+                    $kubeconfig = Resolve-KubeconfigPath -RepoPath $script:RepoPath
+                }
+                if ($hasKubectl -and $kubeconfig -and (Test-Path $kubeconfig)) {
+                    Write-Host "Waiting briefly, then checking node registration..." -ForegroundColor Gray
+                    Start-Sleep -Seconds 12
+                    kubectl --kubeconfig $kubeconfig get nodes -o wide
+                }
+                else {
+                    Write-Host "Control plane config applied. Install/locate kubeconfig to verify node join with kubectl." -ForegroundColor DarkYellow
+                }
             }
         }
 
